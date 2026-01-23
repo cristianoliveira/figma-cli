@@ -17,6 +17,18 @@ type Config struct {
 	// Figma API token (required for API calls)
 	Token string `json:"token" env:"FIGMA_ACCESS_TOKEN"`
 
+	// TokenType indicates the type of token: "pat" or "oauth".
+	// Defaults to "pat" for backward compatibility.
+	TokenType string `json:"token_type" env:"FIGMA_TOKEN_TYPE"`
+
+	// OAuthClientID is the client ID for OAuth authentication.
+	// If empty, a default client ID may be used (not recommended for production).
+	OAuthClientID string `json:"oauth_client_id" env:"FIGMA_OAUTH_CLIENT_ID"`
+
+	// OAuthScopes is a comma-separated list of OAuth scopes to request.
+	// Defaults to "file_content:read".
+	OAuthScopes string `json:"oauth_scopes" env:"FIGMA_OAUTH_SCOPES"`
+
 	// Output format for command results (json, yaml, text)
 	OutputFormat string `json:"output_format" env:"OUTPUT_FORMAT"`
 
@@ -67,9 +79,12 @@ type LoggingConfig struct {
 // DefaultConfig returns a configuration with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		Token:        "",
-		OutputFormat: "text",
-		ExportDir:    ".",
+		Token:         "",
+		TokenType:     "pat",
+		OAuthClientID: "",
+		OAuthScopes:   "file_content:read",
+		OutputFormat:  "text",
+		ExportDir:     ".",
 		API: APISettings{
 			Timeout:    30 * time.Second,
 			MaxRetries: 3,
@@ -167,6 +182,9 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.ExportDir == "" {
 		return fmt.Errorf("export directory cannot be empty")
+	}
+	if cfg.TokenType != "pat" && cfg.TokenType != "oauth" {
+		return fmt.Errorf("invalid token type %q, must be either 'pat' or 'oauth'", cfg.TokenType)
 	}
 	if cfg.API.Timeout <= 0 {
 		return fmt.Errorf("API timeout must be positive")
@@ -268,6 +286,15 @@ func mergeConfig(dst, src *Config) {
 	if src.Token != "" {
 		dst.Token = src.Token
 	}
+	if src.TokenType != "" {
+		dst.TokenType = src.TokenType
+	}
+	if src.OAuthClientID != "" {
+		dst.OAuthClientID = src.OAuthClientID
+	}
+	if src.OAuthScopes != "" {
+		dst.OAuthScopes = src.OAuthScopes
+	}
 	if src.OutputFormat != "" {
 		dst.OutputFormat = src.OutputFormat
 	}
@@ -340,6 +367,18 @@ func applyEnvMap(cfg *Config, envMap map[string]string) {
 	// Token
 	if val := envMap["FIGMA_ACCESS_TOKEN"]; val != "" {
 		cfg.Token = val
+	}
+	// Token type
+	if val := envMap["FIGMA_TOKEN_TYPE"]; val != "" {
+		cfg.TokenType = val
+	}
+	// OAuth client ID
+	if val := envMap["FIGMA_OAUTH_CLIENT_ID"]; val != "" {
+		cfg.OAuthClientID = val
+	}
+	// OAuth scopes
+	if val := envMap["FIGMA_OAUTH_SCOPES"]; val != "" {
+		cfg.OAuthScopes = val
 	}
 	// Output format
 	if val := envMap["OUTPUT_FORMAT"]; val != "" {

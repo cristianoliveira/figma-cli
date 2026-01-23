@@ -24,7 +24,15 @@ func newAPIClient(cfg *config.Config, logger logging.Logger) (api.Client, error)
 
 	// Set authorization header if token is present
 	if cfg.Token != "" {
-		requestBuilder.SetHeader("Authorization", "Bearer "+cfg.Token)
+		switch cfg.TokenType {
+		case "oauth":
+			requestBuilder.SetHeader("Authorization", "Bearer "+cfg.Token)
+		case "pat":
+			fallthrough
+		default:
+			// PAT authentication uses X-Figma-Token header
+			requestBuilder.SetHeader("X-Figma-Token", cfg.Token)
+		}
 	}
 
 	// Create HTTP client with rate-limited transport

@@ -27,3 +27,34 @@ func (a *TokenAuthenticator) Authenticate(req *http.Request) error {
 	}
 	return nil
 }
+
+// FigmaAuthenticator adds the appropriate authentication header based on token type.
+type FigmaAuthenticator struct {
+	tokenType string
+	token     string
+}
+
+// NewFigmaAuthenticator creates a new FigmaAuthenticator.
+func NewFigmaAuthenticator(tokenType, token string) *FigmaAuthenticator {
+	return &FigmaAuthenticator{
+		tokenType: tokenType,
+		token:     token,
+	}
+}
+
+// Authenticate implements Authenticator.
+func (a *FigmaAuthenticator) Authenticate(req *http.Request) error {
+	if a.token == "" {
+		return nil
+	}
+	switch a.tokenType {
+	case "pat":
+		req.Header.Set("X-Figma-Token", a.token)
+	case "oauth":
+		req.Header.Set("Authorization", "Bearer "+a.token)
+	default:
+		// Default to PAT for backward compatibility
+		req.Header.Set("X-Figma-Token", a.token)
+	}
+	return nil
+}
