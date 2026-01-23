@@ -34,15 +34,16 @@ type Config struct {
 type APISettings struct {
 	// Timeout for HTTP requests
 	Timeout time.Duration `json:"timeout" env:"API_TIMEOUT"`
-
 	// Maximum number of retries for failed requests
 	MaxRetries int `json:"max_retries" env:"API_MAX_RETRIES"`
-
 	// Base URL for Figma API (can be overridden for testing)
 	BaseURL string `json:"base_url" env:"API_BASE_URL"`
-
 	// Enable debug logging for API requests
 	Debug bool `json:"debug" env:"API_DEBUG"`
+	// API Tier (1, 2, 3, 4) for rate limiting
+	Tier int `json:"tier" env:"API_TIER"`
+	// Seat type (view_collab, dev_full) for rate limiting
+	SeatType string `json:"seat_type" env:"API_SEAT_TYPE"`
 }
 
 // LoggingConfig holds logging configuration.
@@ -74,6 +75,8 @@ func DefaultConfig() Config {
 			MaxRetries: 3,
 			BaseURL:    "https://api.figma.com/v1",
 			Debug:      false,
+			Tier:       1,
+			SeatType:   "dev_full",
 		},
 		Logging: LoggingConfig{
 			Level:      "info",
@@ -148,6 +151,12 @@ func (cfg *Config) Merge(flags *CLIFlags) {
 	if flags.APIDebug {
 		cfg.API.Debug = true
 	}
+	if flags.APITier > 0 {
+		cfg.API.Tier = flags.APITier
+	}
+	if flags.APISeatType != "" {
+		cfg.API.SeatType = flags.APISeatType
+	}
 }
 
 // Validate checks that configuration values are valid (format, ranges, etc.).
@@ -164,6 +173,12 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.API.MaxRetries < 0 {
 		return fmt.Errorf("API max retries cannot be negative")
+	}
+	if cfg.API.Tier < 1 || cfg.API.Tier > 4 {
+		return fmt.Errorf("API tier must be between 1 and 4")
+	}
+	if cfg.API.SeatType != "" && cfg.API.SeatType != "view_collab" && cfg.API.SeatType != "dev_full" {
+		return fmt.Errorf("API seat type must be either 'view_collab' or 'dev_full'")
 	}
 	// Validate logging config
 	if cfg.Logging.Level != "" && cfg.Logging.Level != "debug" && cfg.Logging.Level != "info" && cfg.Logging.Level != "warn" && cfg.Logging.Level != "error" {
@@ -271,6 +286,12 @@ func mergeConfig(dst, src *Config) {
 	if src.API.Debug {
 		dst.API.Debug = true
 	}
+	if src.API.Tier > 0 {
+		dst.API.Tier = src.API.Tier
+	}
+	if src.API.SeatType != "" {
+		dst.API.SeatType = src.API.SeatType
+	}
 	// Merge logging config
 	mergeLoggingConfig(&dst.Logging, &src.Logging)
 }
@@ -347,6 +368,16 @@ func applyEnvMap(cfg *Config, envMap map[string]string) {
 	// API debug
 	if val := envMap["API_DEBUG"]; val != "" {
 		cfg.API.Debug = val == "true" || val == "1"
+	}
+	// API tier
+	if val := envMap["API_TIER"]; val != "" {
+		if tier, err := parseInt(val); err == nil && tier > 0 {
+			cfg.API.Tier = tier
+		}
+	}
+	// API seat type
+	if val := envMap["API_SEAT_TYPE"]; val != "" {
+		cfg.API.SeatType = val
 	}
 	// Logging level
 	if val := envMap["LOG_LEVEL"]; val != "" {

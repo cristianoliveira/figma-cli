@@ -12,4 +12,6 @@ type CLIFlags struct {
 	APIMaxRetries int
 	APIBaseURL    string
 	APIDebug      bool
+	APITier       int
+	APISeatType   string
 }

@@ -50,3 +50,6 @@ tmp/
 .beads/*.json
 !.beads/config.jsonfigma-cli
 /figma
+
+# bv (beads viewer) local config and caches
+.bv/

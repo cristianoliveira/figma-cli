@@ -2,16 +2,22 @@ package cmd
 
 import (
 	"github.com/cristianoliveira/figma-cli/internal/api"
+	"github.com/cristianoliveira/figma-cli/internal/api/ratelimit"
 	"github.com/cristianoliveira/figma-cli/internal/api/transport"
 	"github.com/cristianoliveira/figma-cli/internal/config"
 	"github.com/cristianoliveira/figma-cli/internal/logging"
 )
 
 // newAPIClient creates a new Figma API client from configuration.
-// The client stack is: HTTPClient → RetryClient.
+// The client stack is: RateLimitTransport → HTTPClient → RetryClient.
 func newAPIClient(cfg *config.Config, logger logging.Logger) (api.Client, error) {
 	// Create transport with timeout
 	httpTransport := transport.NewHTTPTransport(cfg.API.Timeout)
+
+	// Create rate limiter based on tier and seat type
+	limiter := ratelimit.NewTokenBucketLimiter(cfg.API.Tier, cfg.API.SeatType, logger)
+	// Wrap transport with rate limiting
+	rateLimitedTransport := ratelimit.NewRateLimitTransport(httpTransport, limiter, logger)
 
 	// Create request builder with base URL
 	requestBuilder := transport.NewRequestBuilder(cfg.API.BaseURL)
@@ -21,8 +27,8 @@ func newAPIClient(cfg *config.Config, logger logging.Logger) (api.Client, error)
 		requestBuilder.SetHeader("Authorization", "Bearer "+cfg.Token)
 	}
 
-	// Create HTTP client
-	httpClient := transport.NewHTTPClient(httpTransport, requestBuilder)
+	// Create HTTP client with rate-limited transport
+	httpClient := transport.NewHTTPClient(rateLimitedTransport, requestBuilder)
 
 	// Wrap with retry client (configure retries based on cfg.API.MaxRetries)
 	retryConfig := api.DefaultRetryConfig()
