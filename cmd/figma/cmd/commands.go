@@ -9,6 +9,7 @@ func init() {
 	rootCmd.AddCommand(nodesCmd)
 	rootCmd.AddCommand(textCmd)
 	rootCmd.AddCommand(exportCmd)
+	rootCmd.AddCommand(getCmd)
 }
 
 var parseCmd = &cobra.Command{
