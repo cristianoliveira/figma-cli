@@ -1,19 +1,20 @@
 package figma
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
 )
 
+var urlPathRegex = regexp.MustCompile(`^/(?:design|file)/([A-Za-z0-9]+)/([^/?]+)`)
+
 // ParsedURL represents the extracted components from a Figma URL.
 type ParsedURL struct {
-	FileKey   string
-	NodeID    string
-	FileName  string
-	Version   string
-	Timestamp string
+	FileKey   string // Figma file key (alphanumeric)
+	NodeID    string // Node identifier from node-id query parameter
+	FileName  string // Name of the file (URL decoded)
+	Version   string // Version identifier from version-id query parameter
+	Timestamp string // Timestamp from t query parameter
 }
 
 // ParseURL parses a Figma URL and extracts file key, node ID, and other components.
@@ -27,10 +28,9 @@ func ParseURL(rawURL string) (*ParsedURL, error) {
 	}
 
 	// Extract file key from path
-	re := regexp.MustCompile(`^/(?:design|file)/([A-Za-z0-9]+)/([^/?]+)`)
-	matches := re.FindStringSubmatch(u.Path)
+	matches := urlPathRegex.FindStringSubmatch(u.Path)
 	if matches == nil {
-		return nil, errors.New("URL path must be /design/{key}/{name} or /file/{key}/{name}")
+		return nil, fmt.Errorf("URL path must be /design/{key}/{name} or /file/{key}/{name}, got %q", u.Path)
 	}
 	fileKey := matches[1]
 	fileName := matches[2]

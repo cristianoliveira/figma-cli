@@ -53,6 +53,29 @@ func TestParseURL(t *testing.T) {
 			input:       "https://www.figma.com/unknown/abc/name",
 			expectError: true,
 		},
+		{
+			name:  "design URL without node-id",
+			input: "https://www.figma.com/design/abc123/My-Design",
+			expected: &ParsedURL{
+				FileKey:  "abc123",
+				NodeID:   "",
+				FileName: "My-Design",
+			},
+		},
+		{
+			name:  "file URL with extra path segments",
+			input: "https://www.figma.com/file/xyz456/Another-Design/edit?node-id=123",
+			expected: &ParsedURL{
+				FileKey:  "xyz456",
+				NodeID:   "123",
+				FileName: "Another-Design",
+			},
+		},
+		{
+			name:        "URL with hyphen in key (invalid)",
+			input:       "https://www.figma.com/design/abc-123/Name",
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {

@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +29,70 @@ jobs:
 
       - name: Install dependencies
         run: go mod tidy
+
+      - name: Check formatting with gofmt
+        if: always()
+        run: |
+          gofmt -d .
+          if [ "$(gofmt -l .)" != "" ]; then
+            echo "Code is not formatted properly. Run 'gofmt -w .' to fix."
+            exit 1
+          fi
+
+      - name: Run go vet
+        if: always()
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        if: always()
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.5'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install dependencies
+        run: go mod tidy
+
+      - name: Build binary
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            go build -o figma.exe ./cmd/figma
+          else
+            go build -o figma ./cmd/figma
+          fi
+        shell: bash
+
+      - name: Verify binary
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            ./figma.exe version
+          else
+            ./figma version
+          fi
+        shell: bash
 
       - name: Run tests with coverage
         run: go test ./... -coverprofile=coverage.out
