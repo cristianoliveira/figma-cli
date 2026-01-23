@@ -97,3 +97,44 @@ type WebhookUpdate struct {
 type ReactionRequest struct {
 	Emoji string `json:"emoji"`
 }
+
+// Color represents an RGBA color with values normalized to 0..1.
+type Color struct {
+	R float64 `json:"r"`
+	G float64 `json:"g"`
+	B float64 `json:"b"`
+	A float64 `json:"a"`
+}
+
+// Paint represents a fill or stroke paint.
+type Paint struct {
+	Type    string  `json:"type"` // "SOLID", "GRADIENT_LINEAR", "IMAGE", etc.
+	Color   *Color  `json:"color,omitempty"`
+	Opacity float64 `json:"opacity,omitempty"`
+	// TODO: add gradient, image fields
+}
+
+// LayoutConstraint represents how a node is positioned within its parent.
+type LayoutConstraint struct {
+	Vertical   string `json:"vertical,omitempty"`   // "TOP", "BOTTOM", "CENTER", "TOP_BOTTOM", "SCALE"
+	Horizontal string `json:"horizontal,omitempty"` // "LEFT", "RIGHT", "CENTER", "LEFT_RIGHT", "SCALE"
+}
+
+// TextStyle represents text style properties.
+type TextStyle struct {
+	FontFamily          string  `json:"fontFamily,omitempty"`
+	FontPostScriptName  string  `json:"fontPostScriptName,omitempty"`
+	FontStyle           string  `json:"fontStyle,omitempty"`
+	Italic              bool    `json:"italic,omitempty"`
+	FontWeight          int     `json:"fontWeight,omitempty"`
+	FontSize            float64 `json:"fontSize,omitempty"`
+	TextCase            string  `json:"textCase,omitempty"`            // "ORIGINAL", "UPPER", "LOWER", "TITLE", "SMALL_CAPS", "SMALL_CAPS_FORCED"
+	TextAlignHorizontal string  `json:"textAlignHorizontal,omitempty"` // "LEFT", "RIGHT", "CENTER", "JUSTIFIED"
+	TextAlignVertical   string  `json:"textAlignVertical,omitempty"`   // "TOP", "CENTER", "BOTTOM"
+	LetterSpacing       float64 `json:"letterSpacing,omitempty"`
+	LineHeight          float64 `json:"lineHeight,omitempty"`
+	ParagraphSpacing    float64 `json:"paragraphSpacing,omitempty"`
+	ParagraphIndent     float64 `json:"paragraphIndent,omitempty"`
+	TextDecoration      string  `json:"textDecoration,omitempty"` // "NONE", "STRIKETHROUGH", "UNDERLINE"
+	TextAutoResize      string  `json:"textAutoResize,omitempty"` // "NONE", "WIDTH_AND_HEIGHT", "HEIGHT", "TRUNCATE"
+}

@@ -108,30 +108,68 @@ type Client interface {
 
 // File represents a Figma file.
 type File struct {
-	Key          string          `json:"key"`
-	Name         string          `json:"name"`
-	LastModified string          `json:"lastModified"`
-	ThumbnailURL string          `json:"thumbnailUrl"`
-	Version      string          `json:"version"`
-	Document     *Node           `json:"document"`
-	Components   map[string]Node `json:"components"`
+	Key           string                  `json:"key"`
+	Name          string                  `json:"name"`
+	LastModified  string                  `json:"lastModified"`
+	ThumbnailURL  string                  `json:"thumbnailUrl"`
+	Version       string                  `json:"version"`
+	Document      *Node                   `json:"document"`
+	Components    map[string]Component    `json:"components"`
+	ComponentSets map[string]ComponentSet `json:"componentSets,omitempty"`
+	Styles        map[string]Style        `json:"styles,omitempty"`
+	// TODO: add schemaVersion, role, linkAccess, etc.
 }
 
 // Node represents a Figma node.
 type Node struct {
-	ID       string           `json:"id"`
-	Name     string           `json:"name"`
-	Type     string           `json:"type"`
-	Visible  bool             `json:"visible"`
-	Children []Node           `json:"children,omitempty"`
-	Styles   map[string]Style `json:"styles,omitempty"`
+	ID       string            `json:"id"`
+	Name     string            `json:"name"`
+	Type     string            `json:"type"`
+	Visible  bool              `json:"visible"`
+	Children []Node            `json:"children,omitempty"`
+	Styles   map[string]string `json:"styles,omitempty"`
 	// Additional fields can be added as needed.
+	IsFixed                     bool
+	ScrollBehavior              string
+	Rotation                    float64
+	ComponentPropertyReferences map[string]string
+	PluginData                  interface{}
+	SharedPluginData            interface{}
+	ExplicitVariableModes       map[string]string
+	Characters                  string            `json:"characters,omitempty"`
+	Style                       *TextStyle        `json:"style,omitempty"`
+	Fills                       []Paint           `json:"fills,omitempty"`
+	Strokes                     []Paint           `json:"strokes,omitempty"`
+	StrokeWeight                float64           `json:"strokeWeight,omitempty"`
+	StrokeAlign                 string            `json:"strokeAlign,omitempty"`
+	CornerRadius                float64           `json:"cornerRadius,omitempty"`
+	RectangleCornerRadii        []float64         `json:"rectangleCornerRadii,omitempty"`
+	Constraints                 *LayoutConstraint `json:"constraints,omitempty"`
+	Opacity                     float64           `json:"opacity,omitempty"`
+	BlendMode                   string            `json:"blendMode,omitempty"`
+	IsMask                      bool              `json:"isMask,omitempty"`
+	Locked                      bool              `json:"locked,omitempty"`
+	LayoutMode                  string            `json:"layoutMode,omitempty"`
+	PrimaryAxisAlignItems       string            `json:"primaryAxisAlignItems,omitempty"`
+	CounterAxisAlignItems       string            `json:"counterAxisAlignItems,omitempty"`
+	ItemSpacing                 float64           `json:"itemSpacing,omitempty"`
+	PaddingLeft                 float64           `json:"paddingLeft,omitempty"`
+	PaddingRight                float64           `json:"paddingRight,omitempty"`
+	PaddingTop                  float64           `json:"paddingTop,omitempty"`
+	PaddingBottom               float64           `json:"paddingBottom,omitempty"`
+	TransitionNodeID            string            `json:"transitionNodeID,omitempty"`
+	TransitionDuration          float64           `json:"transitionDuration,omitempty"`
+	TransitionEasing            string            `json:"transitionEasing,omitempty"`
+	// TODO: add effects, exportSettings, background color
 }
 
 // Style represents a Figma style.
 type Style struct {
-	Key  string `json:"key"`
-	Name string `json:"name"`
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Remote      bool   `json:"remote"`
+	StyleType   string `json:"styleType"` // "FILL", "TEXT", "EFFECT", "GRID"
 }
 
 // ImageOptions defines options for image export.
