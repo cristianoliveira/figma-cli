@@ -1,0 +1,38 @@
+time=2026-01-23T06:57:58.723+01:00 level=INFO msg="Daemon started (interval: %v, auto-commit: %v, auto-push: %v)" !BADKEY=5s !BADKEY=false !BADKEY=false
+time=2026-01-23T06:57:58.723+01:00 level=INFO msg="using database" path=/Users/cristianoliveira/other/figma-cli/.beads/beads.db
+time=2026-01-23T06:57:58.731+01:00 level=INFO msg="database opened" path=/Users/cristianoliveira/other/figma-cli/.beads/beads.db freshness_checking=true
+time=2026-01-23T06:57:58.731+01:00 level=INFO msg="upgrading .beads/.gitignore"
+time=2026-01-23T06:57:58.731+01:00 level=WARN msg="failed to upgrade .gitignore" error="open .beads/.gitignore: no such file or directory"
+time=2026-01-23T06:57:58.754+01:00 level=INFO msg="Repository fingerprint validated: %s" !BADKEY=59643cd6
+time=2026-01-23T06:57:58.754+01:00 level=INFO msg="starting RPC server" socket=/Users/cristianoliveira/other/figma-cli/.beads/bd.sock
+time=2026-01-23T06:57:58.754+01:00 level=INFO msg="RPC server ready (socket listening)"
+time=2026-01-23T06:57:58.759+01:00 level=INFO msg="registered in global registry"
+time=2026-01-23T06:57:58.759+01:00 level=INFO msg="Starting %s..." !BADKEY="sync cycle"
+time=2026-01-23T06:57:58.760+01:00 level=INFO msg="Exported to JSONL"
+time=2026-01-23T06:57:58.803+01:00 level=INFO msg="Imported from JSONL"
+time=2026-01-23T06:57:58.823+01:00 level=INFO msg="Sync cycle complete"
+time=2026-01-23T06:57:58.823+01:00 level=INFO msg="monitoring parent process" pid=0
+time=2026-01-23T06:57:58.823+01:00 level=INFO msg="using event-driven mode"
+time=2026-01-23T06:57:58.831+01:00 level=INFO msg="Auto-pull disabled: use 'git pull' manually to sync remote changes"
+time=2026-01-23T06:59:26.345+01:00 level=INFO msg="JSONL removed/renamed, re-establishing watch"
+time=2026-01-23T06:59:26.396+01:00 level=INFO msg="Successfully re-established JSONL watch after %v" !BADKEY=50ms
+time=2026-01-23T06:59:26.397+01:00 level=INFO msg="JSONL file created: %s" !BADKEY=/Users/cristianoliveira/other/figma-cli/.beads/issues.jsonl
+time=2026-01-23T06:59:27.399+01:00 level=INFO msg="Import triggered by file change"
+time=2026-01-23T06:59:27.400+01:00 level=INFO msg="Starting %s..." !BADKEY=auto-import
+time=2026-01-23T06:59:27.406+01:00 level=INFO msg="Skipping %s: JSONL content unchanged" !BADKEY=auto-import
+time=2026-01-23T06:59:30.811+01:00 level=INFO msg="JSONL removed/renamed, re-establishing watch"
+time=2026-01-23T06:59:30.863+01:00 level=INFO msg="Successfully re-established JSONL watch after %v" !BADKEY=50ms
+time=2026-01-23T06:59:30.864+01:00 level=INFO msg="JSONL file created: %s" !BADKEY=/Users/cristianoliveira/other/figma-cli/.beads/issues.jsonl
+time=2026-01-23T06:59:31.866+01:00 level=INFO msg="Import triggered by file change"
+time=2026-01-23T06:59:31.866+01:00 level=INFO msg="Starting %s..." !BADKEY=auto-import
+time=2026-01-23T06:59:31.868+01:00 level=INFO msg="Skipping %s: JSONL content unchanged" !BADKEY=auto-import
+time=2026-01-23T06:59:35.375+01:00 level=INFO msg="Git ref change detected: %s" !BADKEY=/Users/cristianoliveira/other/figma-cli/.git/refs/heads/main.lock
+time=2026-01-23T06:59:36.377+01:00 level=INFO msg="Import triggered by file change"
+time=2026-01-23T06:59:36.378+01:00 level=INFO msg="Starting %s..." !BADKEY=auto-import
+time=2026-01-23T06:59:36.378+01:00 level=INFO msg="Skipping %s: JSONL content unchanged" !BADKEY=auto-import
+time=2026-01-23T06:59:38.294+01:00 level=INFO msg="JSONL removed/renamed, re-establishing watch"
+time=2026-01-23T06:59:38.345+01:00 level=INFO msg="Successfully re-established JSONL watch after %v" !BADKEY=50ms
+time=2026-01-23T06:59:38.345+01:00 level=INFO msg="JSONL file created: %s" !BADKEY=/Users/cristianoliveira/other/figma-cli/.beads/issues.jsonl
+time=2026-01-23T06:59:39.347+01:00 level=INFO msg="Import triggered by file change"
+time=2026-01-23T06:59:39.347+01:00 level=INFO msg="Starting %s..." !BADKEY=auto-import
+time=2026-01-23T06:59:39.349+01:00 level=INFO msg="Skipping %s: JSONL content unchanged" !BADKEY=auto-import
