@@ -15,7 +15,7 @@ func TestNewLogger(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	ctx := context.Background()
 	logger.Debug(ctx, "debug message")
@@ -33,7 +33,7 @@ func TestLoggerWithRequestID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	ctx := NewContextWithRequestID(context.Background(), "test-request-123")
 	logger.Info(ctx, "message with request id")
@@ -48,7 +48,7 @@ func TestLoggerWithFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	ctx := context.Background()
 	logger.Info(ctx, "message with fields",
@@ -59,13 +59,13 @@ func TestLoggerWithFields(t *testing.T) {
 }
 
 func TestApplyEnv(t *testing.T) {
-	os.Setenv("LOG_LEVEL", "debug")
-	os.Setenv("LOG_FORMAT", "json")
-	os.Setenv("LOG_FILE", "/tmp/test.log")
+	_ = os.Setenv("LOG_LEVEL", "debug")
+	_ = os.Setenv("LOG_FORMAT", "json")
+	_ = os.Setenv("LOG_FILE", "/tmp/test.log")
 	defer func() {
-		os.Unsetenv("LOG_LEVEL")
-		os.Unsetenv("LOG_FORMAT")
-		os.Unsetenv("LOG_FILE")
+		_ = os.Unsetenv("LOG_LEVEL")
+		_ = os.Unsetenv("LOG_FORMAT")
+		_ = os.Unsetenv("LOG_FILE")
 	}()
 
 	cfg := DefaultConfig()

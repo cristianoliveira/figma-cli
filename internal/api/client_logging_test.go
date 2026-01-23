@@ -40,7 +40,7 @@ func TestLoggingClientWithRequestID(t *testing.T) {
 	cfg.Format = "json"
 	logger, err := logging.NewLogger(cfg)
 	assert.NoError(t, err)
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	client := NewLoggingClient(mockClient, logger)
 

@@ -106,7 +106,7 @@ func TestValidate(t *testing.T) {
 
 func TestLoadNoFiles(t *testing.T) {
 	// Ensure no .env file exists in test directory
-	os.Unsetenv("FIGMA_ACCESS_TOKEN")
+	_ = os.Unsetenv("FIGMA_ACCESS_TOKEN")
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load failed with no config files: %v", err)
@@ -139,7 +139,7 @@ LOG_COMPRESS=false`
 	}
 	// Change working directory to temp dir
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 	if err := os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
