@@ -1,8 +1,13 @@
 package transport
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"strings"
 )
 
 // Transport defines an interface for executing HTTP requests.
@@ -41,8 +46,38 @@ type defaultRequestBuilder struct {
 }
 
 func (b *defaultRequestBuilder) Build(ctx context.Context, method, path string, body interface{}) (*http.Request, error) {
-	// Implementation omitted for design phase.
-	return nil, nil
+	// Construct full URL
+	baseURL := strings.TrimSuffix(b.baseURL, "/")
+	path = strings.TrimPrefix(path, "/")
+	fullURL := fmt.Sprintf("%s/%s", baseURL, path)
+
+	var reqBody io.Reader
+	if body != nil {
+		// Marshal JSON body
+		jsonData, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("marshal request body: %w", err)
+		}
+		reqBody = bytes.NewReader(jsonData)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	// Set default headers
+	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	// Set custom headers
+	for key, value := range b.headers {
+		req.Header.Set(key, value)
+	}
+
+	return req, nil
 }
 
 func (b *defaultRequestBuilder) SetHeader(key, value string) {

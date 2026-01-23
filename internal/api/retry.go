@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"time"
 )
@@ -142,7 +143,14 @@ func isRetryableError(err error, config RetryConfig) bool {
 		}
 	}
 
-	// TODO: Add checks for network errors (temporary, timeouts, etc.)
+	// Check for network errors (temporary, timeouts, connection failures)
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		// Retry on temporary network errors and timeouts
+		if netErr.Temporary() || netErr.Timeout() {
+			return true
+		}
+	}
 
 	return false
 }
