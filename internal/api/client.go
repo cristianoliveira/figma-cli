@@ -23,6 +23,87 @@ type Client interface {
 
 	// PostComment posts a comment to a file.
 	PostComment(ctx context.Context, fileKey string, comment *CommentRequest) (*Comment, error)
+
+	// DeleteComment deletes a comment from a file.
+	DeleteComment(ctx context.Context, fileKey, commentID string) error
+
+	// GetCommentReactions retrieves reactions for a comment.
+	GetCommentReactions(ctx context.Context, fileKey, commentID string) ([]*Reaction, error)
+
+	// PostCommentReaction adds a reaction to a comment.
+	PostCommentReaction(ctx context.Context, fileKey, commentID, emoji string) error
+
+	// DeleteCommentReaction removes a reaction from a comment.
+	DeleteCommentReaction(ctx context.Context, fileKey, commentID, emoji string) error
+
+	// GetFileMeta retrieves metadata about a file.
+	GetFileMeta(ctx context.Context, fileKey string) (*FileMeta, error)
+
+	// GetFileVersions retrieves version history of a file.
+	GetFileVersions(ctx context.Context, fileKey string) ([]*Version, error)
+
+	// GetTeamStyles retrieves published styles for a team.
+	GetTeamStyles(ctx context.Context, teamID string) ([]*Style, error)
+
+	// GetStyle retrieves a specific style by its key.
+	GetStyle(ctx context.Context, styleKey string) (*Style, error)
+
+	// GetFileStyles retrieves styles defined in a file.
+	GetFileStyles(ctx context.Context, fileKey string) ([]*Style, error)
+
+	// GetTeamComponents retrieves published components for a team.
+	GetTeamComponents(ctx context.Context, teamID string) ([]*Component, error)
+
+	// GetComponent retrieves a specific component by its key.
+	GetComponent(ctx context.Context, componentKey string) (*Component, error)
+
+	// GetTeamComponentSets retrieves published component sets for a team.
+	GetTeamComponentSets(ctx context.Context, teamID string) ([]*ComponentSet, error)
+
+	// GetComponentSet retrieves a specific component set by its key.
+	GetComponentSet(ctx context.Context, componentSetKey string) (*ComponentSet, error)
+
+	// GetFileComponents retrieves components defined in a file.
+	GetFileComponents(ctx context.Context, fileKey string) ([]*Component, error)
+
+	// GetTeamProjects retrieves projects for a team.
+	GetTeamProjects(ctx context.Context, teamID string) ([]*Project, error)
+
+	// GetProjectFiles retrieves files in a project.
+	GetProjectFiles(ctx context.Context, projectID string) ([]*File, error)
+
+	// GetMe retrieves the current authenticated user.
+	GetMe(ctx context.Context) (*User, error)
+
+	// GetFileVariables retrieves local variables in a file (Enterprise).
+	GetFileVariables(ctx context.Context, fileKey string) ([]*Variable, error)
+
+	// GetTeamPublishedVariables retrieves published variables for a team (Enterprise).
+	GetTeamPublishedVariables(ctx context.Context, teamID string) ([]*Variable, error)
+
+	// PostFileVariables bulk creates/updates/deletes variables in a file (Enterprise).
+	PostFileVariables(ctx context.Context, fileKey string, variables []*Variable) error
+
+	// GetFileDevResources retrieves developer resources for a file.
+	GetFileDevResources(ctx context.Context, fileKey string) ([]*DevResource, error)
+
+	// PostDevResources bulk creates developer resources.
+	PostDevResources(ctx context.Context, resources []*DevResource) error
+
+	// PatchDevResources bulk updates developer resources.
+	PatchDevResources(ctx context.Context, resources []*DevResource) error
+
+	// GetWebhooks retrieves configured webhooks (v2).
+	GetWebhooks(ctx context.Context) ([]*Webhook, error)
+
+	// CreateWebhook creates a new webhook (v2).
+	CreateWebhook(ctx context.Context, webhook *WebhookRequest) (*Webhook, error)
+
+	// DeleteWebhook deletes a webhook (v2).
+	DeleteWebhook(ctx context.Context, webhookID string) error
+
+	// UpdateWebhook updates an existing webhook (v2).
+	UpdateWebhook(ctx context.Context, webhookID string, updates *WebhookUpdate) error
 }
 
 // File represents a Figma file.
@@ -81,6 +162,3 @@ type CommentRequest struct {
 	Message string `json:"message"`
 	// Optional: position data
 }
-
-// Common errors are defined in errors.go
-// Deprecated: Use specific error types from errors.go
