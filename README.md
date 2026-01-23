@@ -33,13 +33,13 @@ The tool is built with a focus on being **LLM-friendly**, **URL-based**, and **c
 ```bash
 git clone https://github.com/cristianoliveira/figma-cli.git
 cd figma-cli
-go build -o figma-cli ./cmd/figma-cli
+go build -o figma ./cmd/figma
 ```
 
 ### Install Globally
 
 ```bash
-go install github.com/cristianoliveira/figma-cli/cmd/figma-cli@latest
+go install github.com/cristianoliveira/figma-cli/cmd/figma@latest
 ```
 
 ### Using Nix (Development)
@@ -69,23 +69,23 @@ FIGMA_ACCESS_TOKEN=your-personal-access-token
 ### Basic Command Structure
 
 ```bash
-figma-cli [command] [options] <figma-url>
+figma [command] [options] <figma-url>
 ```
 
 ### Examples
 
 ```bash
 # Parse a Figma URL and extract file metadata
-figma-cli parse "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/-Cells--Drive?node-id=2270-190221"
+figma parse "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/-Cells--Drive?node-id=2270-190221"
 
 # Fetch node hierarchy for a specific node
-figma-cli nodes --hierarchy "https://www.figma.com/file/abc123/My-Design"
+figma nodes --hierarchy "https://www.figma.com/file/abc123/My-Design"
 
 # Extract all text layers from a design
-figma-cli text "https://www.figma.com/design/xyz456/Another-Design"
+figma text "https://www.figma.com/design/xyz456/Another-Design"
 
 # Export assets from a frame
-figma-cli export --format png --scale 2 "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
+figma export --format png --scale 2 "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
 ```
 
 ### JSON Output
@@ -112,7 +112,7 @@ All commands produce JSON output for easy parsing:
 
 ```
 figma-cli/
-├── cmd/figma-cli/          # Main CLI entry point
+├── cmd/figma/             # Main CLI entry point
 ├── internal/               # Private application code
 │   ├── api/               # Figma API client
 │   ├── parser/            # URL and node parsing
