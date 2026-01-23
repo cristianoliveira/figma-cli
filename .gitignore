@@ -48,4 +48,4 @@ tmp/
 
 # Beads tracking
 .beads/*.json
-!.beads/config.json
+!.beads/config.jsonfigma-cli
