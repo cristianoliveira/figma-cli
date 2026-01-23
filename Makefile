@@ -1,4 +1,4 @@
-.PHONY: test test-cover lint fmt vet clean
+.PHONY: test test-cover lint fmt vet clean check-agents
 
 # Go parameters
 GO_CMD := go
@@ -28,3 +28,6 @@ vet:
 
 clean:
 	rm -f coverage.out coverage.html
+
+check-agents:
+	./scripts/check-agents-md.sh

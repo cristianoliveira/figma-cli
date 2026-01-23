@@ -50,6 +50,10 @@ jobs:
           version: v2.8.0
           args: --timeout=5m
 
+      - name: Check AGENTS.md line count
+        if: always()
+        run: ./scripts/check-agents-md.sh
+
   test:
     strategy:
       matrix:
