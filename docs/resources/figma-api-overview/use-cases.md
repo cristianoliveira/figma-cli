@@ -1,3 +1,7 @@
+---
+title: "Use Cases"
+tags: ["figma-api", "resources", "api-docs", "use-cases"]
+---
 # Use Cases
 
 The Figma API is particularly suited for:

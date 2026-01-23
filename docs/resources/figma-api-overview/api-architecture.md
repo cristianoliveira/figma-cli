@@ -1,3 +1,7 @@
+---
+title: "API Architecture"
+tags: ["figma-api", "resources", "api-docs", "architecture"]
+---
 # API Architecture
 
 - **Base URLs**:

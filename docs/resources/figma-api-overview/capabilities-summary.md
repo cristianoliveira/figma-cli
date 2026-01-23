@@ -1,3 +1,7 @@
+---
+title: "Capabilities Summary"
+tags: ["figma-api", "resources", "api-docs", "capabilities", "summary"]
+---
 # Capabilities Summary
 
 **Strong Read Capabilities:**

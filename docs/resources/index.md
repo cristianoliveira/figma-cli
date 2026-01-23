@@ -1,3 +1,8 @@
+---
+title: "Resources"
+tags: ["resources", "index"]
+---
+
 # Resources
 
 ## Figma

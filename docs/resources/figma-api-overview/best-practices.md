@@ -1,3 +1,7 @@
+---
+title: "Best Practices"
+tags: ["figma-api", "resources", "api-docs", "best-practices"]
+---
 # Best Practices
 
 **Authentication:**

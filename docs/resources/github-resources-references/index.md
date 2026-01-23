@@ -1,3 +1,8 @@
+---
+title: "GitHub Resources & References"
+tags: ["github", "resources", "references"]
+---
+
 # GitHub Resources & References
 
 Comprehensive exploration of GitHub repositories related to Figma API, CLI tools, and design system integration.

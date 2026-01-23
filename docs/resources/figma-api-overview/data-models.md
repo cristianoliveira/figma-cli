@@ -1,3 +1,7 @@
+---
+title: "Data Models"
+tags: ["figma-api", "resources", "api-docs", "data-models"]
+---
 # Data Models
 
 **Node Types:**

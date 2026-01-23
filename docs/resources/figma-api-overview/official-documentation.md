@@ -1,3 +1,7 @@
+---
+title: "Official Documentation"
+tags: ["figma-api", "resources", "api-docs", "official-documentation"]
+---
 # Official Documentation
 
 - [Figma REST API Documentation](https://developers.figma.com/docs/rest-api/)

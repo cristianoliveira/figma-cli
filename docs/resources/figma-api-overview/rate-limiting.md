@@ -1,3 +1,7 @@
+---
+title: "Rate Limiting"
+tags: ["figma-api", "resources", "api-docs", "rate-limiting"]
+---
 # Rate Limiting
 
 Rate limits are multi-dimensional based on:

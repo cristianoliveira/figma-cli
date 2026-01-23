@@ -1,3 +1,7 @@
+---
+title: "CLI Tools and Projects"
+tags: ["github", "resources", "references", "cli-tools", "projects"]
+---
 # CLI Tools and Projects
 
 **Design Token Synchronization**

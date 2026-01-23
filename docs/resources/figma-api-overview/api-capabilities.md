@@ -1,3 +1,7 @@
+---
+title: "API Capabilities"
+tags: ["figma-api", "resources", "api-docs", "capabilities"]
+---
 # API Capabilities
 
 The Figma API provides 14 major capability categories with 39 distinct endpoints:

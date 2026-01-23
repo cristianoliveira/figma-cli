@@ -1,3 +1,7 @@
+---
+title: "Authorization Scopes"
+tags: ["figma-api", "resources", "api-docs", "authorization"]
+---
 # Authorization Scopes
 
 Granular scopes control API access (20+ defined scopes):

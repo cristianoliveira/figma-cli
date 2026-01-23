@@ -1,3 +1,7 @@
+---
+title: "Authentication Methods"
+tags: ["figma-api", "resources", "api-docs", "authentication"]
+---
 # Authentication Methods
 
 1. **Personal Access Tokens**:
