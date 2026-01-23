@@ -82,16 +82,5 @@ type CommentRequest struct {
 	// Optional: position data
 }
 
-// Common errors
-var (
-	// ErrNotFound is returned when a requested resource is not found.
-	ErrNotFound = &apiError{"not found"}
-	// ErrInvalidRequest is returned when the request is malformed.
-	ErrInvalidRequest = &apiError{"invalid request"}
-)
-
-type apiError struct {
-	msg string
-}
-
-func (e *apiError) Error() string { return e.msg }
+// Common errors are defined in errors.go
+// Deprecated: Use specific error types from errors.go
