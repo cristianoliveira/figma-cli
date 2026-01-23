@@ -147,6 +147,7 @@ func isRetryableError(err error, config RetryConfig) bool {
 	var netErr net.Error
 	if errors.As(err, &netErr) {
 		// Retry on temporary network errors and timeouts
+		//nolint:staticcheck // Temporary is deprecated but we need to maintain behavior
 		if netErr.Temporary() || netErr.Timeout() {
 			return true
 		}

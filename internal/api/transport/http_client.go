@@ -35,7 +35,7 @@ func (c *HTTPClient) GetFile(ctx context.Context, fileKey string) (*api.File, er
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -64,7 +64,7 @@ func (c *HTTPClient) GetNode(ctx context.Context, fileKey, nodeID string) (*api.
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -107,7 +107,7 @@ func (c *HTTPClient) GetNodes(ctx context.Context, fileKey string, nodeIDs []str
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -252,7 +252,7 @@ func (c *HTTPClient) GetMe(ctx context.Context) (*api.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

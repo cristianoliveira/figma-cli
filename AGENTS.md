@@ -70,44 +70,7 @@ zk list --match "authentication"
 
 ## Best Practices for Ordering Agents
 
-Effective multi‑agent workflows require thoughtful sequencing of specialized agents. Follow these guidelines to maximize productivity and code quality.
-
-### Choosing the Right Agent
-- **Task‑Specialist Agents**: Use agents with specific skills (e.g., `db‑explorer`, `logcli‑logs`) for domain‑specific tasks
-- **General‑Purpose Agents**: Use default agents for broad implementation tasks
-- **Review Agents**: Consider using `gh‑address‑comments` for handling GitHub PR feedback
-- **Validation Agents**: Use `land‑the‑plane` for pre‑merge CI validation
-
-### Common Patterns for Agent Ordering
-1. **Explore → Implement → Validate**
-   - Start with exploratory agents (`db‑explorer`, `look‑at‑the‑logs`) to understand context
-   - Follow with implementation agents to make changes
-   - Finish with validation agents (`land‑the‑plane`) to ensure quality
-
-2. **Parallel Specialization**
-   - Run multiple specialist agents concurrently when tasks are independent
-   - Example: `db‑explorer` and `logcli‑logs` can run simultaneously to gather different data
-
-3. **Feedback Loop**
-   - Use `gh‑address‑comments` to process review feedback
-   - Follow with implementation agents to apply changes
-   - Re‑run validation agents after updates
-
-### Example Sequences
-- **New Feature**: `db‑explorer` → General agent → `land‑the‑plane` → `gh‑address‑comments`
-- **Debugging**: `look‑at‑the‑logs` → `db‑explorer` → General agent → `land‑the‑plane`
-- **Documentation**: General agent → `land‑the‑plane` → `gh‑address‑comments`
-
-### Key Principles
-- **Minimal Changes**: Make smallest possible change that moves task forward
-- **Follow Conventions**: Adhere to existing code style and project patterns
-- **Clear Hand‑offs**: Leave clear notes/issues for next agent
-- **Atomic Tasks**: Break work into small, well‑defined deliverables
-- **Document Assumptions**: Document assumptions and decisions in reports
-- **Verify Continuously**: Run validation steps after each major change
-- **Ask Early**: If ambiguous, ask for clarification before proceeding
-
-By following these practices, you can create efficient, reliable multi‑agent workflows that produce high‑quality results.
+See [Best Practices for Ordering Agents](docs/best-practices-agent-ordering.md) for detailed guidelines on agent sequencing.
 
 ---
 
@@ -125,50 +88,4 @@ Example: `.tmp/reports/task-report.md`
 
 ## Using Cobra CLI for Command Output
 
-**Problem**: Agents are using pure `fmt.Print*` statements for CLI output, which is incorrect for Cobra-based applications.
-
-**Solution**: Use Cobra's built-in output methods that respect the command's configured output writers and enable proper testing and output redirection.
-
-### Cobra Output Methods
-Cobra provides six output methods on the `Command` struct:
-
-- `Print`, `Println`, `Printf` – for standard output
-- `PrintErr`, `PrintErrln`, `PrintErrf` – for error output
-
-### Correct Usage Example
-**Instead of** `fmt.Println("Starting process...")` **use** `cmd.Println("Starting process...")`
-
-**Correct pattern:**
-```go
-func Run(cmd *Command, args []string) {
-    cmd.Println("Starting process...")
-    cmd.Printf("Processing %d items\n", count)
-    if err != nil {
-        cmd.PrintErrf("Error: %v\n", err)
-    }
-}
-```
-
-### Best Practices
-1. **Never use `fmt.Print*`** in command `Run`/`RunE` functions
-2. **Use `cmd.Print*` for normal output** (information, results, progress)
-3. **Use `cmd.PrintErr*` for errors, warnings, and diagnostic messages**
-4. **Be consistent** – Use the same pattern across all commands
-
-### Error Handling Pattern
-When returning errors from `RunE`, use Cobra's error output for user-facing messages:
-```go
-RunE: func(cmd *Command, args []string) error {
-    if err := validate(args); err != nil {
-        cmd.PrintErrln("Validation failed:", err)
-        return err
-    }
-    cmd.Println("Operation successful")
-    return nil
-}
-```
-
-### Notes
-- The project uses Go's `flag` package but includes `cobra-cli` in dev environment
-- When adding new commands, prefer Cobra patterns
-- Follow existing patterns in codebase where Cobra is gradually adopted
+See [Using Cobra CLI for Command Output](docs/cobra-cli-output-methods.md) for proper output methods in Cobra-based applications.

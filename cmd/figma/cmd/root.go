@@ -66,15 +66,14 @@ making it ideal for AI-assisted design review, code generation, and asset export
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		// Sync logger if present
 		if logger, ok := cmd.Context().Value(loggerKey{}).(logging.Logger); ok {
-			logger.Sync()
+			_ = logger.Sync()
 		}
 	},
 }
 
-// configKey, loggerKey, requestIDKey are private types for context keys.
+// configKey, loggerKey are private types for context keys.
 type configKey struct{}
 type loggerKey struct{}
-type requestIDKey struct{}
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
