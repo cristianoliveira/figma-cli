@@ -249,3 +249,237 @@ The Figma API is particularly suited for:
 
 - https://github.com/mttwhlly/get-figma-text
 - https://github.com/kataras/figma-extractor
+
+### GitHub Resources & References
+
+Comprehensive exploration of GitHub repositories related to Figma API, CLI tools, and design system integration.
+
+#### SDKs and Client Libraries
+
+**TypeScript/JavaScript (Most Mature Ecosystem)**
+
+1. **[jem-computer/figma-js](https://github.com/jem-computer/figma-js)** (495 ⭐, updated 2026-01-13)
+   - Little wrapper (+ types) for the Figma API
+   - TypeScript support, personal access token & OAuth authentication, promise-based API
+   - Used by other projects like figma-graphql
+   - **Recommended for**: Simple wrapper ideal for CLI tools, well-documented with full TypeScript types
+
+2. **[didoo/figma-api](https://github.com/didoo/figma-api)** (257 ⭐, updated 2026-01-21)
+   - Figma REST API implementation with TypeScript, Promises & ES6
+   - Thin layer on official REST API spec, uses Axios, supports Node.js & browser
+   - Version 2.0 aligns with official API, comprehensive coverage including variables, webhooks, analytics
+   - **Recommended for**: Direct mapping to Figma API endpoints, comprehensive coverage
+
+3. **[braposo/figma-graphql](https://github.com/braposo/figma-graphql)** (394 ⭐, updated 2026-01-13)
+   - The reimagined Figma API (super)powered by GraphQL
+   - GraphQL wrapper over Figma API, potentially simpler query interface
+   - **Recommended for**: Alternative query pattern if GraphQL preferred over REST
+
+**Python**
+
+4. **[Amatobahn/FigmaPy](https://github.com/Amatobahn/FigmaPy)** (57 ⭐, updated 2025-07-14)
+   - An unofficial Python3+ wrapper for Figma API
+   - Object-oriented interface, supports file and image operations
+   - PyPI package available
+
+**Go**
+
+5. **[torie/figma](https://github.com/torie/figma)** (12 ⭐, updated 2025-08-04)
+   - A Golang package for interacting with the Figma APIs
+   - Go-native client, covers core API endpoints
+   - **Recommended for**: Natural fit for Go CLI tools
+
+6. **[figma/terraform-provider-figma](https://github.com/figma/terraform-provider-figma)** (2 ⭐, updated 2024-10-10)
+   - Terraform provider for Figma (official)
+   - Infrastructure-as-code approach to Figma resources
+   - **Recommended for**: Reference implementation for CLI tool patterns
+
+**Dart**
+
+7. **[arnemolland/figma](https://github.com/arnemolland/figma)** (27 ⭐, updated 2025-11-09)
+   - Figma API client written in pure Dart
+   - Full API coverage, typed responses, OAuth support, variables support
+   - **Recommended for**: Excellent for Dart/Flutter CLI tools
+
+**Rust**
+
+8. **[gridaco/figma-api](https://github.com/gridaco/figma-api)** (2 ⭐, updated 2025-12-28)
+   - Figma Rest API rust bindings
+   - Rust-native client, recently updated
+
+**Official Figma Resources**
+
+9. **[figma/rest-api-spec](https://github.com/figma/rest-api-spec)** (185 ⭐, updated 2026-01-23)
+   - OpenAPI specification and types for the Figma REST API
+   - Official TypeScript types package (`@figma/rest-api-spec`), OpenAPI 3.1 spec
+   - **Recommended for**: Essential for type-safe implementations, can generate clients
+
+10. **[figma/figma-api-demo](https://github.com/figma/figma-api-demo)** (1,337 ⭐, updated 2026-01-13)
+    - Official Figma API demo application
+    - Reference implementation, authentication examples
+    - **Recommended for**: Good for understanding API patterns and authentication flows
+
+**Utility Libraries**
+
+11. **[figma-tools/figma-transformer](https://github.com/figma-tools/figma-transformer)** (58 ⭐, updated 2026-01-05)
+    - A tiny utility library that makes the Figma API more human friendly
+    - Transforms API responses with shortcuts, enriches style/component data
+    - **Recommended for**: Useful for processing Figma file data, simplifies complex nested structures
+
+**Key Insights for SDK Selection:**
+- TypeScript/JavaScript ecosystem is most active with several mature options
+- Use `@figma/rest-api-spec` for official types regardless of language
+- Few libraries explicitly handle rate limiting automatically
+- Consider using `didoo/figma-api` or `jem-computer/figma-js` as foundation
+
+#### CLI Tools and Projects
+
+**Design Token Synchronization**
+
+1. **[B3nnyL/figgo](https://github.com/B3nnyL/figgo)** (308 ⭐, updated 2025-11-11)
+   - CLI tool to sync Figma design tokens with local codebase
+   - Syncs colors, typography, spacing from Figma frames
+   - Supports both global and local configuration, output formats: JavaScript, SCSS variables
+   - Interactive setup with `--init` flag
+   - **Learning Points**: Clean CLI design with config management, token synchronization patterns
+
+2. **[whynotmake-it/figmage](https://github.com/whynotmake-it/figmage)** (70 ⭐, updated 2026-01-21)
+   - CLI tool for generating Flutter themes from Figma files
+   - Generates Flutter ThemeExtension classes, supports Figma styles and variables with modes
+   - Color, typography, number variables support, BuildContext extensions for easy access
+
+**Asset Export Tools**
+
+3. **[alexchantastic/figma-export](https://github.com/alexchantastic/figma-export)** (115 ⭐, updated 2026-01-13)
+   - CLI tool to bulk export Figma, FigJam, and Figma Slides files to .fig/.jam/.deck format
+   - Bulk export by team, project, or drafts
+   - Uses Playwright for automated downloads, parallel downloads support, retry failed downloads
+   - **Learning Points**: Hybrid approach using API + browser automation, fault tolerance design
+
+4. **[jacobtyq/export-figma-svg](https://github.com/jacobtyq/export-figma-svg)** (44 ⭐, updated 2025-12-15)
+   - Export SVGs from your Figma project via CLI
+   - Exports SVGs from Figma components in a frame, rate limiting handling (20 requests per 45 seconds)
+   - Filtering of private components
+   - **Learning Points**: Simple single-purpose tool, rate limit handling
+
+**Backup Solutions**
+
+5. **[mimshins/figma-backup](https://github.com/mimshins/figma-backup)** (84 ⭐, updated 2026-01-13)
+   - Node.js CLI to backup Figma files and store them as local .fig files
+   - Interactive and non-interactive modes, uses Puppeteer for downloading .fig files
+   - Docker container support, structured backup organization
+
+**Professional CLI Tools**
+
+6. **[alexey1312/ExFig](https://github.com/alexey1312/ExFig)** (3 ⭐, actively maintained)
+   - Fast Figma CLI with parallel exports, batch processing & smart caching for iOS, Android & Flutter
+   - Parallel exports with smart caching, batch processing for multiple files
+   - Support for iOS (SwiftUI/UIKit), Android (Jetpack Compose), Flutter, React/TypeScript
+   - Dark mode, high contrast, RTL support, CI/CD ready with GitHub Action
+   - **Learning Points**: Professional-grade CLI with extensive platform support, caching strategies
+
+7. **[tonykolomeytsev/figx](https://github.com/tonykolomeytsev/figx)** (31 ⭐, updated 2025-12-10)
+   - Pragmatic CLI tool for importing design assets from Figma into codebase
+   - Cross-platform (macOS, Windows, Linux), built-in import profiles for Android, Compose, WebP, SVG, PDF
+   - Secure token storage using system keychain, resource query and explanation commands
+
+**Simple Utility Tools**
+
+8. **[acpplife/figma-json](https://github.com/acpplife/figma-json)** (2 ⭐, updated 2026-01-14)
+   - CLI tool for downloading Figma file data as JSON
+   - Secure token management, support for various Figma URL formats
+   - Pretty-printed JSON output, node-specific downloads
+
+9. **[schpet/figma-cli](https://github.com/schpet/figma-cli)** (1 ⭐, updated 2025-12-05)
+   - Command line tool to copy Figma nodes as images to clipboard (Deno implementation)
+   - Copy nodes to clipboard (macOS only), export nodes to files, get direct image URLs
+
+**Other Tools**
+
+10. **[kreako/fig2json](https://github.com/kreako/fig2json)** (11 ⭐, updated 2026-01-22)
+    - Convert Figma .fig files to LLM-friendly JSON format
+    - Parses local .fig files (no API needed), removes Figma-specific metadata
+    - Optimized for AI consumption, raw and transformed JSON outputs
+
+11. **[yuanqing/figma-plugins-stats](https://github.com/yuanqing/figma-plugins-stats)** (66 ⭐, deprecated)
+    - CLI to get live and historical stats for Figma plugins
+    - Plugin stats with sparklines, historical data back to April 2020
+    - Uses internal Figma APIs (not official REST API)
+
+**CLI Design Patterns Observed:**
+- Subcommand structure (e.g., `figma node copy`, `figx import`)
+- Configuration files (YAML, JSON, .figma)
+- Environment variable support for tokens
+- Interactive setup wizards
+- Rate limiting implementations (10-20 requests/minute)
+- Token management with secure storage
+- Batch processing for multiple files
+- Caching strategies to minimize API calls
+
+#### Design System & Design-to-Code Tools
+
+**Official Figma Tools**
+
+1. **[figma/code-connect](https://github.com/figma/code-connect)** (1,359 ⭐, updated 2026-01-23)
+   - Tool for connecting design system components in code with Figma design systems
+   - Generates code snippets for Dev Mode, supports React, React Native, HTML, SwiftUI, Jetpack Compose
+   - Maps component properties from code to Figma, enables dynamic code examples
+   - **Learning Points**: Official Figma tool showing enterprise design system integration patterns
+
+2. **[tokens-studio/figma-plugin](https://github.com/tokens-studio/figma-plugin)** (1,534 ⭐, updated 2026-01-21)
+   - Official Figma plugin for design tokens management
+   - Token management, style synchronization, variable support
+   - **Learning Points**: Token management patterns and variable handling
+
+**Popular Code Generation Tools**
+
+3. **[bernaferrari/FigmaToCode](https://github.com/bernaferrari/FigmaToCode)** (4,686 ⭐, updated 2026-01-23)
+   - Generate responsive pages/apps in HTML, Tailwind, Flutter, SwiftUI
+   - Multi-step conversion process, intermediate representation (AltNodes), layout optimization
+   - **Learning Points**: Plugin architecture with sophisticated transformation pipeline
+
+4. **[aloisdeniel/figma-to-flutter](https://github.com/aloisdeniel/figma-to-flutter)** (879 ⭐, updated 2026-01-13)
+   - Dart code generator that converts Figma components to Flutter widgets
+   - Flutter widget generation, platform-specific
+
+**Token & Design System Tools**
+
+5. **[RedMadRobot/figma-export](https://github.com/RedMadRobot/figma-export)** (801 ⭐, updated 2026-01-23)
+   - CLI utility to export colors, typography, icons, images to Xcode/Android Studio
+   - Dark mode support, SwiftUI/Jetpack Compose generation, template system, CI/CD integration
+   - Uses endpoints: `/v1/files/:fileId/styles`, `/v1/files/:fileId/variables/local`, `/v1/files/:fileId/components`, `/v1/files/:fileId/nodes`, `/v1/images/:fileId`
+   - **Most Relevant**: Most relevant CLI reference - shows complete Figma API integration with configurable templates
+
+6. **[mikaelvesavuori/figmagic](https://github.com/mikaelvesavuori/figmagic)** (852 ⭐, updated 2026-01-20)
+   - Generate design tokens, export graphics, extract React components from Figma
+   - 15+ token types, React component generation, graphics export, GitHub Action
+   - Design tokens as first-class concept, structured Figma document requirements
+   - **Recommended for**: Extensive configuration system and token-focused approach
+
+**Common API Endpoints Used:**
+- `GET /v1/files/:key` - Full document tree
+- `GET /v1/files/:key/styles` - Color/text styles
+- `GET /v1/files/:key/variables/local` - Design tokens (variables)
+- `GET /v1/files/:key/components` - Component metadata
+- `GET /v1/files/:key/nodes?ids=...` - Specific nodes
+- `GET /v1/images/:key?ids=...&format=...` - Image export
+
+**Architecture Approaches Observed:**
+- **Intermediate Representation**: Convert Figma nodes to custom JSON structures before code generation
+- **Template Systems**: Use Stencil, Handlebars, or custom templating for code generation
+- **Configuration First**: Extensive YAML/JSON config files for customization
+- **Token Processing**: Support for 15+ token types with unit conversion and platform-specific formatting
+
+**Recommended CLI Structure for figma-cli:**
+- `figma-cli tokens` - design token extraction
+- `figma-cli components` - component/code generation
+- `figma-cli assets` - image/icon export
+- `figma-cli sync` - continuous synchronization
+
+**Key Implementation Insights:**
+- Implement robust rate limiting and retry logic
+- Use secure token storage (system keychain where available)
+- Support both interactive and scriptable modes
+- Provide clear configuration options
+- Implement caching to respect API limits
+- Support webhook integration for real-time updates
