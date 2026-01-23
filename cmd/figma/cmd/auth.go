@@ -1,9 +1,14 @@
 package cmd
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/cristianoliveira/figma-cli/internal/auth"
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
 
@@ -55,7 +60,67 @@ If no flag provided, the command will prompt for token.`,
 
 		if oauthFlag {
 			// OAuth flow
-			return fmt.Errorf("OAuth authentication not yet implemented")
+			if cfg.OAuthClientID == "" {
+				return fmt.Errorf("OAuth client ID not configured. Set FIGMA_OAUTH_CLIENT_ID environment variable or add oauth_client_id to config")
+			}
+			// Parse scopes
+			var scopes []string
+			if cfg.OAuthScopes != "" {
+				scopes = strings.Split(cfg.OAuthScopes, ",")
+				for i, s := range scopes {
+					scopes[i] = strings.TrimSpace(s)
+				}
+			} else {
+				scopes = []string{"file_content:read"}
+			}
+			// Generate PKCE
+			verifier, challenge, err := auth.GeneratePKCE()
+			if err != nil {
+				return fmt.Errorf("failed to generate PKCE: %w", err)
+			}
+			// Generate random state
+			stateBytes := make([]byte, 16)
+			if _, err := rand.Read(stateBytes); err != nil {
+				return fmt.Errorf("failed to generate state: %w", err)
+			}
+			state := base64.RawURLEncoding.EncodeToString(stateBytes)
+			// Create OAuth config
+			oauthCfg := &auth.OAuthConfig{
+				ClientID:    cfg.OAuthClientID,
+				Scopes:      scopes,
+				RedirectURL: auth.DefaultRedirectURL,
+			}
+			// Start local server
+			authURL, codeChan, err := auth.StartLocalServer(oauthCfg, state, challenge)
+			if err != nil {
+				return fmt.Errorf("failed to start local server: %w", err)
+			}
+			// Open browser
+			fmt.Printf("Opening browser for authentication...\n")
+			if err := browser.OpenURL(authURL); err != nil {
+				fmt.Printf("Unable to open browser automatically. Please visit this URL:\n%s\n", authURL)
+			}
+			// Wait for authorization code with timeout
+			select {
+			case code := <-codeChan:
+				if code == "" {
+					return fmt.Errorf("authentication cancelled or failed")
+				}
+				// Exchange code for token
+				oauthMgr := auth.NewOAuthManager(oauthCfg)
+				oauthToken, err := oauthMgr.ExchangeCode(ctx, code, verifier)
+				if err != nil {
+					return fmt.Errorf("failed to exchange authorization code: %w", err)
+				}
+				// Convert to internal token and store
+				authToken := auth.TokenToAuthToken(oauthToken)
+				if err := mgr.StoreToken(ctx, authToken); err != nil {
+					return fmt.Errorf("failed to store token: %w", err)
+				}
+				fmt.Println("OAuth authentication successful! Token stored securely.")
+			case <-time.After(5 * time.Minute):
+				return fmt.Errorf("authentication timed out after 5 minutes")
+			}
 		} else {
 			// PAT flow
 			var token string
