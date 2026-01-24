@@ -19,7 +19,7 @@ func ExampleAPIError() {
 	fmt.Println(err.Error())
 	fmt.Println(api.UserMessage(err))
 	// Output:
-	// API error (status 404): File not found
+	// API error (status 404): File not found: The requested file 'abc123' does not exist
 	// Resource not found: The requested file 'abc123' does not exist. Please verify the resource identifier.
 }
 
