@@ -61,42 +61,7 @@ See [PRE_COMMIT_HOOKS.md](docs/PRE_COMMIT_HOOKS.md) for full details.
 
 ---
 
-## Research Collection for Agent Outputs
-
-This project uses **qmd** (Librarian CLI) for indexing agent reports and research findings for semantic search.
-
-**Installation**: qmd is already installed via Nix (no manual installation needed).
-
-**Available Collections**:
-- **research** - Research documents, agent reports, temporary files (indexes `.tmp/reports/`, `.tmp/researches/`, and `research/`)
-- **figma-cli** - Project documentation (28 files)
-
-**Where to write outputs**:
-- **Reports**: Write task completion reports to `.tmp/reports/` with `.md` extension
-- **Research**: Write research notes and findings to `.tmp/researches/` with `.md` extension
-
-**How indexing works**:
-- All markdown files in `.tmp/reports/`, `.tmp/researches/`, and `research/` are automatically indexed in the `research` collection
-- Files are available for semantic search via `qmd`
-
-**qmd Search Commands**:
-```bash
-qmd search "query" -c research        # Keyword search (BM25)
-qmd vsearch "query" -c research       # Semantic search
-qmd query "query" -c research         # Hybrid search (keyword + semantic + LLM reranking)
-qmd list -c research                  # List all documents in collection
-```
-
-**Agent Usage**:
-- Write reports to `.tmp/reports/<task>-report.md` as specified in agent instructions
-- Write research notes to `.tmp/researches/` for future reference
-- Use `qmd search` to find previous agent work and research findings
-
-**Important**: Always write reports to `.tmp/reports/<task>-report.md` as specified in agent instructions.
-
----
-
-## Best Practices for Ordering Agents
+## Research Collection for Agent Outputs\n\nThis project uses **qmd** (Librarian CLI) for indexing agent reports and research findings.\n\n**Where to write outputs**:\n- **Reports**: Write task completion reports to `.tmp/reports/` with `.md` extension\n- **Research**: Write research notes and findings to `.tmp/researches/` with `.md` extension\n\n**Important**: Always write reports to `.tmp/reports/<task>-report.md` as specified in agent instructions.\n\nFor detailed qmd usage, see [Research Collection Documentation](docs/research-collection.md).\n\n---\n\n## Best Practices for Ordering Agents
 
 See [Best Practices for Ordering Agents](docs/best-practices-agent-ordering.md) for detailed guidelines on agent sequencing.
 

@@ -14,4 +14,13 @@ type CLIFlags struct {
 	APIDebug      bool
 	APITier       int
 	APISeatType   string
+
+	// Logging flags
+	LogLevel      string
+	LogFormat     string
+	LogFile       string
+	LogMaxSize    int
+	LogMaxBackups int
+	LogMaxAge     int
+	LogCompress   bool
 }

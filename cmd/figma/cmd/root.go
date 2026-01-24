@@ -18,6 +18,8 @@ import (
 
 const version = "0.1.0"
 
+var verboseLevel int
+
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "figma",
@@ -93,6 +95,21 @@ func init() {
 	rootCmd.PersistentFlags().Bool("api-debug", false, "Enable debug logging for API requests")
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging (alias for --api-debug)")
 
+	// Logging flags
+	rootCmd.PersistentFlags().CountVarP(&verboseLevel, "verbose", "v", "increase verbosity (use -v for info, -vv for debug, -vvv for trace)")
+	rootCmd.PersistentFlags().String("log-level", "", "Set log level (trace, debug, info, warn, error)")
+	rootCmd.PersistentFlags().String("log-format", "", "Log format (text, json, pretty)")
+	rootCmd.PersistentFlags().String("log-file", "", "Write logs to file")
+	rootCmd.PersistentFlags().Int("log-max-size", 0, "Maximum size in megabytes of log file before rotation")
+	rootCmd.PersistentFlags().Int("log-max-backups", 0, "Maximum number of old log files to retain")
+	rootCmd.PersistentFlags().Int("log-max-age", 0, "Maximum number of days to retain old log files")
+	rootCmd.PersistentFlags().Bool("log-compress", false, "Compress rotated log files")
+
+	// Remove -v shorthand from version flag (since we use -v for verbose)
+	if v := rootCmd.Flags().Lookup("version"); v != nil {
+		v.Shorthand = "V"
+	}
+
 	// Mark certain flags as deprecated or hidden if needed
 	// rootCmd.PersistentFlags().MarkHidden("api-debug")
 }
@@ -103,6 +120,26 @@ func adjustConfig(cfg *config.Config, cmd *cobra.Command) {
 	if debug, _ := cmd.Flags().GetBool("debug"); debug {
 		cfg.Logging.Level = "debug"
 		cfg.API.Debug = true
+	}
+
+	// Apply verbose level if set (-v, -vv, -vvv)
+	if verboseLevel > 0 {
+		// Map verbosity count to log level
+		var level string
+		switch verboseLevel {
+		case 1:
+			level = "info"
+		case 2:
+			level = "debug"
+		default: // 3 or more
+			level = "trace"
+		}
+		cfg.Logging.Level = level
+	}
+
+	// Explicit log-level flag overrides everything
+	if logLevel, _ := cmd.Flags().GetString("log-level"); logLevel != "" {
+		cfg.Logging.Level = logLevel
 	}
 }
 
@@ -122,6 +159,15 @@ func getCLIFlags(cmd *cobra.Command) *config.CLIFlags {
 		apiDebug = true
 	}
 
+	// Logging flags
+	logLevel, _ := cmd.Flags().GetString("log-level")
+	logFormat, _ := cmd.Flags().GetString("log-format")
+	logFile, _ := cmd.Flags().GetString("log-file")
+	logMaxSize, _ := cmd.Flags().GetInt("log-max-size")
+	logMaxBackups, _ := cmd.Flags().GetInt("log-max-backups")
+	logMaxAge, _ := cmd.Flags().GetInt("log-max-age")
+	logCompress, _ := cmd.Flags().GetBool("log-compress")
+
 	return &config.CLIFlags{
 		Token:         token,
 		OutputFormat:  output,
@@ -130,6 +176,13 @@ func getCLIFlags(cmd *cobra.Command) *config.CLIFlags {
 		APIMaxRetries: apiMaxRetries,
 		APIBaseURL:    apiBaseURL,
 		APIDebug:      apiDebug,
+		LogLevel:      logLevel,
+		LogFormat:     logFormat,
+		LogFile:       logFile,
+		LogMaxSize:    logMaxSize,
+		LogMaxBackups: logMaxBackups,
+		LogMaxAge:     logMaxAge,
+		LogCompress:   logCompress,
 	}
 }
 
