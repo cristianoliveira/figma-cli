@@ -10,6 +10,7 @@ func init() {
 	rootCmd.AddCommand(textCmd)
 	rootCmd.AddCommand(exportCmd)
 	rootCmd.AddCommand(getCmd)
+	rootCmd.AddCommand(contextCmd)
 }
 
 var parseCmd = &cobra.Command{
