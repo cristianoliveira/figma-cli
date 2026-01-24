@@ -98,7 +98,9 @@ func ApplyGetFileVersionsOptions(opts []GetFileVersionsOption) GetFileVersionsOp
 
 // GetFileNodesOptions holds optional parameters for GetFileNodes.
 type GetFileNodesOptions struct {
-	Branch string
+	Branch   string
+	Depth    *int  // 1-10, nil for default
+	Geometry *bool // true for vector geometry (paths), false/nil for full geometry
 }
 
 // GetFileNodesOption configures GetFileNodesOptions.
@@ -111,9 +113,63 @@ func WithBranchForNodes(branch string) GetFileNodesOption {
 	}
 }
 
+// WithDepth sets the depth parameter for node operations (1-10).
+func WithDepth(depth int) GetFileNodesOption {
+	return func(opts *GetFileNodesOptions) {
+		opts.Depth = &depth
+	}
+}
+
+// WithGeometry sets the geometry parameter for node operations.
+func WithGeometry(geometry bool) GetFileNodesOption {
+	return func(opts *GetFileNodesOptions) {
+		opts.Geometry = &geometry
+	}
+}
+
 // ApplyGetFileNodesOptions applies options to GetFileNodesOptions.
 func ApplyGetFileNodesOptions(opts []GetFileNodesOption) GetFileNodesOptions {
 	config := GetFileNodesOptions{}
+	for _, opt := range opts {
+		opt(&config)
+	}
+	return config
+}
+
+// GetNodeOptions holds optional parameters for GetNode.
+type GetNodeOptions struct {
+	Branch   string
+	Depth    *int  // 1-10, nil for default
+	Geometry *bool // true for vector geometry (paths), false/nil for full geometry
+}
+
+// GetNodeOption configures GetNodeOptions.
+type GetNodeOption func(*GetNodeOptions)
+
+// WithDepthForNode sets the depth parameter for single node operations (1-10).
+func WithDepthForNode(depth int) GetNodeOption {
+	return func(opts *GetNodeOptions) {
+		opts.Depth = &depth
+	}
+}
+
+// WithGeometryForNode sets the geometry parameter for single node operations.
+func WithGeometryForNode(geometry bool) GetNodeOption {
+	return func(opts *GetNodeOptions) {
+		opts.Geometry = &geometry
+	}
+}
+
+// WithBranchForNode sets the branch parameter for single node operations.
+func WithBranchForNode(branch string) GetNodeOption {
+	return func(opts *GetNodeOptions) {
+		opts.Branch = branch
+	}
+}
+
+// ApplyGetNodeOptions applies options to GetNodeOptions.
+func ApplyGetNodeOptions(opts []GetNodeOption) GetNodeOptions {
+	config := GetNodeOptions{}
 	for _, opt := range opts {
 		opt(&config)
 	}

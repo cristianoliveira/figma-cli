@@ -10,7 +10,7 @@ type Client interface {
 	GetFile(ctx context.Context, fileKey string, opts ...GetFileOption) (*File, error)
 
 	// GetNode retrieves a specific node within a file.
-	GetNode(ctx context.Context, fileKey, nodeID string) (*Node, error)
+	GetNode(ctx context.Context, fileKey, nodeID string, opts ...GetNodeOption) (*Node, error)
 
 	// GetFileNodes retrieves multiple nodes within a file.
 	GetFileNodes(ctx context.Context, fileKey string, nodeIDs []string, opts ...GetFileNodesOption) (*FileNodesResponse, error)
