@@ -138,3 +138,29 @@ type TextStyle struct {
 	TextDecoration      string  `json:"textDecoration,omitempty"` // "NONE", "STRIKETHROUGH", "UNDERLINE"
 	TextAutoResize      string  `json:"textAutoResize,omitempty"` // "NONE", "WIDTH_AND_HEIGHT", "HEIGHT", "TRUNCATE"
 }
+
+// Effect represents a visual effect like shadow or blur.
+type Effect struct {
+	Type    string  `json:"type"` // "DROP_SHADOW", "INNER_SHADOW", "LAYER_BLUR", "BACKGROUND_BLUR"
+	Color   *Color  `json:"color,omitempty"`
+	Offset  *Offset `json:"offset,omitempty"`
+	Radius  float64 `json:"radius,omitempty"`
+	Spread  float64 `json:"spread,omitempty"`
+	Visible bool    `json:"visible,omitempty"`
+}
+
+// Offset represents a 2D offset.
+type Offset struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+// LayoutGrid represents a layout grid (row, column, pixel).
+type LayoutGrid struct {
+	Type    string  `json:"type"` // "ROWS", "COLUMNS", "PIXEL"
+	Color   *Color  `json:"color,omitempty"`
+	Size    float64 `json:"size,omitempty"`
+	Gutter  float64 `json:"gutter,omitempty"`
+	Offset  float64 `json:"offset,omitempty"`
+	Visible bool    `json:"visible,omitempty"`
+}

@@ -140,6 +140,8 @@ type Node struct {
 	Style                       *TextStyle        `json:"style,omitempty"`
 	Fills                       []Paint           `json:"fills,omitempty"`
 	Strokes                     []Paint           `json:"strokes,omitempty"`
+	Effects                     []Effect          `json:"effects,omitempty"`
+	LayoutGrids                 []LayoutGrid      `json:"layoutGrids,omitempty"`
 	StrokeWeight                float64           `json:"strokeWeight,omitempty"`
 	StrokeAlign                 string            `json:"strokeAlign,omitempty"`
 	CornerRadius                float64           `json:"cornerRadius,omitempty"`
