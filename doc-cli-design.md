@@ -829,5 +829,5 @@ figma export "https://www.figma.com/design/.../node-id=comp-id" --format svg
 
 - [Figma REST API Documentation](https://developers.figma.com/docs/rest-api/)
 - [Figma REST API OpenAPI Spec](https://github.com/figma/rest-api-spec)
-- [GitHub Resources](./resources.md) - SDKs, CLI tools, and design system projects
-- [Figma API Overview](./figma-api-overview.md) - Comprehensive API reference
+- [GitHub Resources](./docs/resources/github-resources-references/index.md) - SDKs, CLI tools, and design system projects
+- [Figma API Overview](./docs/resources/figma-api-overview/index.md) - Comprehensive API reference
