@@ -40,6 +40,9 @@ type TokenBucketLimiter struct {
 	seatType string
 
 	logger logging.Logger
+
+	// nowFunc provides the current time; can be overridden in tests
+	nowFunc func() time.Time
 }
 
 // NewTokenBucketLimiter creates a new TokenBucketLimiter for the given tier and seat type.
@@ -49,12 +52,13 @@ func NewTokenBucketLimiter(tier int, seatType string, logger logging.Logger) *To
 		logger = logging.Default()
 	}
 	limits := GetLimits(tier, seatType)
-	now := time.Now()
 	// Create per-minute limiter with burst = per minute limit
 	// refill rate = limit per second
-	limiter := rate.NewLimiter(rate.Limit(limits.PerMinute)/60.0, limits.PerMinute)
-	return &TokenBucketLimiter{
-		minuteLimiter: limiter,
+	minuteLimiter := rate.NewLimiter(rate.Limit(limits.PerMinute)/60.0, limits.PerMinute)
+	nowFunc := time.Now
+	now := nowFunc()
+	tb := &TokenBucketLimiter{
+		minuteLimiter: minuteLimiter,
 		monthlyLimit:  limits.PerMonth,
 		monthlyCount:  0,
 		monthStart:    time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()),
@@ -63,7 +67,9 @@ func NewTokenBucketLimiter(tier int, seatType string, logger logging.Logger) *To
 		tier:          tier,
 		seatType:      seatType,
 		logger:        logger,
+		nowFunc:       nowFunc,
 	}
+	return tb
 }
 
 // Wait implements Limiter.
@@ -144,6 +150,9 @@ func (l *TokenBucketLimiter) Update(headers http.Header) {
 // Must be called with lock held.
 func (l *TokenBucketLimiter) resetMonthIfNeeded() {
 	now := time.Now()
+	if l.nowFunc != nil {
+		now = l.nowFunc()
+	}
 	currentMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	if currentMonth.After(l.monthStart) {
 		l.logger.Debug(context.Background(), "New month detected, resetting monthly count",
