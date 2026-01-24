@@ -117,7 +117,7 @@ If no flag provided, the command will prompt for token.`,
 				if err := mgr.StoreToken(ctx, authToken); err != nil {
 					return fmt.Errorf("failed to store token: %w", err)
 				}
-				fmt.Println("OAuth authentication successful! Token stored securely.")
+				fmt.Println("OAuth authentication successful! Token stored in configuration file.")
 			case <-time.After(5 * time.Minute):
 				return fmt.Errorf("authentication timed out after 5 minutes")
 			}
@@ -147,7 +147,7 @@ If no flag provided, the command will prompt for token.`,
 			if err := mgr.StoreToken(ctx, authToken); err != nil {
 				return fmt.Errorf("failed to store token: %w", err)
 			}
-			fmt.Println("Authentication successful! Token stored securely.")
+			fmt.Println("Authentication successful! Token stored in configuration file.")
 		}
 		return nil
 	},

@@ -146,7 +146,7 @@ Examples:
 		// If setting token, also store in auth manager for secure storage
 		if key == "token" || key == "token_type" {
 			// TODO: integrate with auth manager
-			cmd.PrintErrln("Note: For secure token storage, use 'figma auth login'.")
+			cmd.PrintErrln("Note: Tokens are stored in plain text in the config file.")
 		}
 
 		return nil

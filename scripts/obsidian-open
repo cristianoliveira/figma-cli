@@ -14,6 +14,8 @@ Usage:
 
 Options:
   -h, --help    Show this help message and exit
+  -n, --dry-run  Print the URI but don't open Obsidian
+  -u, --uri-only Print only the URI (no other output)
 
 Arguments:
   PATH          Folder to open as Obsidian vault (default: current directory)
@@ -29,6 +31,8 @@ Examples:
   obsidian-open                    # Open current directory
   obsidian-open ~/notes            # Open ~/notes folder
   obsidian-open "My Notes"         # Open folder with spaces
+  obsidian-open -n ./notes         # Show URI without opening
+  obsidian-open -u ~/notes         # Output only URI
 
 Exit codes:
   0 - Success
@@ -40,11 +44,19 @@ EOF
 
 # Parse command line arguments
 PATH_ARG=""
+DRY_RUN=false
+URI_ONLY=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         -h|--help)
             show_help
             exit 0
+            ;;
+        -n|--dry-run)
+            DRY_RUN=true
+            ;;
+        -u|--uri-only)
+            URI_ONLY=true
             ;;
         -*)
             echo "Error: Unknown option $1" >&2
@@ -104,11 +116,12 @@ fi
 urlencode() {
     # Use Python's urllib if available, otherwise simple encoding
     if command -v python3 >/dev/null 2>&1; then
-        python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=''))" "$1"
+        python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe='/'))" "$1"
     elif command -v python >/dev/null 2>&1; then
-        python -c "import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=''))" "$1"
+        python -c "import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe='/'))" "$1"
     else
         # Fallback: replace spaces with %20, and a few other common characters
+        # Keep slashes as is (not replaced)
         local encoded="$1"
         encoded="${encoded//%/%25}"
         encoded="${encoded// /%20}"
@@ -127,6 +140,18 @@ ENCODED_PATH=$(urlencode "$ABS_PATH")
 
 # Construct Obsidian URI
 OBSIDIAN_URI="obsidian://open?path=$ENCODED_PATH"
+
+# Handle dry-run and uri-only modes
+if [[ "$URI_ONLY" == true ]]; then
+    echo "$OBSIDIAN_URI"
+    exit 0
+fi
+
+if [[ "$DRY_RUN" == true ]]; then
+    echo "Dry run mode - would open Obsidian with vault: $ABS_PATH"
+    echo "URI: $OBSIDIAN_URI"
+    exit 0
+fi
 
 # Detect operating system and open URI
 open_uri() {

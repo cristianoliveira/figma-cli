@@ -15,11 +15,7 @@ type Manager struct {
 
 // NewManager creates a new token manager.
 func NewManager(cfg *config.Config) (*Manager, error) {
-	storage, err := NewKeyringStorage()
-	if err != nil {
-		// Fallback to environment variable storage
-		storage = NewEnvStorage()
-	}
+	storage := NewConfigStorage(cfg)
 	return &Manager{
 		cfg:     cfg,
 		storage: storage,
@@ -28,7 +24,7 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 
 // GetToken returns a valid token, refreshing if necessary.
 func (m *Manager) GetToken(ctx context.Context) (*Token, error) {
-	// First try to retrieve from secure storage
+	// First try to retrieve from storage
 	token, err := m.storage.Retrieve(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve token: %w", err)
@@ -42,7 +38,7 @@ func (m *Manager) GetToken(ctx context.Context) (*Token, error) {
 				RefreshToken: "",
 				ExpiresAt:    nil,
 			}
-			// Optionally store in keyring for future use
+			// Optionally store in config for future use
 			_ = m.storage.Store(ctx, token)
 		} else {
 			return nil, fmt.Errorf("no authentication token found")

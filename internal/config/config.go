@@ -29,6 +29,9 @@ type Config struct {
 	// Defaults to "file_content:read".
 	OAuthScopes string `json:"oauth_scopes" env:"FIGMA_OAUTH_SCOPES"`
 
+	// AuthToken stores serialized authentication token (JSON). Used for OAuth tokens with refresh capability.
+	AuthToken string `json:"auth_token,omitempty"`
+
 	// Output format for command results (json, yaml, text)
 	OutputFormat string `json:"output_format" env:"OUTPUT_FORMAT"`
 
@@ -83,6 +86,7 @@ func DefaultConfig() Config {
 		TokenType:     "pat",
 		OAuthClientID: "",
 		OAuthScopes:   "file_content:read",
+		AuthToken:      "",
 		OutputFormat:  "text",
 		ExportDir:     ".",
 		API: APISettings{
