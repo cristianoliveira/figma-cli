@@ -1,0 +1,40 @@
+{
+  "nodes": {
+    "1:2": {
+      "document": {
+        "id": "1:2",
+        "name": "Example Frame",
+        "type": "FRAME",
+        "visible": true,
+        "absoluteBoundingBox": {
+          "x": 100.0,
+          "y": 200.0,
+          "width": 300.0,
+          "height": 400.0
+        },
+        "relativeTransform": [[1.0, 0.0, 100.0], [0.0, 1.0, 200.0]],
+        "rotation": 45.0,
+        "isFixed": false,
+        "constraints": {
+          "horizontal": "LEFT",
+          "vertical": "TOP"
+        },
+        "layoutMode": "HORIZONTAL",
+        "primaryAxisAlignItems": "CENTER",
+        "counterAxisAlignItems": "CENTER",
+        "itemSpacing": 10.0,
+        "paddingLeft": 20.0,
+        "paddingRight": 20.0,
+        "paddingTop": 30.0,
+        "paddingBottom": 30.0,
+        "opacity": 0.8,
+        "blendMode": "PASS_THROUGH",
+        "isMask": false,
+        "locked": false,
+        "strokeWeight": 2.0,
+        "cornerRadius": 8.0
+      }
+    }
+  },
+  "name": "Sample Design"
+}

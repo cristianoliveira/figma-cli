@@ -155,6 +155,17 @@ type Offset struct {
 	Y float64 `json:"y"`
 }
 
+// Rectangle represents a bounding box with position and size.
+type Rectangle struct {
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
+
+// Transform represents a 2D transformation matrix as a 2x3 array.
+type Transform [][]float64
+
 // LayoutGrid represents a layout grid (row, column, pixel).
 type LayoutGrid struct {
 	Type    string  `json:"type"` // "ROWS", "COLUMNS", "PIXEL"

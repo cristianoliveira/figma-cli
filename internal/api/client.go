@@ -129,13 +129,15 @@ type Node struct {
 	Children []Node            `json:"children,omitempty"`
 	Styles   map[string]string `json:"styles,omitempty"`
 	// Additional fields can be added as needed.
-	IsFixed                     bool
-	ScrollBehavior              string
-	Rotation                    float64
-	ComponentPropertyReferences map[string]string
-	PluginData                  interface{}
-	SharedPluginData            interface{}
-	ExplicitVariableModes       map[string]string
+	AbsoluteBoundingBox         *Rectangle        `json:"absoluteBoundingBox,omitempty"`
+	RelativeTransform           Transform         `json:"relativeTransform,omitempty"`
+	IsFixed                     bool              `json:"isFixed,omitempty"`
+	ScrollBehavior              string            `json:"scrollBehavior,omitempty"`
+	Rotation                    float64           `json:"rotation,omitempty"`
+	ComponentPropertyReferences map[string]string `json:"componentPropertyReferences,omitempty"`
+	PluginData                  interface{}       `json:"pluginData,omitempty"`
+	SharedPluginData            interface{}       `json:"sharedPluginData,omitempty"`
+	ExplicitVariableModes       map[string]string `json:"explicitVariableModes,omitempty"`
 	Characters                  string            `json:"characters,omitempty"`
 	Style                       *TextStyle        `json:"style,omitempty"`
 	Fills                       []Paint           `json:"fills,omitempty"`

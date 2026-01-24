@@ -14,7 +14,9 @@ func init() {
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(versionsCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(treeCmd)
 	rootCmd.AddCommand(stylesCmd)
+	rootCmd.AddCommand(propsCmd)
 }
 
 var parseCmd = &cobra.Command{
