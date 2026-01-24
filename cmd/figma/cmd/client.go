@@ -19,6 +19,12 @@ func newAPIClient(cfg *config.Config, logger logging.Logger) (api.Client, error)
 	// Wrap transport with rate limiting
 	rateLimitedTransport := ratelimit.NewRateLimitTransport(httpTransport, limiter, logger)
 
+	// Optionally wrap with debug transport
+	var transportToUse transport.Transport = rateLimitedTransport
+	if cfg.API.Debug {
+		transportToUse = transport.NewDebugTransport(rateLimitedTransport, logger)
+	}
+
 	// Create request builder with base URL
 	requestBuilder := transport.NewRequestBuilder(cfg.API.BaseURL)
 
@@ -35,8 +41,8 @@ func newAPIClient(cfg *config.Config, logger logging.Logger) (api.Client, error)
 		}
 	}
 
-	// Create HTTP client with rate-limited transport
-	httpClient := transport.NewHTTPClient(rateLimitedTransport, requestBuilder)
+	// Create HTTP client with chosen transport
+	httpClient := transport.NewHTTPClient(transportToUse, requestBuilder)
 
 	// Wrap with retry client (configure retries based on cfg.API.MaxRetries)
 	retryConfig := api.DefaultRetryConfig()

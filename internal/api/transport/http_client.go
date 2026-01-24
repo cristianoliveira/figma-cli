@@ -86,7 +86,7 @@ func (c *HTTPClient) doGetRequest(ctx context.Context, path string, branch strin
 // GetFile retrieves a Figma file by its key. If branch is not empty, fetches from the specified branch using the branch_data query parameter.
 func (c *HTTPClient) GetFile(ctx context.Context, fileKey string, opts ...api.GetFileOption) (*api.File, error) {
 	options := api.ApplyGetFileOptions(opts)
-	path := fmt.Sprintf("/v1/files/%s", fileKey)
+	path := fmt.Sprintf("/files/%s", fileKey)
 	body, err := c.doGetRequest(ctx, path, options.Branch)
 	if err != nil {
 		return nil, err
@@ -121,7 +121,7 @@ func (c *HTTPClient) GetNode(ctx context.Context, fileKey, nodeID string, opts .
 		queryParams = append(queryParams, "geometry=paths")
 	}
 
-	path := fmt.Sprintf("/v1/files/%s/nodes", fileKey)
+	path := fmt.Sprintf("/files/%s/nodes", fileKey)
 	if len(queryParams) > 0 {
 		path = fmt.Sprintf("%s?%s", path, strings.Join(queryParams, "&"))
 	}
@@ -183,7 +183,7 @@ func (c *HTTPClient) GetFileNodes(ctx context.Context, fileKey string, nodeIDs [
 		queryParams = append(queryParams, fmt.Sprintf("branch_data=%s", url.QueryEscape(options.Branch)))
 	}
 	// Build path
-	path := fmt.Sprintf("/v1/files/%s/nodes", fileKey)
+	path := fmt.Sprintf("/files/%s/nodes", fileKey)
 	if len(queryParams) > 0 {
 		path = fmt.Sprintf("%s?%s", path, strings.Join(queryParams, "&"))
 	}
@@ -259,7 +259,7 @@ func (c *HTTPClient) DeleteCommentReaction(ctx context.Context, fileKey, comment
 // GetFileMetadata retrieves metadata about a file.
 func (c *HTTPClient) GetFileMetadata(ctx context.Context, fileKey string, opts ...api.GetFileMetadataOption) (*api.FileMeta, error) {
 	options := api.ApplyGetFileMetadataOptions(opts)
-	path := fmt.Sprintf("/v1/files/%s/meta", fileKey)
+	path := fmt.Sprintf("/files/%s/meta", fileKey)
 	body, err := c.doGetRequest(ctx, path, options.Branch)
 	if err != nil {
 		return nil, err
@@ -276,7 +276,7 @@ func (c *HTTPClient) GetFileMetadata(ctx context.Context, fileKey string, opts .
 func (c *HTTPClient) GetFileVersions(ctx context.Context, fileKey string, opts ...api.GetFileVersionsOption) ([]*api.Version, error) {
 	options := api.ApplyGetFileVersionsOptions(opts)
 	// Build path with query parameters
-	path := fmt.Sprintf("/v1/files/%s/versions", fileKey)
+	path := fmt.Sprintf("/files/%s/versions", fileKey)
 	var queryParams []string
 	if options.PageSize > 0 {
 		queryParams = append(queryParams, fmt.Sprintf("page_size=%d", options.PageSize))
@@ -399,7 +399,7 @@ func (c *HTTPClient) GetProjectFiles(ctx context.Context, projectID string) ([]*
 
 // GetMe retrieves the current authenticated user.
 func (c *HTTPClient) GetMe(ctx context.Context) (*api.User, error) {
-	req, err := c.requestBuilder.Build(ctx, http.MethodGet, "/v1/me", nil)
+	req, err := c.requestBuilder.Build(ctx, http.MethodGet, "/me", nil)
 	if err != nil {
 		return nil, err
 	}

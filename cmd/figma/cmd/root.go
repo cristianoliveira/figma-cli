@@ -131,8 +131,10 @@ func adjustConfig(cfg *config.Config, cmd *cobra.Command) {
 			level = "info"
 		case 2:
 			level = "debug"
+			cfg.API.Debug = true
 		default: // 3 or more
 			level = "trace"
+			cfg.API.Debug = true
 		}
 		cfg.Logging.Level = level
 	}
