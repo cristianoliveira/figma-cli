@@ -13,6 +13,7 @@ func init() {
 	rootCmd.AddCommand(contextCmd)
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(versionsCmd)
+	rootCmd.AddCommand(listCmd)
 }
 
 var parseCmd = &cobra.Command{

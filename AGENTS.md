@@ -31,7 +31,7 @@ lefthook run pre-commit
 git commit --no-verify
 ```
 
-See [PRE_COMMIT_HOOKS.md](docs/PRE_COMMIT_HOOKS.md) for full details.
+See [PRE_COMMIT_HOOKS.md](docs/PRE_COMMIT_HOOKS.md) for full details. For comprehensive code quality standards, see [Code Quality Best Practices](#code-quality-best-practices).
 
 ## Landing the Plane (Session Completion)
 
@@ -144,3 +144,164 @@ git push                # Push to remote
 - Use descriptive titles and set appropriate priority/type
 - Always `bd sync` before ending session
 <!-- end-bv-agent-instructions -->
+
+## Code Quality Best Practices
+
+Based on comprehensive code reviews and architecture investigations, these are the established best practices for this project:
+
+### Critical Practices (DO NOT Violate)
+
+#### 1. Code Duplication is P0
+- **Rule**: Any code duplication > 5 lines must be eliminated
+- **Tools**: Use jscpd for detection, enforced in CI
+- **Solutions**: Generic wrappers, code generation, reflection, or DRY principles
+- **Example**: Instead of copying retry logic 30 times, create a generic retry wrapper
+- **Priority**: P0 - This is critical for maintainability
+
+#### 2. Complete Implementation
+- **Rule**: Never commit "not implemented" stubs
+- **Exception**: Only in prototype phase, documented in issue
+- **Requirement**: All methods must have proper implementation or be removed from interface
+- **Priority**: P1 - Blocking functionality
+
+#### 3. Error Handling
+- **Rule**: Always check errors from flag retrieval and all API calls
+- **Pattern**: If a function returns error, MUST handle it
+- **No silent failures**: Panic or explicit error handling, never ignore errors
+- **Priority**: P1 - Could cause crashes
+
+#### 4. Interface Segregation
+- **Rule**: Interfaces should have < 10 methods
+- **Principle**: Clients should only depend on methods they use
+- **Split large interfaces**: Group by domain (FileClient, CommentClient, etc.)
+- **Priority**: P1 - SOLID violation
+
+### Important Practices
+
+#### 5. Token Type-Aware Configuration
+- **Rule**: Validation must differ for PAT vs OAuth tokens
+- **Required fields**:
+  - PAT: token only
+  - OAuth: client_id, client_secret, redirect_uri
+- **Action**: Add token type field, validate accordingly
+
+#### 6. Configuration Simplicity
+- **Rule**: Config merging should be < 100 lines, readable
+- **Avoid**: Nested if-else chains for config merging
+- **Prefer**: Pluggable ConfigSource interface or reflection
+
+#### 7. Test Coverage
+- **Target**: 70%+ coverage on critical packages
+- **Must test**:
+  - API client (with httptest.Server)
+  - Configuration loading
+  - CLI commands
+  - Error paths
+- **Avoid**: Testing private functions, over-mocking
+
+#### 8. TODO Management
+- **Rule**: No TODO comments in production code
+- **Process**:
+  - Implement TODO (if < 2 hours)
+  - File issue in beads (if > 2 hours)
+  - Remove if obsolete
+- **Enforcement**: linter should flag TODOs
+
+### Nice to Have
+
+#### 9. Code Cleanliness
+- **Rule**: No unused variables or imports
+- **Tools**: goimports, golangci-lint unused checker
+- **Enforcement**: Pre-commit hooks
+
+#### 10. Long Functions
+- **Rule**: Functions should be < 20 lines
+- **Split**: Into smaller, single-purpose functions
+- **Name**: Descriptive names that explain purpose
+
+### Architecture Best Practices
+
+#### Clean Architecture
+- **Layers**: Entities → Use Cases → Interface Adapters → Frameworks
+- **Dependency Rule**: Dependencies point inward
+- **No cross-layer**: Frameworks can't depend on use cases
+
+#### SOLID Principles
+- **SRP**: One reason to change per component
+- **OCP**: Open for extension, closed for modification
+- **LSP**: Subtypes must be substitutable
+- **ISP**: Interfaces should be small and focused
+- **DIP**: Depend on abstractions, not concretions
+
+### Tooling Requirements
+
+#### Pre-Commit Hooks (Mandatory)
+- `go fmt` - Format on save
+- `goimports` - Fix imports
+- `golangci-lint` - Lint and fix
+- `go test -short` - Quick test run
+
+#### CI Enforcements
+- Code duplication check (jscpd)
+- Test coverage minimum (60-70%)
+- Linting must pass
+- No TODOs in production code
+
+### Anti-Patterns to Avoid
+
+#### ❌ Code Duplication
+- Copy-pasting retry logic
+- Similar functions with small differences
+- Repeated error handling patterns
+- **Fix**: Extract to reusable components
+
+#### ❌ Over-Mocking
+- Mocking your own code
+- Testing implementation details
+- Tests for private functions
+- **Fix**: Use real implementations where possible
+
+#### ❌ "Not Implemented" Stubs
+- Returning "not implemented" errors
+- Empty function bodies
+- **Fix**: Implement properly or remove from interface
+
+#### ❌ Ignoring Errors
+- `_ = someFunc()` (ignoring error)
+- No error checks from flag functions
+- **Fix**: Always handle errors explicitly
+
+### Code Review Checklist
+
+Before submitting code or merging PR, verify:
+
+- [ ] No code duplication (> 5 lines)
+- [ ] All methods fully implemented (no stubs)
+- [ ] All errors handled
+- [ ] Interfaces have < 10 methods
+- [ ] Functions < 20 lines
+- [ ] Test coverage > 60% for changed files
+- [ ] No TODO comments
+- [ ] No unused variables/imports
+- [ ] Pre-commit hooks pass
+- [ ] CI checks pass
+
+## Recent Investigation Summaries
+
+### Code Quality Investigation (Overall: 6/10)
+- **Strengths**: Clean architecture, comprehensive logging, good error types
+- **Critical Issues**: Code duplication (400+ lines), incomplete implementations, missing error handling
+- **Priority Fixes**: P0 (duplication), P1 (unimplemented methods, error handling, OAuth refresh)
+- **Report**: `.tmp/reports/code-quality-investigation-1.md`
+
+### Architecture & Design Investigation (Overall: 7/10)
+- **Strengths**: Clear layering, good configuration management, structured logging
+- **Critical Issues**: Incomplete HTTP client, interface bloat, config validation gaps
+- **Priority Fixes**: P1 (implement methods, split interface), P2 (config validation, retry duplication)
+- **Report**: `.tmp/reports/architecture-quality-investigation-1.md`
+
+### Key Takeaways
+- Foundation is solid, but focus on completeness and eliminating duplication
+- Implement missing API methods to unblock functionality
+- Split large interfaces to improve testability
+- Add comprehensive test coverage

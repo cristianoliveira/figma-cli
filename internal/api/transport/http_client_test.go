@@ -2,7 +2,9 @@ package transport
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -159,4 +161,101 @@ func TestHTTPClient_RetryOn429(t *testing.T) {
 	if len(mock.requests) != 2 {
 		t.Errorf("expected 2 attempts, got %d", len(mock.requests))
 	}
+}
+
+func TestHTTPClient_GetFileVersions(t *testing.T) {
+	t.Run("paginated response", func(t *testing.T) {
+		mock := &mockTransport{}
+		// Simulate a paginated response with versions array and pagination metadata
+		body := `{"versions": [{"id": "1", "createdAt": "2023-01-01T00:00:00Z", "label": "v1", "description": "First version", "user": {"id": "user1", "handle": "alice", "imgUrl": ""}}], "pagination": {"before": null, "after": "cursor1"}}`
+		mock.response = &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK",
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Header:     make(http.Header),
+		}
+		rb := NewRequestBuilder("https://api.figma.com")
+		hc := NewHTTPClient(mock, rb)
+
+		ctx := context.Background()
+		versions, err := hc.GetFileVersions(ctx, "file123")
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if len(versions) != 1 {
+			t.Errorf("expected 1 version, got %d", len(versions))
+		}
+		if versions[0].ID != "1" {
+			t.Errorf("expected version ID '1', got %s", versions[0].ID)
+		}
+		// Check that request URL contains correct path
+		if len(mock.requests) != 1 {
+			t.Fatalf("expected 1 request, got %d", len(mock.requests))
+		}
+		req := mock.requests[0]
+		if !strings.Contains(req.URL.Path, "/files/file123/versions") {
+			t.Errorf("expected path to contain /files/file123/versions, got %s", req.URL.Path)
+		}
+	})
+
+	t.Run("direct array response", func(t *testing.T) {
+		mock := &mockTransport{}
+		body := `[{"id": "2", "createdAt": "2023-01-02T00:00:00Z", "label": "v2", "description": "Second version", "user": {"id": "user2", "handle": "bob", "imgUrl": ""}}]`
+		mock.response = &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK",
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Header:     make(http.Header),
+		}
+		rb := NewRequestBuilder("https://api.figma.com")
+		hc := NewHTTPClient(mock, rb)
+
+		ctx := context.Background()
+		versions, err := hc.GetFileVersions(ctx, "file456")
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if len(versions) != 1 {
+			t.Errorf("expected 1 version, got %d", len(versions))
+		}
+		if versions[0].ID != "2" {
+			t.Errorf("expected version ID '2', got %s", versions[0].ID)
+		}
+	})
+
+	t.Run("pagination parameters", func(t *testing.T) {
+		mock := &mockTransport{}
+		body := `{"versions": [], "pagination": {}}`
+		mock.response = &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK",
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Header:     make(http.Header),
+		}
+		rb := NewRequestBuilder("https://api.figma.com")
+		hc := NewHTTPClient(mock, rb)
+
+		ctx := context.Background()
+		_, err := hc.GetFileVersions(ctx, "file789", api.WithPageSize(10), api.WithBefore("cursor1"), api.WithAfter("cursor2"), api.WithBranchForVersions("feature/branch"))
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if len(mock.requests) != 1 {
+			t.Fatalf("expected 1 request, got %d", len(mock.requests))
+		}
+		req := mock.requests[0]
+		query := req.URL.RawQuery
+		if !strings.Contains(query, "page_size=10") {
+			t.Errorf("expected query to contain page_size=10, got %s", query)
+		}
+		if !strings.Contains(query, "before=cursor1") {
+			t.Errorf("expected query to contain before=cursor1, got %s", query)
+		}
+		if !strings.Contains(query, "after=cursor2") {
+			t.Errorf("expected query to contain after=cursor2, got %s", query)
+		}
+		if !strings.Contains(query, "branch_data=feature%2Fbranch") {
+			t.Errorf("expected query to contain branch_data=feature%%2Fbranch, got %s", query)
+		}
+	})
 }
