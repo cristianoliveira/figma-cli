@@ -46,9 +46,15 @@ Thumbs.db
 .tmp/
 tmp/
 
+# Manual test scripts (should not be committed)
+.tmp/*.sh
+.tmp/*.py
+.tmp/figma-test
+figma-test
+
 # Beads tracking
 .beads/*.json
-!.beads/config.jsonfigma-cli
+!.beads/config.json
 /figma
 
 # bv (beads viewer) local config and caches
