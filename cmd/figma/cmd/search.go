@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const nodeTypeText = "TEXT"
+
 // searchCmd represents the search command
 var searchCmd = &cobra.Command{
 	Use:   "search <figma-url> <query>",
@@ -115,7 +117,7 @@ func matchesSearch(node *api.Node, opts *SearchOptions, nameRegex *regexp.Regexp
 	// Determine if we need to consider text content
 	if textSearch || typeFilterIsText {
 		// Only TEXT nodes have characters
-		if node.Type != "TEXT" || node.Characters == "" {
+		if node.Type != nodeTypeText || node.Characters == "" {
 			return false
 		}
 		// If query is empty, we match all TEXT nodes (when typeFilter is "text")
@@ -166,7 +168,7 @@ func searchNodes(root *api.Node, fileKey string, opts *SearchOptions) []SearchRe
 				NodeURL: fmt.Sprintf("https://www.figma.com/design/%s?node-id=%s", fileKey, node.ID),
 				Path:    currentPath,
 			}
-			if node.Type == "TEXT" {
+			if node.Type == nodeTypeText {
 				result.Characters = node.Characters
 			}
 			results = append(results, result)
@@ -179,6 +181,7 @@ func searchNodes(root *api.Node, fileKey string, opts *SearchOptions) []SearchRe
 	return results
 }
 
+// nolint:dupl
 func runSearch(cmd *cobra.Command, args []string) error {
 	url := args[0]
 	query := args[1]

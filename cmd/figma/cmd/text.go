@@ -77,6 +77,7 @@ func collectTextsDFS(node *api.Node, maxDepth int, path string, items *[]TextIte
 }
 
 // runText implements the text command.
+// nolint:dupl
 func runText(cmd *cobra.Command, args []string) error {
 	url := args[0]
 	ctx := cmd.Context()
