@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -27,6 +28,36 @@ type TextItem struct {
 	Path       string `json:"path,omitempty"` // optional hierarchical path
 }
 
+// fetchRoot fetches a Figma node or file based on parsed URL.
+// Returns the root node or error.
+func fetchRoot(ctx context.Context, client api.Client, parsed *figma.ParsedURL, logger logging.Logger) (*api.Node, error) {
+	var root *api.Node
+	if parsed.NodeID != "" {
+		logger.Debug(ctx, "Fetching node", logging.String("file_key", parsed.FileKey), logging.String("node_id", parsed.NodeID))
+		node, err := client.GetNode(ctx, parsed.FileKey, parsed.NodeID)
+		if err != nil {
+			logger.Error(ctx, "Failed to fetch node", logging.Err(err), logging.String("file_key", parsed.FileKey), logging.String("node_id", parsed.NodeID))
+			return nil, fmt.Errorf("failed to fetch node: %w", err)
+		}
+		logger.Debug(ctx, "Node fetched successfully", logging.String("node_name", node.Name), logging.String("node_type", node.Type))
+		root = node
+	} else {
+		logger.Debug(ctx, "Fetching file", logging.String("file_key", parsed.FileKey))
+		file, err := client.GetFile(ctx, parsed.FileKey)
+		if err != nil {
+			logger.Error(ctx, "Failed to fetch file", logging.Err(err), logging.String("file_key", parsed.FileKey))
+			return nil, fmt.Errorf("failed to fetch file: %w", err)
+		}
+		logger.Debug(ctx, "File fetched successfully", logging.String("file_name", file.Name), logging.String("last_modified", file.LastModified))
+		root = file.Document
+	}
+
+	if root == nil {
+		return nil, fmt.Errorf("no node found")
+	}
+	return root, nil
+}
+
 // collectTexts traverses the node tree and returns all text items.
 // If recursive is false, only direct children of the node are examined (depth 1).
 // If recursive is true, all descendants are examined (unlimited depth).
@@ -51,7 +82,7 @@ func collectTextsDFS(node *api.Node, maxDepth int, path string, items *[]TextIte
 	currentPath := path + "/" + node.Name
 
 	// If this is a TEXT node, add its characters
-	if node.Type == "TEXT" && node.Characters != "" {
+	if node.Type == nodeTypeText && node.Characters != "" {
 		*items = append(*items, TextItem{
 			ID:         node.ID,
 			Name:       node.Name,
@@ -131,29 +162,9 @@ func runText(cmd *cobra.Command, args []string) error {
 	}
 
 	// Fetch node or file
-	var root *api.Node
-	if parsed.NodeID != "" {
-		logger.Debug(ctx, "Fetching node", logging.String("file_key", parsed.FileKey), logging.String("node_id", parsed.NodeID))
-		node, err := client.GetNode(ctx, parsed.FileKey, parsed.NodeID)
-		if err != nil {
-			logger.Error(ctx, "Failed to fetch node", logging.Err(err), logging.String("file_key", parsed.FileKey), logging.String("node_id", parsed.NodeID))
-			return fmt.Errorf("failed to fetch node: %w", err)
-		}
-		logger.Debug(ctx, "Node fetched successfully", logging.String("node_name", node.Name), logging.String("node_type", node.Type))
-		root = node
-	} else {
-		logger.Debug(ctx, "Fetching file", logging.String("file_key", parsed.FileKey))
-		file, err := client.GetFile(ctx, parsed.FileKey)
-		if err != nil {
-			logger.Error(ctx, "Failed to fetch file", logging.Err(err), logging.String("file_key", parsed.FileKey))
-			return fmt.Errorf("failed to fetch file: %w", err)
-		}
-		logger.Debug(ctx, "File fetched successfully", logging.String("file_name", file.Name), logging.String("last_modified", file.LastModified))
-		root = file.Document
-	}
-
-	if root == nil {
-		return fmt.Errorf("no node found")
+	root, err := fetchRoot(ctx, client, parsed, logger)
+	if err != nil {
+		return err
 	}
 
 	// Collect text items
