@@ -17,7 +17,7 @@ test-cover-html:
 	$(GO_COVER) -html=coverage.out
 
 lint:
-	@which golangci-lint >/dev/null || (echo "Installing golangci-lint..." && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
+	@which golangci-lint >/dev/null || (echo "Installing golangci-lint..." && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.8.0)
 	golangci-lint run ./...
 
 fmt:

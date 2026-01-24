@@ -12,6 +12,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const (
+	// OutputFormatText is the plain text output format.
+	OutputFormatText = "text"
+	// OutputFormatJSON is the JSON output format.
+	OutputFormatJSON = "json"
+	// OutputFormatYAML is the YAML output format.
+	OutputFormatYAML = "yaml"
+)
+
 // Config holds all configuration settings for the Figma CLI.
 type Config struct {
 	// Figma API token (required for API calls)
@@ -87,7 +96,7 @@ func DefaultConfig() Config {
 		OAuthClientID: "",
 		OAuthScopes:   "file_content:read",
 		AuthToken:     "",
-		OutputFormat:  "text",
+		OutputFormat:  OutputFormatText,
 		ExportDir:     ".",
 		API: APISettings{
 			Timeout:    30 * time.Second,
@@ -181,8 +190,8 @@ func (cfg *Config) Merge(flags *CLIFlags) {
 // Validate checks that configuration values are valid (format, ranges, etc.).
 // Does not check for presence of required fields like token.
 func (cfg *Config) Validate() error {
-	if cfg.OutputFormat != "" && cfg.OutputFormat != "json" && cfg.OutputFormat != "yaml" && cfg.OutputFormat != "text" {
-		return fmt.Errorf("invalid output format %q, must be one of: json, yaml, text", cfg.OutputFormat)
+	if cfg.OutputFormat != "" && cfg.OutputFormat != OutputFormatJSON && cfg.OutputFormat != OutputFormatYAML && cfg.OutputFormat != OutputFormatText {
+		return fmt.Errorf("invalid output format %q, must be one of: %s, %s, %s", cfg.OutputFormat, OutputFormatJSON, OutputFormatYAML, OutputFormatText)
 	}
 	if cfg.ExportDir == "" {
 		return fmt.Errorf("export directory cannot be empty")

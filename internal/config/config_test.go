@@ -7,12 +7,22 @@ import (
 	"time"
 )
 
+const (
+	invalidOutputFormat = "invalid"
+	invalidLogLevel     = "invalid"
+	invalidLogFormat    = "invalid"
+	logFormatText       = "text"
+	logFormatJSON       = "json"
+	logLevelDebug       = "debug"
+	logLevelInfo        = "info"
+)
+
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 	if cfg.Token != "" {
 		t.Errorf("expected empty token, got %q", cfg.Token)
 	}
-	if cfg.OutputFormat != "text" {
+	if cfg.OutputFormat != OutputFormatText {
 		t.Errorf("expected output format text, got %q", cfg.OutputFormat)
 	}
 	if cfg.ExportDir != "." {
@@ -34,7 +44,7 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Logging.Level != "info" {
 		t.Errorf("expected log level info, got %q", cfg.Logging.Level)
 	}
-	if cfg.Logging.Format != "text" {
+	if cfg.Logging.Format != logFormatText {
 		t.Errorf("expected log format text, got %q", cfg.Logging.Format)
 	}
 	if cfg.Logging.File != "" {
@@ -63,7 +73,7 @@ func TestValidate(t *testing.T) {
 
 	// Invalid output format
 	cfg2 := cfg
-	cfg2.OutputFormat = "invalid"
+	cfg2.OutputFormat = invalidOutputFormat
 	if err := cfg2.Validate(); err == nil {
 		t.Error("expected validation error for invalid output format")
 	}
@@ -91,14 +101,14 @@ func TestValidate(t *testing.T) {
 
 	// Invalid log level
 	cfg6 := cfg
-	cfg6.Logging.Level = "invalid"
+	cfg6.Logging.Level = invalidLogLevel
 	if err := cfg6.Validate(); err == nil {
 		t.Error("expected validation error for invalid log level")
 	}
 
 	// Invalid log format
 	cfg7 := cfg
-	cfg7.Logging.Format = "invalid"
+	cfg7.Logging.Format = invalidLogFormat
 	if err := cfg7.Validate(); err == nil {
 		t.Error("expected validation error for invalid log format")
 	}
@@ -155,7 +165,7 @@ LOG_COMPRESS=false`
 	if cfg.Token != "env_token" {
 		t.Errorf("expected token env_token, got %q", cfg.Token)
 	}
-	if cfg.OutputFormat != "json" {
+	if cfg.OutputFormat != OutputFormatJSON {
 		t.Errorf("expected output format json, got %q", cfg.OutputFormat)
 	}
 	if cfg.ExportDir != "/tmp/export" {
@@ -173,10 +183,10 @@ LOG_COMPRESS=false`
 	if !cfg.API.Debug {
 		t.Error("expected API debug true")
 	}
-	if cfg.Logging.Level != "debug" {
+	if cfg.Logging.Level != logLevelDebug {
 		t.Errorf("expected log level debug, got %q", cfg.Logging.Level)
 	}
-	if cfg.Logging.Format != "json" {
+	if cfg.Logging.Format != logFormatJSON {
 		t.Errorf("expected log format json, got %q", cfg.Logging.Format)
 	}
 	if cfg.Logging.File != "/tmp/figma.log" {

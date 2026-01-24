@@ -56,12 +56,10 @@ func parseNodesResponse(body []byte) (map[string]*api.Node, error) {
 	return nodes, nil
 }
 
-// GetFile retrieves a Figma file by its key. If branch is not empty, fetches from the specified branch using the branch_data query parameter.
-func (c *HTTPClient) GetFile(ctx context.Context, fileKey string, opts ...api.GetFileOption) (*api.File, error) {
-	options := api.ApplyGetFileOptions(opts)
-	path := fmt.Sprintf("/v1/files/%s", fileKey)
-	if options.Branch != "" {
-		path = fmt.Sprintf("%s?branch_data=%s", path, url.QueryEscape(options.Branch))
+// doGetRequest performs a GET request to the given path with optional branch query parameter.
+func (c *HTTPClient) doGetRequest(ctx context.Context, path string, branch string) ([]byte, error) {
+	if branch != "" {
+		path = fmt.Sprintf("%s?branch_data=%s", path, url.QueryEscape(branch))
 	}
 	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
 	if err != nil {
@@ -81,6 +79,17 @@ func (c *HTTPClient) GetFile(ctx context.Context, fileKey string, opts ...api.Ge
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, api.ErrorFromResponse(resp, body)
+	}
+	return body, nil
+}
+
+// GetFile retrieves a Figma file by its key. If branch is not empty, fetches from the specified branch using the branch_data query parameter.
+func (c *HTTPClient) GetFile(ctx context.Context, fileKey string, opts ...api.GetFileOption) (*api.File, error) {
+	options := api.ApplyGetFileOptions(opts)
+	path := fmt.Sprintf("/v1/files/%s", fileKey)
+	body, err := c.doGetRequest(ctx, path, options.Branch)
+	if err != nil {
+		return nil, err
 	}
 
 	var file api.File
@@ -251,27 +260,9 @@ func (c *HTTPClient) DeleteCommentReaction(ctx context.Context, fileKey, comment
 func (c *HTTPClient) GetFileMetadata(ctx context.Context, fileKey string, opts ...api.GetFileMetadataOption) (*api.FileMeta, error) {
 	options := api.ApplyGetFileMetadataOptions(opts)
 	path := fmt.Sprintf("/v1/files/%s/meta", fileKey)
-	if options.Branch != "" {
-		path = fmt.Sprintf("%s?branch_data=%s", path, url.QueryEscape(options.Branch))
-	}
-	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
+	body, err := c.doGetRequest(ctx, path, options.Branch)
 	if err != nil {
 		return nil, err
-	}
-
-	resp, err := c.transport.Do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read response body: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, api.ErrorFromResponse(resp, body)
 	}
 
 	var meta api.FileMeta

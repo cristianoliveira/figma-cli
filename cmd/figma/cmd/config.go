@@ -82,13 +82,13 @@ var configListCmd = &cobra.Command{
 		// Output based on global output format
 		outputFormat := cfg.OutputFormat
 		if outputFormat == "" {
-			outputFormat = "text"
+			outputFormat = config.OutputFormatText
 		}
 
 		switch outputFormat {
-		case "json":
+		case config.OutputFormatJSON:
 			return printConfigJSON(cmd, cfg)
-		case "yaml":
+		case config.OutputFormatYAML:
 			return printConfigYAML(cmd, cfg)
 		default:
 			return printConfigText(cmd, cfg)
@@ -128,13 +128,13 @@ var configGetCmd = &cobra.Command{
 
 		outputFormat := cfg.OutputFormat
 		if outputFormat == "" {
-			outputFormat = "text"
+			outputFormat = config.OutputFormatText
 		}
 
 		switch outputFormat {
-		case "json":
+		case config.OutputFormatJSON:
 			return printValueJSON(cmd, key, value)
-		case "yaml":
+		case config.OutputFormatYAML:
 			return printValueYAML(cmd, key, value)
 		default:
 			return printValueText(cmd, key, value)
@@ -527,12 +527,12 @@ func configRunE(cmd *cobra.Command, args []string) error {
 	if show {
 		outputFormat := cfg.OutputFormat
 		if outputFormat == "" {
-			outputFormat = "text"
+			outputFormat = config.OutputFormatText
 		}
 		switch outputFormat {
-		case "json":
+		case config.OutputFormatJSON:
 			return printConfigJSON(cmd, cfg)
-		case "yaml":
+		case config.OutputFormatYAML:
 			return printConfigYAML(cmd, cfg)
 		default:
 			return printConfigText(cmd, cfg)

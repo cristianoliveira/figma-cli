@@ -6,9 +6,14 @@ import (
 	"testing"
 )
 
+const (
+	testLevelDebug = "debug"
+	testFormatJSON = "json"
+)
+
 func TestNewLogger(t *testing.T) {
 	cfg := DefaultConfig()
-	cfg.Level = "debug"
+	cfg.Level = testLevelDebug
 	cfg.Format = "text"
 
 	logger, err := NewLogger(cfg)
@@ -26,8 +31,8 @@ func TestNewLogger(t *testing.T) {
 
 func TestLoggerWithRequestID(t *testing.T) {
 	cfg := DefaultConfig()
-	cfg.Level = "debug"
-	cfg.Format = "json"
+	cfg.Level = testLevelDebug
+	cfg.Format = testFormatJSON
 
 	logger, err := NewLogger(cfg)
 	if err != nil {
@@ -59,8 +64,8 @@ func TestLoggerWithFields(t *testing.T) {
 }
 
 func TestApplyEnv(t *testing.T) {
-	_ = os.Setenv("LOG_LEVEL", "debug")
-	_ = os.Setenv("LOG_FORMAT", "json")
+	_ = os.Setenv("LOG_LEVEL", testLevelDebug)
+	_ = os.Setenv("LOG_FORMAT", testFormatJSON)
 	_ = os.Setenv("LOG_FILE", "/tmp/test.log")
 	defer func() {
 		_ = os.Unsetenv("LOG_LEVEL")
@@ -71,10 +76,10 @@ func TestApplyEnv(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg = ApplyEnv(cfg)
 
-	if cfg.Level != "debug" {
+	if cfg.Level != testLevelDebug {
 		t.Errorf("expected level debug, got %s", cfg.Level)
 	}
-	if cfg.Format != "json" {
+	if cfg.Format != testFormatJSON {
 		t.Errorf("expected format json, got %s", cfg.Format)
 	}
 	if cfg.File != "/tmp/test.log" {
