@@ -1,0 +1,72 @@
+# lefthook configuration for figma-cli
+# See https://github.com/evilmartians/lefthook/blob/master/docs/configuration.md
+
+# pre-commit hooks
+pre-commit:
+  parallel: true
+  commands:
+    # Go formatting with gofmt
+    gofmt:
+      glob: "*.go"
+      run: go fmt {staged_files}
+      stage_fixed: true
+      skip:
+        - merge
+        - rebase
+
+    # Fix imports with goimports
+    goimports:
+      glob: "*.go"
+      run: goimports -w {staged_files}
+      stage_fixed: true
+      skip:
+        - merge
+        - rebase
+
+    # Linting with golangci-lint (fast mode)
+    golangci-lint:
+      glob: "*.go"
+      run: golangci-lint run --fast
+      skip:
+        - merge
+        - rebase
+
+    # Run quick tests
+    go-test:
+      glob: "*.go"
+      run: go test ./... -short
+      skip:
+        - merge
+        - rebase
+
+    # Check for large files (> 1MB)
+    check-large-files:
+      run: |
+        for file in $(git diff --cached --name-only); do
+          if [ -f "$file" ]; then
+            size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null)
+            if [ "$size" -gt 1048576 ]; then
+              echo "Error: $file is larger than 1MB (size: $size bytes)"
+              exit 1
+            fi
+          fi
+        done
+
+    # Check for trailing whitespace
+    check-whitespace:
+      run: |
+        if git diff --cached --check --diff-filter=ACMR 2>&1 | grep .; then
+          echo "Error: Trailing whitespace found in staged changes"
+          exit 1
+        fi
+
+    # Warn about TODO comments (but don't fail)
+    check-todos:
+      run: |
+        if git diff --cached -G "(TODO|FIXME|XXX)" --diff-filter=ACMR | grep -q "^+"; then
+          echo "Warning: TODO/FIXME/XXX comments found in staged changes"
+          echo "Consider filing an issue with 'bd create' before committing."
+        fi
+      skip:
+        - merge
+        - rebase

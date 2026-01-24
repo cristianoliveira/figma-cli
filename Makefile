@@ -31,3 +31,10 @@ clean:
 
 check-agents:
 	./scripts/check-agents-md.sh
+
+.PHONY: install-hooks ensure-lefthook
+install-hooks: ensure-lefthook
+	lefthook install
+
+ensure-lefthook:
+	@which lefthook >/dev/null || (echo "Installing lefthook..." && go install github.com/evilmartians/lefthook@latest)
