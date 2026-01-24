@@ -1,0 +1,7 @@
+collections:
+  figma-cli:
+    path: /users/cristianoliveira/other/figma-cli
+    pattern: "**/*.md"
+  figma-cli-tmp:
+    path: /users/cristianoliveira/other/figma-cli
+    pattern: ".tmp/**/*.md"

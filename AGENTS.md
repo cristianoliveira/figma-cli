@@ -44,25 +44,14 @@ bd sync               # Sync with git
 
 Zk indexes documentation for search by tags and content.
 
-**Install & Basic Commands:**
-- Install: `brew install zk` or download from [zk-org/zk](https://github.com/zk-org/zk)
-- List notes: `zk list`, filter by tags: `zk list --tags "figma-api"`
-- Search content: `zk list --match "authentication"`
-- Interactive edit: `zk edit --interactive`
-- Create note: `zk new --title "Note Title"`
+**Essential commands:**
+- Install: `brew install zk`
+- List/search: `zk list --tags "figma-api"`, `zk list --match "authentication"`
+- Create/edit: `zk new --title "Note Title"`, `zk edit --interactive`
 
-**Tag Categories:** `resources`, `figma-api`, `api-docs`, `github`, `references`
+**Tag categories:** `resources`, `figma-api`, `api-docs`, `github`, `references`
 
-**Example Searches:**
-```bash
-zk list --tags "resources"
-zk list --tags "figma-api" --tags "api-docs"
-zk list --match "authentication"
-```
-
-**Adding Documentation:**
-1. Place markdown files in `docs/` with frontmatter (`title`, `tags`)
-2. Run `zk index` (optional, auto‑indexed)
+**Adding documentation:** Place markdown files in `docs/` with frontmatter (`title`, `tags`). Files are auto-indexed; run `zk index` if needed.
 
 **IMPORTANT:** Use zk to index new documents.
 
