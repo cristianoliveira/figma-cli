@@ -4,6 +4,7 @@
 # pre-commit hooks
 pre-commit:
   parallel: true
+  original_hook: true
   commands:
     # Go formatting with gofmt
     gofmt:
