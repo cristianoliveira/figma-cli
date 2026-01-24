@@ -146,13 +146,30 @@ func filterStruct(v reflect.Value, include, exclude []string) map[string]interfa
 	return result
 }
 
-// filterMap returns a map[string]interface{} with selected keys.
-// Only string keys are supported (JSON objects).
-func filterMap(v reflect.Value, include, exclude []string) map[string]interface{} {
-	if v.Type().Key().Kind() != reflect.String {
-		// Non‑string keys cannot be filtered by field name; return as is.
-		return v.Interface().(map[string]interface{})
+// filterMap returns a filtered map suitable for JSON marshaling.
+// For maps with string keys, include/exclude lists are applied to keys.
+// For maps with other key types, include/exclude are ignored (since keys are not strings),
+// but nested values are still filtered recursively.
+func filterMap(v reflect.Value, include, exclude []string) interface{} {
+	// Handle nil maps
+	if v.IsNil() {
+		return nil
 	}
+	keyKind := v.Type().Key().Kind()
+	if keyKind != reflect.String {
+		// Non‑string keys cannot be filtered by field name.
+		// Convert keys to strings for JSON compatibility, include all keys.
+		result := make(map[string]interface{})
+		iter := v.MapRange()
+		for iter.Next() {
+			key := fmt.Sprint(iter.Key().Interface())
+			// include/exclude ignored for non-string keys, so we always include
+			filteredValue := filterValue(iter.Value(), include, exclude)
+			result[key] = filteredValue
+		}
+		return result
+	}
+	// String keys: apply include/exclude filtering.
 	result := make(map[string]interface{})
 	fieldSet := make(map[string]bool)
 	for _, f := range include {

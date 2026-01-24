@@ -1,46 +1,73 @@
-.PHONY: test test-cover lint fmt vet clean check-agents
+# Makefile for figma-cli
+# Only targets that work RIGHT NOW
 
-# Go parameters
-GO_CMD := go
-GO_TEST := $(GO_CMD) test
-GO_COVER := $(GO_CMD) tool cover
+# Variables
+BINARY_NAME := figma
+BUILD_DIR := bin
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+LDFLAGS := -ldflags="-X main.version=$(VERSION)"
 
+# Help
 .PHONY: help
-help: ## Lists the available commands. Add a comment with '##' to describe a command.
-	@grep -E '^[a-zA-Z_-].+:.*?## .*$$' $(MAKEFILE_LIST)\
-		| sort\
-		| awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+help: ## Show this help message
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Available targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-test: ## Runs the unit tests.
-	$(GO_TEST) ./...
+# Build
+.PHONY: build clean run
+build: ## Build binary
+	@echo "Building $(BINARY_NAME)..."
+	@mkdir -p $(BUILD_DIR)
+	go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/figma
 
-test-cover:
-	$(GO_TEST) ./... -coverprofile=coverage.out
-	$(GO_COVER) -html=coverage.out -o coverage.html
+clean: ## Clean build artifacts
+	@echo "Cleaning..."
+	@rm -rf $(BUILD_DIR)
 
-test-cover-html:
-	$(GO_TEST) ./... -covermode=atomic -coverprofile=coverage.out
-	$(GO_COVER) -html=coverage.out
+run: ## Run application with go run
+	go run ./cmd/figma
 
-lint:
-	@which golangci-lint >/dev/null || (echo "Installing golangci-lint..." && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.8.0)
-	golangci-lint run ./...
+# Testing
+.PHONY: test test-short test-race
+test: ## Run all tests
+	go test ./...
 
-fmt:
-	$(GO_CMD) fmt ./...
+test-short: ## Run short tests only
+	go test ./... -short
 
-vet:
-	$(GO_CMD) vet ./...
+test-race: ## Run tests with race detection
+	go test ./... -race
 
-clean:
-	rm -f coverage.out coverage.html
+# Code Quality
+.PHONY: fmt vet
+fmt: ## Format code
+	go fmt ./...
+	goimports -w .
 
-check-agents:
-	./scripts/check-agents-md.sh
+vet: ## Run go vet
+	go vet ./...
 
-.PHONY: install-hooks ensure-lefthook
-install-hooks: ensure-lefthook
+# Dependencies
+.PHONY: deps tidy
+deps: ## Download dependencies
+	go mod download
+
+tidy: ## Run go mod tidy
+	go mod tidy
+
+# Pre-commit Hooks
+.PHONY: install-hooks run-hooks
+install-hooks: ## Install pre-commit hooks
 	lefthook install
 
-ensure-lefthook:
-	@which lefthook >/dev/null || (echo "Installing lefthook..." && go install github.com/evilmartians/lefthook@latest)
+run-hooks: ## Run all pre-commit hooks manually
+	lefthook run pre-commit
+
+# Utility
+.PHONY: version
+version: ## Show version information
+	@echo "Version: $(VERSION)"
+
+.DEFAULT_GOAL := help
