@@ -26,6 +26,36 @@ func NewHTTPClient(transport Transport, requestBuilder RequestBuilder) *HTTPClie
 	}
 }
 
+// parseNodesResponse parses the response from the /v1/files/{file}/nodes endpoint.
+// It supports both the nested document format (nodes[id].document) and direct node format.
+func parseNodesResponse(body []byte) (map[string]*api.Node, error) {
+	var response struct {
+		Nodes map[string]json.RawMessage `json:"nodes"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode nodes response")
+	}
+
+	nodes := make(map[string]*api.Node, len(response.Nodes))
+	for id, raw := range response.Nodes {
+		// First try to unmarshal as nested document wrapper
+		var wrapper struct {
+			Document *api.Node `json:"document"`
+		}
+		if err := json.Unmarshal(raw, &wrapper); err == nil && wrapper.Document != nil {
+			nodes[id] = wrapper.Document
+			continue
+		}
+		// Otherwise try to unmarshal as direct node
+		var node api.Node
+		if err := json.Unmarshal(raw, &node); err != nil {
+			return nil, api.NewParseError(err, string(raw), "decode node")
+		}
+		nodes[id] = &node
+	}
+	return nodes, nil
+}
+
 // GetFile retrieves a Figma file by its key. If branch is not empty, fetches from the specified branch using the branch_data query parameter.
 func (c *HTTPClient) GetFile(ctx context.Context, fileKey string, opts ...api.GetFileOption) (*api.File, error) {
 	options := api.ApplyGetFileOptions(opts)
@@ -61,8 +91,33 @@ func (c *HTTPClient) GetFile(ctx context.Context, fileKey string, opts ...api.Ge
 }
 
 // GetNode retrieves a specific node within a file.
-func (c *HTTPClient) GetNode(ctx context.Context, fileKey, nodeID string) (*api.Node, error) {
-	req, err := c.requestBuilder.Build(ctx, http.MethodGet, fmt.Sprintf("/v1/files/%s/nodes?ids=%s", fileKey, nodeID), nil)
+func (c *HTTPClient) GetNode(ctx context.Context, fileKey, nodeID string, opts ...api.GetNodeOption) (*api.Node, error) {
+	options := api.ApplyGetNodeOptions(opts)
+
+	// Build query parameters
+	queryParams := make([]string, 0, 4)
+	queryParams = append(queryParams, fmt.Sprintf("ids=%s", nodeID))
+	if options.Branch != "" {
+		queryParams = append(queryParams, fmt.Sprintf("branch_data=%s", url.QueryEscape(options.Branch)))
+	}
+	if options.Depth != nil {
+		depth := *options.Depth
+		if depth < 1 || depth > 10 {
+			return nil, fmt.Errorf("depth must be between 1 and 10, got %d", depth)
+		}
+		queryParams = append(queryParams, fmt.Sprintf("depth=%d", depth))
+	}
+	if options.Geometry != nil && *options.Geometry {
+		// geometry=true means minimal geometry (paths)
+		queryParams = append(queryParams, "geometry=paths")
+	}
+
+	path := fmt.Sprintf("/v1/files/%s/nodes", fileKey)
+	if len(queryParams) > 0 {
+		path = fmt.Sprintf("%s?%s", path, strings.Join(queryParams, "&"))
+	}
+
+	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -82,13 +137,11 @@ func (c *HTTPClient) GetNode(ctx context.Context, fileKey, nodeID string) (*api.
 		return nil, api.ErrorFromResponse(resp, body)
 	}
 
-	var result struct {
-		Nodes map[string]*api.Node `json:"nodes"`
+	nodes, err := parseNodesResponse(body)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, api.NewParseError(err, string(body), "decode node response")
-	}
-	node, ok := result.Nodes[nodeID]
+	node, ok := nodes[nodeID]
 	if !ok || node == nil {
 		return nil, api.NewAPIError(http.StatusNotFound, "node not found", "")
 	}
@@ -98,17 +151,32 @@ func (c *HTTPClient) GetNode(ctx context.Context, fileKey, nodeID string) (*api.
 // GetFileNodes retrieves multiple nodes within a file.
 func (c *HTTPClient) GetFileNodes(ctx context.Context, fileKey string, nodeIDs []string, opts ...api.GetFileNodesOption) (*api.FileNodesResponse, error) {
 	options := api.ApplyGetFileNodesOptions(opts)
-	// TODO: implement proper query parameter serialization
-	idsParam := ""
-	for i, id := range nodeIDs {
-		if i > 0 {
-			idsParam += ","
-		}
-		idsParam += id
+	// Build query parameters
+	var queryParams []string
+	// node IDs (required)
+	if len(nodeIDs) > 0 {
+		queryParams = append(queryParams, fmt.Sprintf("ids=%s", strings.Join(nodeIDs, ",")))
 	}
-	path := fmt.Sprintf("/v1/files/%s/nodes?ids=%s", fileKey, idsParam)
+	// depth (1-10)
+	if options.Depth != nil {
+		depth := *options.Depth
+		if depth < 1 || depth > 10 {
+			return nil, fmt.Errorf("depth must be between 1 and 10, got %d", depth)
+		}
+		queryParams = append(queryParams, fmt.Sprintf("depth=%d", depth))
+	}
+	// geometry (true for minimal geometry, false/nil for full)
+	if options.Geometry != nil && *options.Geometry {
+		queryParams = append(queryParams, "geometry=paths")
+	}
+	// branch
 	if options.Branch != "" {
-		path = fmt.Sprintf("%s&branch_data=%s", path, url.QueryEscape(options.Branch))
+		queryParams = append(queryParams, fmt.Sprintf("branch_data=%s", url.QueryEscape(options.Branch)))
+	}
+	// Build path
+	path := fmt.Sprintf("/v1/files/%s/nodes", fileKey)
+	if len(queryParams) > 0 {
+		path = fmt.Sprintf("%s?%s", path, strings.Join(queryParams, "&"))
 	}
 	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
 	if err != nil {
@@ -130,13 +198,11 @@ func (c *HTTPClient) GetFileNodes(ctx context.Context, fileKey string, nodeIDs [
 		return nil, api.ErrorFromResponse(resp, body)
 	}
 
-	var result struct {
-		Nodes map[string]*api.Node `json:"nodes"`
+	nodes, err := parseNodesResponse(body)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, api.NewParseError(err, string(body), "decode nodes response")
-	}
-	return &api.FileNodesResponse{Nodes: result.Nodes}, nil
+	return &api.FileNodesResponse{Nodes: nodes}, nil
 }
 
 // GetImage retrieves an image representation of a node.

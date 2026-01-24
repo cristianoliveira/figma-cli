@@ -99,21 +99,28 @@ func (lc *LoggingClient) GetFileVersions(ctx context.Context, fileKey string, op
 }
 
 // GetNode implements Client.GetNode with logging.
-func (lc *LoggingClient) GetNode(ctx context.Context, fileKey, nodeID string) (*Node, error) {
+func (lc *LoggingClient) GetNode(ctx context.Context, fileKey, nodeID string, opts ...GetNodeOption) (*Node, error) {
+	options := ApplyGetNodeOptions(opts)
 	start := time.Now()
-	lc.logger.Debug(ctx, "GetNode request",
-		logging.String("file_key", fileKey),
-		logging.String("node_id", nodeID),
-	)
-
-	node, err := lc.client.GetNode(ctx, fileKey, nodeID)
-
-	duration := time.Since(start)
 	fields := []logging.Field{
 		logging.String("file_key", fileKey),
 		logging.String("node_id", nodeID),
-		logging.Float64("duration_ms", duration.Seconds()*1000),
 	}
+	if options.Branch != "" {
+		fields = append(fields, logging.String("branch", options.Branch))
+	}
+	if options.Depth != nil {
+		fields = append(fields, logging.Int("depth", *options.Depth))
+	}
+	if options.Geometry != nil {
+		fields = append(fields, logging.Bool("geometry", *options.Geometry))
+	}
+	lc.logger.Debug(ctx, "GetNode request", fields...)
+
+	node, err := lc.client.GetNode(ctx, fileKey, nodeID, opts...)
+
+	duration := time.Since(start)
+	fields = append(fields, logging.Float64("duration_ms", duration.Seconds()*1000))
 	if err != nil {
 		lc.logger.Error(ctx, "GetNode failed", append(fields, logging.Err(err))...)
 	} else {
@@ -126,22 +133,26 @@ func (lc *LoggingClient) GetNode(ctx context.Context, fileKey, nodeID string) (*
 func (lc *LoggingClient) GetFileNodes(ctx context.Context, fileKey string, nodeIDs []string, opts ...GetFileNodesOption) (*FileNodesResponse, error) {
 	options := ApplyGetFileNodesOptions(opts)
 	start := time.Now()
-	lc.logger.Debug(ctx, "GetFileNodes request",
-		logging.String("file_key", fileKey),
-		logging.Any("node_ids", nodeIDs),
-		logging.String("branch", options.Branch),
-	)
-
-	response, err := lc.client.GetFileNodes(ctx, fileKey, nodeIDs, opts...)
-
-	duration := time.Since(start)
 	fields := []logging.Field{
 		logging.String("file_key", fileKey),
 		logging.Any("node_ids", nodeIDs),
 		logging.String("branch", options.Branch),
+	}
+	if options.Depth != nil {
+		fields = append(fields, logging.Int("depth", *options.Depth))
+	}
+	if options.Geometry != nil {
+		fields = append(fields, logging.Bool("geometry", *options.Geometry))
+	}
+	lc.logger.Debug(ctx, "GetFileNodes request", fields...)
+
+	response, err := lc.client.GetFileNodes(ctx, fileKey, nodeIDs, opts...)
+
+	duration := time.Since(start)
+	fields = append(fields,
 		logging.Int("node_count", len(nodeIDs)),
 		logging.Float64("duration_ms", duration.Seconds()*1000),
-	}
+	)
 	if err != nil {
 		lc.logger.Error(ctx, "GetFileNodes failed", append(fields, logging.Err(err))...)
 	} else {

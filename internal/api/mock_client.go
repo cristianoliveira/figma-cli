@@ -21,8 +21,8 @@ func (m *MockClient) GetFile(ctx context.Context, fileKey string, opts ...GetFil
 }
 
 // GetNode mocks the GetNode method.
-func (m *MockClient) GetNode(ctx context.Context, fileKey, nodeID string) (*Node, error) {
-	args := m.Called(ctx, fileKey, nodeID)
+func (m *MockClient) GetNode(ctx context.Context, fileKey, nodeID string, opts ...GetNodeOption) (*Node, error) {
+	args := m.Called(ctx, fileKey, nodeID, opts)
 	if args.Get(0) != nil {
 		return args.Get(0).(*Node), args.Error(1)
 	}

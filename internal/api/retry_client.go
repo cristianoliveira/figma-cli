@@ -41,10 +41,10 @@ func (rc *RetryClient) GetFile(ctx context.Context, fileKey string, opts ...GetF
 }
 
 // GetNode implements Client.GetNode with retry logic.
-func (rc *RetryClient) GetNode(ctx context.Context, fileKey, nodeID string) (*Node, error) {
+func (rc *RetryClient) GetNode(ctx context.Context, fileKey, nodeID string, opts ...GetNodeOption) (*Node, error) {
 	var result *Node
 	err := WithRetry(ctx, rc.config, func(ctx context.Context) error {
-		node, err := rc.client.GetNode(ctx, fileKey, nodeID)
+		node, err := rc.client.GetNode(ctx, fileKey, nodeID, opts...)
 		if err != nil {
 			return err
 		}
