@@ -5,40 +5,31 @@
 pre-commit:
   parallel: true
   original_hook: true
+  skip:
+    - merge
+    - rebase
   commands:
     # Go formatting with gofmt
     gofmt:
       glob: "*.go"
       run: go fmt {staged_files}
       stage_fixed: true
-      skip:
-        - merge
-        - rebase
 
     # Fix imports with goimports
     goimports:
       glob: "*.go"
       run: goimports -w {staged_files}
       stage_fixed: true
-      skip:
-        - merge
-        - rebase
 
-    # Linting with golangci-lint (fast mode)
+    # Linting with golangci-lint
     golangci-lint:
       glob: "*.go"
-      run: golangci-lint run --fast
-      skip:
-        - merge
-        - rebase
+      run: golangci-lint run
 
     # Run quick tests
     go-test:
       glob: "*.go"
       run: go test ./... -short
-      skip:
-        - merge
-        - rebase
 
     # Check for large files (> 1MB)
     check-large-files:
@@ -68,6 +59,3 @@ pre-commit:
           echo "Warning: TODO/FIXME/XXX comments found in staged changes"
           echo "Consider filing an issue with 'bd create' before committing."
         fi
-      skip:
-        - merge
-        - rebase

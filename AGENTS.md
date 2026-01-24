@@ -12,6 +12,27 @@ bd close <id>         # Complete work
 bd sync               # Sync with git
 ```
 
+## Code Quality Hooks
+
+This project uses [lefthook](https://github.com/evilmartians/lefthook) for pre‑commit code quality checks. Hooks automatically run on `git commit` and check formatting, linting, tests, and more.
+
+**Install hooks**:
+```bash
+make install-hooks
+```
+
+**Manual run**:
+```bash
+lefthook run pre-commit
+```
+
+**Bypass hooks** (emergencies only):
+```bash
+git commit --no-verify
+```
+
+See [PRE_COMMIT_HOOKS.md](docs/PRE_COMMIT_HOOKS.md) for full details.
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
@@ -19,7 +40,7 @@ bd sync               # Sync with git
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
+2. **Run quality gates** (if code changed) - Ensure pre‑commit hooks pass (formatting, linting, tests). Run `lefthook run pre-commit` if needed.
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
