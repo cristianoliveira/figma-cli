@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -258,4 +260,50 @@ func TestHTTPClient_GetFileVersions(t *testing.T) {
 			t.Errorf("expected query to contain branch_data=feature%%2Fbranch, got %s", query)
 		}
 	})
+}
+
+func TestHTTPClient_GetImage(t *testing.T) {
+	mock := &mockTransport{}
+	// Load fixture relative to project root
+	fixturePath := filepath.Join("..", "..", "..", "testdata", "fixtures", "image_response.json")
+	body, err := os.ReadFile(fixturePath)
+	if err != nil {
+		t.Fatalf("failed to load fixture: %v", err)
+	}
+	mock.response = &http.Response{
+		StatusCode: http.StatusOK,
+		Status:     "200 OK",
+		Body:       io.NopCloser(strings.NewReader(string(body))),
+		Header:     make(http.Header),
+	}
+	rb := NewRequestBuilder("https://api.figma.com")
+	hc := NewHTTPClient(mock, rb)
+
+	ctx := context.Background()
+	images, err := hc.GetImage(ctx, "file123", []string{"3:1"}, nil)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(images) != 1 {
+		t.Errorf("expected 1 image, got %d", len(images))
+	}
+	url, ok := images["3:1"]
+	if !ok {
+		t.Fatal("expected image for node 3:1")
+	}
+	expectedURL := "https://s3-us-west-2.amazonaws.com/figma-alpha-api/img/abc/xyz/image.png"
+	if url != expectedURL {
+		t.Errorf("expected URL %s, got %s", expectedURL, url)
+	}
+	// Verify request path and query
+	if len(mock.requests) != 1 {
+		t.Fatalf("expected 1 request, got %d", len(mock.requests))
+	}
+	req := mock.requests[0]
+	if !strings.Contains(req.URL.Path, "/images/file123") {
+		t.Errorf("expected path to contain /images/file123, got %s", req.URL.Path)
+	}
+	if !strings.Contains(req.URL.RawQuery, "ids=3:1") {
+		t.Errorf("expected query to contain ids=3:1, got %s", req.URL.RawQuery)
+	}
 }

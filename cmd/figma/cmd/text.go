@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const formatJSON = "json"
+
 func init() {
 	// Add flags to text command
 	textCmd.Flags().Bool("recursive", false, "Extract text from all descendant nodes")
@@ -150,15 +152,21 @@ func runText(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get flags
-	recursive, _ := cmd.Flags().GetBool("recursive")
-	format, _ := cmd.Flags().GetString("format")
+	recursive, err := cmd.Flags().GetBool("recursive")
+	if err != nil {
+		return fmt.Errorf("failed to get recursive flag: %w", err)
+	}
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return fmt.Errorf("failed to get format flag: %w", err)
+	}
 
 	// Validate format
 	switch format {
-	case "plain", "json", "csv":
+	case "plain", formatJSON, "csv":
 		// ok
 	default:
-		return fmt.Errorf("unsupported format %q (supported: plain, json, csv)", format)
+		return fmt.Errorf("unsupported format %q (supported: plain, %s, csv)", format, formatJSON)
 	}
 
 	// Fetch node or file
@@ -176,7 +184,7 @@ func runText(cmd *cobra.Command, args []string) error {
 		for _, item := range items {
 			cmd.Println(item.Characters)
 		}
-	case "json":
+	case formatJSON:
 		data, err := json.MarshalIndent(items, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)

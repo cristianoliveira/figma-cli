@@ -83,6 +83,48 @@ func (c *HTTPClient) doGetRequest(ctx context.Context, path string, branch strin
 	return body, nil
 }
 
+// doPostRequest performs a POST request to the given path with JSON body.
+func (c *HTTPClient) doPostRequest(ctx context.Context, path string, body interface{}) ([]byte, error) {
+	req, err := c.requestBuilder.Build(ctx, http.MethodPost, path, body)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.transport.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, api.ErrorFromResponse(resp, respBody)
+	}
+	return respBody, nil
+}
+
+// doDeleteRequest performs a DELETE request to the given path.
+func (c *HTTPClient) doDeleteRequest(ctx context.Context, path string) error {
+	req, err := c.requestBuilder.Build(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.transport.Do(ctx, req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return api.ErrorFromResponse(resp, body)
+	}
+	return nil
+}
+
 // GetFile retrieves a Figma file by its key. If branch is not empty, fetches from the specified branch using the branch_data query parameter.
 func (c *HTTPClient) GetFile(ctx context.Context, fileKey string, opts ...api.GetFileOption) (*api.File, error) {
 	options := api.ApplyGetFileOptions(opts)
@@ -216,26 +258,98 @@ func (c *HTTPClient) GetFileNodes(ctx context.Context, fileKey string, nodeIDs [
 
 // GetImage retrieves an image representation of a node.
 func (c *HTTPClient) GetImage(ctx context.Context, fileKey string, nodeIDs []string, options *api.ImageOptions) (map[string]string, error) {
-	// TODO: implement image endpoint
-	return nil, fmt.Errorf("not implemented")
+	// Build query parameters
+	var queryParams []string
+	if len(nodeIDs) > 0 {
+		queryParams = append(queryParams, fmt.Sprintf("ids=%s", strings.Join(nodeIDs, ",")))
+	}
+	if options != nil {
+		if options.Scale != 0 {
+			queryParams = append(queryParams, fmt.Sprintf("scale=%g", options.Scale))
+		}
+		if options.Format != "" {
+			queryParams = append(queryParams, fmt.Sprintf("format=%s", options.Format))
+		}
+		if options.Constraint != "" {
+			queryParams = append(queryParams, fmt.Sprintf("constraint=%s", options.Constraint))
+		}
+		if options.Value != 0 {
+			queryParams = append(queryParams, fmt.Sprintf("value=%g", options.Value))
+		}
+	}
+	path := fmt.Sprintf("/images/%s", fileKey)
+	if len(queryParams) > 0 {
+		path = fmt.Sprintf("%s?%s", path, strings.Join(queryParams, "&"))
+	}
+	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.transport.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, api.ErrorFromResponse(resp, body)
+	}
+	var response struct {
+		Images map[string]string `json:"images"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode image response")
+	}
+	return response.Images, nil
 }
 
 // GetComments retrieves comments for a file.
 func (c *HTTPClient) GetComments(ctx context.Context, fileKey string) ([]*api.Comment, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/files/%s/comments", fileKey)
+	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.transport.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, api.ErrorFromResponse(resp, body)
+	}
+	var comments []*api.Comment
+	if err := json.Unmarshal(body, &comments); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode comments response")
+	}
+	return comments, nil
 }
 
 // PostComment posts a comment to a file.
 func (c *HTTPClient) PostComment(ctx context.Context, fileKey string, comment *api.CommentRequest) (*api.Comment, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/files/%s/comments", fileKey)
+	body, err := c.doPostRequest(ctx, path, comment)
+	if err != nil {
+		return nil, err
+	}
+	var createdComment api.Comment
+	if err := json.Unmarshal(body, &createdComment); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode comment response")
+	}
+	return &createdComment, nil
 }
 
 // DeleteComment deletes a comment from a file.
 func (c *HTTPClient) DeleteComment(ctx context.Context, fileKey, commentID string) error {
-	// TODO: implement
-	return fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/files/%s/comments/%s", fileKey, commentID)
+	return c.doDeleteRequest(ctx, path)
 }
 
 // GetCommentReactions retrieves reactions for a comment.
@@ -337,64 +451,175 @@ func (c *HTTPClient) GetFileVersions(ctx context.Context, fileKey string, opts .
 	return versions, nil
 }
 
+// GetTeams retrieves teams accessible to the authenticated user.
+func (c *HTTPClient) GetTeams(ctx context.Context) ([]*api.Team, error) {
+	req, err := c.requestBuilder.Build(ctx, http.MethodGet, "/teams", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.transport.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, api.ErrorFromResponse(resp, body)
+	}
+
+	var teams []*api.Team
+	if err := json.Unmarshal(body, &teams); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode teams response")
+	}
+	return teams, nil
+}
+
 // GetTeamStyles retrieves published styles for a team.
 func (c *HTTPClient) GetTeamStyles(ctx context.Context, teamID string) ([]*api.Style, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/teams/%s/styles", teamID)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var styles []*api.Style
+	if err := json.Unmarshal(body, &styles); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode team styles response")
+	}
+	return styles, nil
 }
 
 // GetStyle retrieves a specific style by its key.
 func (c *HTTPClient) GetStyle(ctx context.Context, styleKey string) (*api.Style, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/styles/%s", styleKey)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var style api.Style
+	if err := json.Unmarshal(body, &style); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode style response")
+	}
+	return &style, nil
 }
 
 // GetFileStyles retrieves styles defined in a file.
 func (c *HTTPClient) GetFileStyles(ctx context.Context, fileKey string) ([]*api.Style, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/files/%s/styles", fileKey)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var styles []*api.Style
+	if err := json.Unmarshal(body, &styles); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode file styles response")
+	}
+	return styles, nil
 }
 
 // GetTeamComponents retrieves published components for a team.
 func (c *HTTPClient) GetTeamComponents(ctx context.Context, teamID string) ([]*api.Component, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/teams/%s/components", teamID)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var components []*api.Component
+	if err := json.Unmarshal(body, &components); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode team components response")
+	}
+	return components, nil
 }
 
 // GetComponent retrieves a specific component by its key.
 func (c *HTTPClient) GetComponent(ctx context.Context, componentKey string) (*api.Component, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/components/%s", componentKey)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var component api.Component
+	if err := json.Unmarshal(body, &component); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode component response")
+	}
+	return &component, nil
 }
 
 // GetTeamComponentSets retrieves published component sets for a team.
 func (c *HTTPClient) GetTeamComponentSets(ctx context.Context, teamID string) ([]*api.ComponentSet, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/teams/%s/component_sets", teamID)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var componentSets []*api.ComponentSet
+	if err := json.Unmarshal(body, &componentSets); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode team component sets response")
+	}
+	return componentSets, nil
 }
 
 // GetComponentSet retrieves a specific component set by its key.
 func (c *HTTPClient) GetComponentSet(ctx context.Context, componentSetKey string) (*api.ComponentSet, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/component_sets/%s", componentSetKey)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var componentSet api.ComponentSet
+	if err := json.Unmarshal(body, &componentSet); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode component set response")
+	}
+	return &componentSet, nil
 }
 
 // GetFileComponents retrieves components defined in a file.
 func (c *HTTPClient) GetFileComponents(ctx context.Context, fileKey string) ([]*api.Component, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/files/%s/components", fileKey)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var components []*api.Component
+	if err := json.Unmarshal(body, &components); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode file components response")
+	}
+	return components, nil
 }
 
 // GetTeamProjects retrieves projects for a team.
 func (c *HTTPClient) GetTeamProjects(ctx context.Context, teamID string) ([]*api.Project, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/teams/%s/projects", teamID)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var projects []*api.Project
+	if err := json.Unmarshal(body, &projects); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode projects response")
+	}
+	return projects, nil
 }
 
 // GetProjectFiles retrieves files in a project.
 func (c *HTTPClient) GetProjectFiles(ctx context.Context, projectID string) ([]*api.File, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/projects/%s/files", projectID)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var files []*api.File
+	if err := json.Unmarshal(body, &files); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode project files response")
+	}
+	return files, nil
 }
 
 // GetMe retrieves the current authenticated user.
@@ -428,14 +653,30 @@ func (c *HTTPClient) GetMe(ctx context.Context) (*api.User, error) {
 
 // GetFileVariables retrieves local variables in a file (Enterprise).
 func (c *HTTPClient) GetFileVariables(ctx context.Context, fileKey string) ([]*api.Variable, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/files/%s/variables", fileKey)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var variables []*api.Variable
+	if err := json.Unmarshal(body, &variables); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode file variables response")
+	}
+	return variables, nil
 }
 
 // GetTeamPublishedVariables retrieves published variables for a team (Enterprise).
 func (c *HTTPClient) GetTeamPublishedVariables(ctx context.Context, teamID string) ([]*api.Variable, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/teams/%s/variables", teamID)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var variables []*api.Variable
+	if err := json.Unmarshal(body, &variables); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode team published variables response")
+	}
+	return variables, nil
 }
 
 // PostFileVariables bulk creates/updates/deletes variables in a file (Enterprise).
@@ -446,8 +687,16 @@ func (c *HTTPClient) PostFileVariables(ctx context.Context, fileKey string, vari
 
 // GetFileDevResources retrieves developer resources for a file.
 func (c *HTTPClient) GetFileDevResources(ctx context.Context, fileKey string) ([]*api.DevResource, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	path := fmt.Sprintf("/files/%s/dev_resources", fileKey)
+	body, err := c.doGetRequest(ctx, path, "")
+	if err != nil {
+		return nil, err
+	}
+	var devResources []*api.DevResource
+	if err := json.Unmarshal(body, &devResources); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode dev resources response")
+	}
+	return devResources, nil
 }
 
 // PostDevResources bulk creates developer resources.
