@@ -223,29 +223,9 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	}
 
 	// Fetch root node (file or specific node)
-	var root *api.Node
-	if parsed.NodeID != "" {
-		logger.Debug(ctx, "Fetching node", logging.String("file_key", parsed.FileKey), logging.String("node_id", parsed.NodeID))
-		node, err := client.GetNode(ctx, parsed.FileKey, parsed.NodeID)
-		if err != nil {
-			logger.Error(ctx, "Failed to fetch node", logging.Err(err), logging.String("file_key", parsed.FileKey), logging.String("node_id", parsed.NodeID))
-			return fmt.Errorf("failed to fetch node: %w", err)
-		}
-		logger.Debug(ctx, "Node fetched successfully", logging.String("node_name", node.Name), logging.String("node_type", node.Type))
-		root = node
-	} else {
-		logger.Debug(ctx, "Fetching file", logging.String("file_key", parsed.FileKey))
-		file, err := client.GetFile(ctx, parsed.FileKey)
-		if err != nil {
-			logger.Error(ctx, "Failed to fetch file", logging.Err(err), logging.String("file_key", parsed.FileKey))
-			return fmt.Errorf("failed to fetch file: %w", err)
-		}
-		logger.Debug(ctx, "File fetched successfully", logging.String("file_name", file.Name), logging.String("last_modified", file.LastModified))
-		root = file.Document
-	}
-
-	if root == nil {
-		return fmt.Errorf("no node found")
+	root, err := fetchRoot(ctx, client, parsed, logger)
+	if err != nil {
+		return err
 	}
 
 	// Parse flags
