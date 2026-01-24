@@ -22,16 +22,17 @@ func NewLoggingClient(client Client, logger logging.Logger) *LoggingClient {
 }
 
 // GetFile implements Client.GetFile with logging.
-func (lc *LoggingClient) GetFile(ctx context.Context, fileKey string, branch string) (*File, error) {
+func (lc *LoggingClient) GetFile(ctx context.Context, fileKey string, opts ...GetFileOption) (*File, error) {
+	options := ApplyGetFileOptions(opts)
 	start := time.Now()
-	lc.logger.Debug(ctx, "GetFile request", logging.String("file_key", fileKey), logging.String("branch", branch))
+	lc.logger.Debug(ctx, "GetFile request", logging.String("file_key", fileKey), logging.String("branch", options.Branch))
 
-	file, err := lc.client.GetFile(ctx, fileKey, branch)
+	file, err := lc.client.GetFile(ctx, fileKey, opts...)
 
 	duration := time.Since(start)
 	fields := []logging.Field{
 		logging.String("file_key", fileKey),
-		logging.String("branch", branch),
+		logging.String("branch", options.Branch),
 		logging.Float64("duration_ms", duration.Seconds()*1000),
 	}
 	if err != nil {
@@ -40,6 +41,61 @@ func (lc *LoggingClient) GetFile(ctx context.Context, fileKey string, branch str
 		lc.logger.Debug(ctx, "GetFile success", fields...)
 	}
 	return file, err
+}
+
+// GetFileMetadata implements Client.GetFileMetadata with logging.
+func (lc *LoggingClient) GetFileMetadata(ctx context.Context, fileKey string, opts ...GetFileMetadataOption) (*FileMeta, error) {
+	options := ApplyGetFileMetadataOptions(opts)
+	start := time.Now()
+	lc.logger.Debug(ctx, "GetFileMetadata request", logging.String("file_key", fileKey), logging.String("branch", options.Branch))
+
+	meta, err := lc.client.GetFileMetadata(ctx, fileKey, opts...)
+
+	duration := time.Since(start)
+	fields := []logging.Field{
+		logging.String("file_key", fileKey),
+		logging.String("branch", options.Branch),
+		logging.Float64("duration_ms", duration.Seconds()*1000),
+	}
+	if err != nil {
+		lc.logger.Error(ctx, "GetFileMetadata failed", append(fields, logging.Err(err))...)
+	} else {
+		lc.logger.Debug(ctx, "GetFileMetadata success", fields...)
+	}
+	return meta, err
+}
+
+// GetFileVersions implements Client.GetFileVersions with logging.
+func (lc *LoggingClient) GetFileVersions(ctx context.Context, fileKey string, opts ...GetFileVersionsOption) ([]*Version, error) {
+	options := ApplyGetFileVersionsOptions(opts)
+	start := time.Now()
+	lc.logger.Debug(ctx, "GetFileVersions request",
+		logging.String("file_key", fileKey),
+		logging.Int("page_size", options.PageSize),
+		logging.String("before", options.Before),
+		logging.String("after", options.After),
+		logging.String("branch", options.Branch),
+	)
+
+	versions, err := lc.client.GetFileVersions(ctx, fileKey, opts...)
+
+	duration := time.Since(start)
+	fields := []logging.Field{
+		logging.String("file_key", fileKey),
+		logging.Int("page_size", options.PageSize),
+		logging.String("before", options.Before),
+		logging.String("after", options.After),
+		logging.String("branch", options.Branch),
+		logging.Float64("duration_ms", duration.Seconds()*1000),
+	}
+	if err != nil {
+		lc.logger.Error(ctx, "GetFileVersions failed", append(fields, logging.Err(err))...)
+	} else {
+		lc.logger.Debug(ctx, "GetFileVersions success", append(fields,
+			logging.Int("version_count", len(versions)),
+		)...)
+	}
+	return versions, err
 }
 
 // GetNode implements Client.GetNode with logging.
@@ -66,31 +122,34 @@ func (lc *LoggingClient) GetNode(ctx context.Context, fileKey, nodeID string) (*
 	return node, err
 }
 
-// GetNodes implements Client.GetNodes with logging.
-func (lc *LoggingClient) GetNodes(ctx context.Context, fileKey string, nodeIDs []string) (map[string]*Node, error) {
+// GetFileNodes implements Client.GetFileNodes with logging.
+func (lc *LoggingClient) GetFileNodes(ctx context.Context, fileKey string, nodeIDs []string, opts ...GetFileNodesOption) (*FileNodesResponse, error) {
+	options := ApplyGetFileNodesOptions(opts)
 	start := time.Now()
-	lc.logger.Debug(ctx, "GetNodes request",
+	lc.logger.Debug(ctx, "GetFileNodes request",
 		logging.String("file_key", fileKey),
 		logging.Any("node_ids", nodeIDs),
+		logging.String("branch", options.Branch),
 	)
 
-	nodes, err := lc.client.GetNodes(ctx, fileKey, nodeIDs)
+	response, err := lc.client.GetFileNodes(ctx, fileKey, nodeIDs, opts...)
 
 	duration := time.Since(start)
 	fields := []logging.Field{
 		logging.String("file_key", fileKey),
 		logging.Any("node_ids", nodeIDs),
+		logging.String("branch", options.Branch),
 		logging.Int("node_count", len(nodeIDs)),
 		logging.Float64("duration_ms", duration.Seconds()*1000),
 	}
 	if err != nil {
-		lc.logger.Error(ctx, "GetNodes failed", append(fields, logging.Err(err))...)
+		lc.logger.Error(ctx, "GetFileNodes failed", append(fields, logging.Err(err))...)
 	} else {
-		lc.logger.Debug(ctx, "GetNodes success", append(fields,
-			logging.Int("result_count", len(nodes)),
+		lc.logger.Debug(ctx, "GetFileNodes success", append(fields,
+			logging.Int("result_count", len(response.Nodes)),
 		)...)
 	}
-	return nodes, err
+	return response, err
 }
 
 // GetImage implements Client.GetImage with logging.

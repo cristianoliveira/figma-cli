@@ -12,8 +12,8 @@ type MockClient struct {
 }
 
 // GetFile mocks the GetFile method.
-func (m *MockClient) GetFile(ctx context.Context, fileKey string, branch string) (*File, error) {
-	args := m.Called(ctx, fileKey, branch)
+func (m *MockClient) GetFile(ctx context.Context, fileKey string, opts ...GetFileOption) (*File, error) {
+	args := m.Called(ctx, fileKey, opts)
 	if args.Get(0) != nil {
 		return args.Get(0).(*File), args.Error(1)
 	}
@@ -29,11 +29,11 @@ func (m *MockClient) GetNode(ctx context.Context, fileKey, nodeID string) (*Node
 	return nil, args.Error(1)
 }
 
-// GetNodes mocks the GetNodes method.
-func (m *MockClient) GetNodes(ctx context.Context, fileKey string, nodeIDs []string) (map[string]*Node, error) {
-	args := m.Called(ctx, fileKey, nodeIDs)
+// GetFileNodes mocks the GetFileNodes method.
+func (m *MockClient) GetFileNodes(ctx context.Context, fileKey string, nodeIDs []string, opts ...GetFileNodesOption) (*FileNodesResponse, error) {
+	args := m.Called(ctx, fileKey, nodeIDs, opts)
 	if args.Get(0) != nil {
-		return args.Get(0).(map[string]*Node), args.Error(1)
+		return args.Get(0).(*FileNodesResponse), args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -92,9 +92,9 @@ func (m *MockClient) DeleteCommentReaction(ctx context.Context, fileKey, comment
 	return args.Error(0)
 }
 
-// GetFileMeta mocks the GetFileMeta method.
-func (m *MockClient) GetFileMeta(ctx context.Context, fileKey string) (*FileMeta, error) {
-	args := m.Called(ctx, fileKey)
+// GetFileMetadata mocks the GetFileMetadata method.
+func (m *MockClient) GetFileMetadata(ctx context.Context, fileKey string, opts ...GetFileMetadataOption) (*FileMeta, error) {
+	args := m.Called(ctx, fileKey, opts)
 	if args.Get(0) != nil {
 		return args.Get(0).(*FileMeta), args.Error(1)
 	}
@@ -102,8 +102,8 @@ func (m *MockClient) GetFileMeta(ctx context.Context, fileKey string) (*FileMeta
 }
 
 // GetFileVersions mocks the GetFileVersions method.
-func (m *MockClient) GetFileVersions(ctx context.Context, fileKey string, pageSize int, before, after string) ([]*Version, error) {
-	args := m.Called(ctx, fileKey, pageSize, before, after)
+func (m *MockClient) GetFileVersions(ctx context.Context, fileKey string, opts ...GetFileVersionsOption) ([]*Version, error) {
+	args := m.Called(ctx, fileKey, opts)
 	if args.Get(0) != nil {
 		return args.Get(0).([]*Version), args.Error(1)
 	}

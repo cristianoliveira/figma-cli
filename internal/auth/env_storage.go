@@ -38,6 +38,6 @@ func (s *envStorage) Retrieve(ctx context.Context) (*Token, error) {
 
 // Clear unsets the environment variable for the current process only.
 func (s *envStorage) Clear(ctx context.Context) error {
-	os.Unsetenv("FIGMA_ACCESS_TOKEN")
+	_ = os.Unsetenv("FIGMA_ACCESS_TOKEN")
 	return nil
 }

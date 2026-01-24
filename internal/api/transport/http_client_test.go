@@ -50,7 +50,7 @@ func TestHTTPClient_RetryOnNetworkError(t *testing.T) {
 	retryClient := api.NewRetryClientWithConfig(hc, config)
 
 	ctx := context.Background()
-	_, err := retryClient.GetFile(ctx, "test", "")
+	_, err := retryClient.GetFile(ctx, "test")
 	if err == nil {
 		t.Error("expected error")
 	}
@@ -83,7 +83,7 @@ func TestHTTPClient_RetryOn5xx(t *testing.T) {
 	retryClient := api.NewRetryClientWithConfig(hc, config)
 
 	ctx := context.Background()
-	_, err := retryClient.GetFile(ctx, "test", "")
+	_, err := retryClient.GetFile(ctx, "test")
 	if err == nil {
 		t.Error("expected error")
 	}
@@ -116,7 +116,7 @@ func TestHTTPClient_NoRetryOn4xx(t *testing.T) {
 	retryClient := api.NewRetryClientWithConfig(hc, config)
 
 	ctx := context.Background()
-	_, err := retryClient.GetFile(ctx, "test", "")
+	_, err := retryClient.GetFile(ctx, "test")
 	if err == nil {
 		t.Error("expected error")
 	}
@@ -151,7 +151,7 @@ func TestHTTPClient_RetryOn429(t *testing.T) {
 	retryClient := api.NewRetryClientWithConfig(hc, config)
 
 	ctx := context.Background()
-	_, err := retryClient.GetFile(ctx, "test", "")
+	_, err := retryClient.GetFile(ctx, "test")
 	if err == nil {
 		t.Error("expected error")
 	}

@@ -27,10 +27,11 @@ func NewHTTPClient(transport Transport, requestBuilder RequestBuilder) *HTTPClie
 }
 
 // GetFile retrieves a Figma file by its key. If branch is not empty, fetches from the specified branch using the branch_data query parameter.
-func (c *HTTPClient) GetFile(ctx context.Context, fileKey string, branch string) (*api.File, error) {
+func (c *HTTPClient) GetFile(ctx context.Context, fileKey string, opts ...api.GetFileOption) (*api.File, error) {
+	options := api.ApplyGetFileOptions(opts)
 	path := fmt.Sprintf("/v1/files/%s", fileKey)
-	if branch != "" {
-		path = fmt.Sprintf("%s?branch_data=%s", path, url.QueryEscape(branch))
+	if options.Branch != "" {
+		path = fmt.Sprintf("%s?branch_data=%s", path, url.QueryEscape(options.Branch))
 	}
 	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
 	if err != nil {
@@ -94,8 +95,9 @@ func (c *HTTPClient) GetNode(ctx context.Context, fileKey, nodeID string) (*api.
 	return node, nil
 }
 
-// GetNodes retrieves multiple nodes within a file.
-func (c *HTTPClient) GetNodes(ctx context.Context, fileKey string, nodeIDs []string) (map[string]*api.Node, error) {
+// GetFileNodes retrieves multiple nodes within a file.
+func (c *HTTPClient) GetFileNodes(ctx context.Context, fileKey string, nodeIDs []string, opts ...api.GetFileNodesOption) (*api.FileNodesResponse, error) {
+	options := api.ApplyGetFileNodesOptions(opts)
 	// TODO: implement proper query parameter serialization
 	idsParam := ""
 	for i, id := range nodeIDs {
@@ -104,7 +106,11 @@ func (c *HTTPClient) GetNodes(ctx context.Context, fileKey string, nodeIDs []str
 		}
 		idsParam += id
 	}
-	req, err := c.requestBuilder.Build(ctx, http.MethodGet, fmt.Sprintf("/v1/files/%s/nodes?ids=%s", fileKey, idsParam), nil)
+	path := fmt.Sprintf("/v1/files/%s/nodes?ids=%s", fileKey, idsParam)
+	if options.Branch != "" {
+		path = fmt.Sprintf("%s&branch_data=%s", path, url.QueryEscape(options.Branch))
+	}
+	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +136,7 @@ func (c *HTTPClient) GetNodes(ctx context.Context, fileKey string, nodeIDs []str
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, api.NewParseError(err, string(body), "decode nodes response")
 	}
-	return result.Nodes, nil
+	return &api.FileNodesResponse{Nodes: result.Nodes}, nil
 }
 
 // GetImage retrieves an image representation of a node.
@@ -175,9 +181,14 @@ func (c *HTTPClient) DeleteCommentReaction(ctx context.Context, fileKey, comment
 	return fmt.Errorf("not implemented")
 }
 
-// GetFileMeta retrieves metadata about a file.
-func (c *HTTPClient) GetFileMeta(ctx context.Context, fileKey string) (*api.FileMeta, error) {
-	req, err := c.requestBuilder.Build(ctx, http.MethodGet, fmt.Sprintf("/v1/files/%s/meta", fileKey), nil)
+// GetFileMetadata retrieves metadata about a file.
+func (c *HTTPClient) GetFileMetadata(ctx context.Context, fileKey string, opts ...api.GetFileMetadataOption) (*api.FileMeta, error) {
+	options := api.ApplyGetFileMetadataOptions(opts)
+	path := fmt.Sprintf("/v1/files/%s/meta", fileKey)
+	if options.Branch != "" {
+		path = fmt.Sprintf("%s?branch_data=%s", path, url.QueryEscape(options.Branch))
+	}
+	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -205,18 +216,22 @@ func (c *HTTPClient) GetFileMeta(ctx context.Context, fileKey string) (*api.File
 }
 
 // GetFileVersions retrieves version history of a file with pagination support.
-func (c *HTTPClient) GetFileVersions(ctx context.Context, fileKey string, pageSize int, before, after string) ([]*api.Version, error) {
+func (c *HTTPClient) GetFileVersions(ctx context.Context, fileKey string, opts ...api.GetFileVersionsOption) ([]*api.Version, error) {
+	options := api.ApplyGetFileVersionsOptions(opts)
 	// Build path with query parameters
 	path := fmt.Sprintf("/v1/files/%s/versions", fileKey)
 	var queryParams []string
-	if pageSize > 0 {
-		queryParams = append(queryParams, fmt.Sprintf("page_size=%d", pageSize))
+	if options.PageSize > 0 {
+		queryParams = append(queryParams, fmt.Sprintf("page_size=%d", options.PageSize))
 	}
-	if before != "" {
-		queryParams = append(queryParams, fmt.Sprintf("before=%s", before))
+	if options.Before != "" {
+		queryParams = append(queryParams, fmt.Sprintf("before=%s", options.Before))
 	}
-	if after != "" {
-		queryParams = append(queryParams, fmt.Sprintf("after=%s", after))
+	if options.After != "" {
+		queryParams = append(queryParams, fmt.Sprintf("after=%s", options.After))
+	}
+	if options.Branch != "" {
+		queryParams = append(queryParams, fmt.Sprintf("branch_data=%s", url.QueryEscape(options.Branch)))
 	}
 	if len(queryParams) > 0 {
 		path = fmt.Sprintf("%s?%s", path, strings.Join(queryParams, "&"))

@@ -541,7 +541,7 @@ func configRunE(cmd *cobra.Command, args []string) error {
 
 	// If no flags were provided, show help
 	if !dirty && !show {
-		cmd.Help()
+		_ = cmd.Help()
 	}
 
 	return nil

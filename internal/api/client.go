@@ -7,13 +7,13 @@ import (
 // Client defines the interface for interacting with the Figma API.
 type Client interface {
 	// GetFile retrieves a Figma file by its key. If branch is not empty, fetches from the specified branch.
-	GetFile(ctx context.Context, fileKey string, branch string) (*File, error)
+	GetFile(ctx context.Context, fileKey string, opts ...GetFileOption) (*File, error)
 
 	// GetNode retrieves a specific node within a file.
 	GetNode(ctx context.Context, fileKey, nodeID string) (*Node, error)
 
-	// GetNodes retrieves multiple nodes within a file.
-	GetNodes(ctx context.Context, fileKey string, nodeIDs []string) (map[string]*Node, error)
+	// GetFileNodes retrieves multiple nodes within a file.
+	GetFileNodes(ctx context.Context, fileKey string, nodeIDs []string, opts ...GetFileNodesOption) (*FileNodesResponse, error)
 
 	// GetImage retrieves an image representation of a node.
 	GetImage(ctx context.Context, fileKey string, nodeIDs []string, options *ImageOptions) (map[string]string, error)
@@ -36,11 +36,11 @@ type Client interface {
 	// DeleteCommentReaction removes a reaction from a comment.
 	DeleteCommentReaction(ctx context.Context, fileKey, commentID, emoji string) error
 
-	// GetFileMeta retrieves metadata about a file.
-	GetFileMeta(ctx context.Context, fileKey string) (*FileMeta, error)
+	// GetFileMetadata retrieves metadata about a file.
+	GetFileMetadata(ctx context.Context, fileKey string, opts ...GetFileMetadataOption) (*FileMeta, error)
 
 	// GetFileVersions retrieves version history of a file with pagination support.
-	GetFileVersions(ctx context.Context, fileKey string, pageSize int, before, after string) ([]*Version, error)
+	GetFileVersions(ctx context.Context, fileKey string, opts ...GetFileVersionsOption) ([]*Version, error)
 
 	// GetTeamStyles retrieves published styles for a team.
 	GetTeamStyles(ctx context.Context, teamID string) ([]*Style, error)

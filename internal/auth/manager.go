@@ -55,6 +55,7 @@ func (m *Manager) GetToken(ctx context.Context) (*Token, error) {
 		// Store the refreshed token
 		if err := m.storage.Store(ctx, token); err != nil {
 			// Log error but continue with new token
+			_ = err
 		}
 	}
 

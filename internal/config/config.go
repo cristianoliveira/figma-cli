@@ -86,7 +86,7 @@ func DefaultConfig() Config {
 		TokenType:     "pat",
 		OAuthClientID: "",
 		OAuthScopes:   "file_content:read",
-		AuthToken:      "",
+		AuthToken:     "",
 		OutputFormat:  "text",
 		ExportDir:     ".",
 		API: APISettings{

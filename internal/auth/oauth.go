@@ -137,19 +137,6 @@ func AuthTokenToOAuthToken(token *Token) *oauth2.Token {
 	}
 }
 
-// findAvailablePort finds an available TCP port starting from startPort up to startPort+20.
-func findAvailablePort(startPort int) (int, error) {
-	for port := startPort; port < startPort+20; port++ {
-		addr := fmt.Sprintf("localhost:%d", port)
-		listener, err := net.Listen("tcp", addr)
-		if err == nil {
-			listener.Close()
-			return port, nil
-		}
-	}
-	return 0, errors.New("no available port found")
-}
-
 // StartLocalServer starts a local HTTP server to handle OAuth callback.
 // It uses the provided OAuthConfig, state, and codeChallenge to generate the authorization URL.
 // Returns the authorization URL to open in the browser and a channel that will receive the authorization code.
@@ -209,7 +196,7 @@ func StartLocalServer(cfg *OAuthConfig, state, codeChallenge string) (authURL st
 				if !serverExited {
 					serverExited = true
 					mu.Unlock()
-					server.Shutdown(context.Background())
+					_ = server.Shutdown(context.Background())
 				} else {
 					mu.Unlock()
 				}
@@ -223,7 +210,7 @@ func StartLocalServer(cfg *OAuthConfig, state, codeChallenge string) (authURL st
 				if !serverExited {
 					serverExited = true
 					mu.Unlock()
-					server.Shutdown(context.Background())
+					_ = server.Shutdown(context.Background())
 				} else {
 					mu.Unlock()
 				}
@@ -237,14 +224,14 @@ func StartLocalServer(cfg *OAuthConfig, state, codeChallenge string) (authURL st
 		}
 		// Respond with success page
 		w.Header().Set("Content-Type", "text/html")
-		io.WriteString(w, `<html><body><h1>Authentication successful!</h1><p>You can close this window and return to the CLI.</p></body></html>`)
+		_, _ = io.WriteString(w, `<html><body><h1>Authentication successful!</h1><p>You can close this window and return to the CLI.</p></body></html>`)
 		// Shutdown server after a short delay to allow response to be sent
 		go func() {
 			mu.Lock()
 			if !serverExited {
 				serverExited = true
 				mu.Unlock()
-				server.Shutdown(context.Background())
+				_ = server.Shutdown(context.Background())
 			} else {
 				mu.Unlock()
 			}
@@ -261,7 +248,7 @@ func StartLocalServer(cfg *OAuthConfig, state, codeChallenge string) (authURL st
 		return "", nil, fmt.Errorf("failed to start local server: %w", err)
 	}
 	go func() {
-		server.Serve(listener)
+		_ = server.Serve(listener)
 		close(shutdownCh)
 	}()
 
@@ -272,7 +259,7 @@ func StartLocalServer(cfg *OAuthConfig, state, codeChallenge string) (authURL st
 		if !serverExited {
 			serverExited = true
 			mu.Unlock()
-			server.Shutdown(context.Background())
+			_ = server.Shutdown(context.Background())
 		} else {
 			mu.Unlock()
 		}
@@ -284,7 +271,7 @@ func StartLocalServer(cfg *OAuthConfig, state, codeChallenge string) (authURL st
 		if !serverExited {
 			serverExited = true
 			mu.Unlock()
-			server.Shutdown(context.Background())
+			_ = server.Shutdown(context.Background())
 			<-shutdownCh
 		} else {
 			mu.Unlock()

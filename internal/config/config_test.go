@@ -105,6 +105,8 @@ func TestValidate(t *testing.T) {
 }
 
 func TestLoadNoFiles(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	// Ensure no .env file exists in test directory
 	_ = os.Unsetenv("FIGMA_ACCESS_TOKEN")
 	cfg, err := Load()
@@ -117,6 +119,8 @@ func TestLoadNoFiles(t *testing.T) {
 }
 
 func TestLoadEnvFile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	// Create temporary .env file
 	dir := t.TempDir()
 	envFile := filepath.Join(dir, ".env")
