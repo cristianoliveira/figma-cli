@@ -27,10 +27,10 @@ func NewRetryClientWithConfig(client Client, config RetryConfig) *RetryClient {
 }
 
 // GetFile implements Client.GetFile with retry logic.
-func (rc *RetryClient) GetFile(ctx context.Context, fileKey string) (*File, error) {
+func (rc *RetryClient) GetFile(ctx context.Context, fileKey string, branch string) (*File, error) {
 	var result *File
 	err := WithRetry(ctx, rc.config, func(ctx context.Context) error {
-		file, err := rc.client.GetFile(ctx, fileKey)
+		file, err := rc.client.GetFile(ctx, fileKey, branch)
 		if err != nil {
 			return err
 		}
@@ -160,10 +160,10 @@ func (rc *RetryClient) GetFileMeta(ctx context.Context, fileKey string) (*FileMe
 }
 
 // GetFileVersions implements Client.GetFileVersions with retry logic.
-func (rc *RetryClient) GetFileVersions(ctx context.Context, fileKey string) ([]*Version, error) {
+func (rc *RetryClient) GetFileVersions(ctx context.Context, fileKey string, pageSize int, before, after string) ([]*Version, error) {
 	var result []*Version
 	err := WithRetry(ctx, rc.config, func(ctx context.Context) error {
-		versions, err := rc.client.GetFileVersions(ctx, fileKey)
+		versions, err := rc.client.GetFileVersions(ctx, fileKey, pageSize, before, after)
 		if err != nil {
 			return err
 		}

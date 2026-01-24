@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/cristianoliveira/figma-cli/internal/api"
 )
@@ -24,9 +26,13 @@ func NewHTTPClient(transport Transport, requestBuilder RequestBuilder) *HTTPClie
 	}
 }
 
-// GetFile retrieves a Figma file by its key.
-func (c *HTTPClient) GetFile(ctx context.Context, fileKey string) (*api.File, error) {
-	req, err := c.requestBuilder.Build(ctx, http.MethodGet, fmt.Sprintf("/v1/files/%s", fileKey), nil)
+// GetFile retrieves a Figma file by its key. If branch is not empty, fetches from the specified branch using the branch_data query parameter.
+func (c *HTTPClient) GetFile(ctx context.Context, fileKey string, branch string) (*api.File, error) {
+	path := fmt.Sprintf("/v1/files/%s", fileKey)
+	if branch != "" {
+		path = fmt.Sprintf("%s?branch_data=%s", path, url.QueryEscape(branch))
+	}
+	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -171,14 +177,92 @@ func (c *HTTPClient) DeleteCommentReaction(ctx context.Context, fileKey, comment
 
 // GetFileMeta retrieves metadata about a file.
 func (c *HTTPClient) GetFileMeta(ctx context.Context, fileKey string) (*api.FileMeta, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	req, err := c.requestBuilder.Build(ctx, http.MethodGet, fmt.Sprintf("/v1/files/%s/meta", fileKey), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.transport.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, api.ErrorFromResponse(resp, body)
+	}
+
+	var meta api.FileMeta
+	if err := json.Unmarshal(body, &meta); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode file meta response")
+	}
+	return &meta, nil
 }
 
-// GetFileVersions retrieves version history of a file.
-func (c *HTTPClient) GetFileVersions(ctx context.Context, fileKey string) ([]*api.Version, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+// GetFileVersions retrieves version history of a file with pagination support.
+func (c *HTTPClient) GetFileVersions(ctx context.Context, fileKey string, pageSize int, before, after string) ([]*api.Version, error) {
+	// Build path with query parameters
+	path := fmt.Sprintf("/v1/files/%s/versions", fileKey)
+	var queryParams []string
+	if pageSize > 0 {
+		queryParams = append(queryParams, fmt.Sprintf("page_size=%d", pageSize))
+	}
+	if before != "" {
+		queryParams = append(queryParams, fmt.Sprintf("before=%s", before))
+	}
+	if after != "" {
+		queryParams = append(queryParams, fmt.Sprintf("after=%s", after))
+	}
+	if len(queryParams) > 0 {
+		path = fmt.Sprintf("%s?%s", path, strings.Join(queryParams, "&"))
+	}
+
+	req, err := c.requestBuilder.Build(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.transport.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, api.ErrorFromResponse(resp, body)
+	}
+
+	// Try to parse as a paginated response first
+	type paginatedResponse struct {
+		Versions   []*api.Version `json:"versions"`
+		Pagination *struct {
+			Before *string `json:"before"`
+			After  *string `json:"after"`
+		} `json:"pagination,omitempty"`
+	}
+	var paginated paginatedResponse
+	if err := json.Unmarshal(body, &paginated); err == nil && paginated.Versions != nil {
+		// Successfully parsed as paginated response
+		// Pagination metadata is available in paginated.Pagination if needed
+		return paginated.Versions, nil
+	}
+
+	// Fall back to direct array of versions
+	var versions []*api.Version
+	if err := json.Unmarshal(body, &versions); err != nil {
+		return nil, api.NewParseError(err, string(body), "decode versions response")
+	}
+	return versions, nil
 }
 
 // GetTeamStyles retrieves published styles for a team.

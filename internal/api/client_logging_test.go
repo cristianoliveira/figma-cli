@@ -18,16 +18,16 @@ func TestLoggingClient(t *testing.T) {
 
 	// Test GetFile
 	expectedFile := &File{Key: fileKey}
-	mockClient.On("GetFile", ctx, fileKey).Return(expectedFile, nil)
+	mockClient.On("GetFile", ctx, fileKey, "").Return(expectedFile, nil)
 
-	file, err := client.GetFile(ctx, fileKey)
+	file, err := client.GetFile(ctx, fileKey, "")
 	assert.NoError(t, err)
 	assert.Equal(t, expectedFile, file)
 	mockClient.AssertExpectations(t)
 
 	// Test GetFile error
-	mockClient.On("GetFile", ctx, "error-key").Return(nil, ErrNotFound)
-	_, err = client.GetFile(ctx, "error-key")
+	mockClient.On("GetFile", ctx, "error-key", "").Return(nil, ErrNotFound)
+	_, err = client.GetFile(ctx, "error-key", "")
 	assert.Error(t, err)
 	assert.Equal(t, ErrNotFound, err)
 	mockClient.AssertExpectations(t)
@@ -47,9 +47,9 @@ func TestLoggingClientWithRequestID(t *testing.T) {
 	ctx := logging.NewContextWithRequestID(context.Background(), "req-123")
 	fileKey := "test-key"
 	expectedFile := &File{Key: fileKey}
-	mockClient.On("GetFile", ctx, fileKey).Return(expectedFile, nil)
+	mockClient.On("GetFile", ctx, fileKey, "").Return(expectedFile, nil)
 
-	file, err := client.GetFile(ctx, fileKey)
+	file, err := client.GetFile(ctx, fileKey, "")
 	assert.NoError(t, err)
 	assert.Equal(t, expectedFile, file)
 	mockClient.AssertExpectations(t)

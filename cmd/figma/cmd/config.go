@@ -14,6 +14,12 @@ import (
 )
 
 func init() {
+	// Add flags to config command
+	configCmd.Flags().Bool("show", false, "Display current configuration")
+	// Note: --token, --output, --export-dir are already available as global persistent flags
+
+	configCmd.RunE = configRunE
+
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(configGetCmd)
 	configCmd.AddCommand(configSetCmd)
@@ -35,12 +41,19 @@ Settings are loaded with the following precedence (highest to lowest):
 Use 'figma config list' to view all current settings.
 Use 'figma config get <key>' to view a specific setting.
 Use 'figma config set <key> <value>' to change a setting.
+Flags can also be used directly with the config command:
+  figma config --token <value>        Set authentication token
+  figma config --show                 Display current configuration
+  figma config --output json|yaml|text Set output format
+  figma config --export-dir <path>    Set export directory
 
 Examples:
   figma config get token
   figma config set output_format json
   figma config set api.timeout 60s
-  figma config set export_dir ~/figma-exports`,
+  figma config set export_dir ~/figma-exports
+  figma config --token pat_xxx --show
+  figma config --output json --show`,
 }
 
 var configListCmd = &cobra.Command{
@@ -50,6 +63,20 @@ var configListCmd = &cobra.Command{
 		cfg, err := GetConfig(cmd)
 		if err != nil {
 			return err
+		}
+
+		// Process flags (token, output, export-dir) and save if changed
+		dirty, err := processConfigFlags(cmd, cfg)
+		if err != nil {
+			return err
+		}
+		if dirty {
+			if err := cfg.Validate(); err != nil {
+				return fmt.Errorf("invalid configuration: %w", err)
+			}
+			if err := cfg.Save(); err != nil {
+				return fmt.Errorf("failed to save config: %w", err)
+			}
 		}
 
 		// Output based on global output format
@@ -77,6 +104,20 @@ var configGetCmd = &cobra.Command{
 		cfg, err := GetConfig(cmd)
 		if err != nil {
 			return err
+		}
+
+		// Process flags (token, output, export-dir) and save if changed
+		dirty, err := processConfigFlags(cmd, cfg)
+		if err != nil {
+			return err
+		}
+		if dirty {
+			if err := cfg.Validate(); err != nil {
+				return fmt.Errorf("invalid configuration: %w", err)
+			}
+			if err := cfg.Save(); err != nil {
+				return fmt.Errorf("failed to save config: %w", err)
+			}
 		}
 
 		key := args[0]
@@ -121,27 +162,55 @@ Examples:
 			return err
 		}
 
-		key := args[0]
-		valueStr := args[1]
-
-		// Parse value based on key type
-		if err := setConfigValue(cfg, key, valueStr); err != nil {
+		// Process flags (token, output, export-dir) and save if changed
+		dirty, err := processConfigFlags(cmd, cfg)
+		if err != nil {
 			return err
 		}
 
-		// Validate configuration
-		if err := cfg.Validate(); err != nil {
-			return fmt.Errorf("invalid configuration: %w", err)
+		key := args[0]
+		valueStr := args[1]
+
+		// Determine if flag overrides this key
+		flagOverrides := false
+		if key == "token" && cmd.Flags().Changed("token") {
+			flagOverrides = true
+			cmd.PrintErrln("Note: --token flag overrides subcommand value")
+		}
+		if key == "output_format" && cmd.Flags().Changed("output") {
+			flagOverrides = true
+			cmd.PrintErrln("Note: --output flag overrides subcommand value")
+		}
+		if key == "export_dir" && cmd.Flags().Changed("export-dir") {
+			flagOverrides = true
+			cmd.PrintErrln("Note: --export-dir flag overrides subcommand value")
 		}
 
-		// Save to config file
-		if err := cfg.Save(); err != nil {
-			return fmt.Errorf("failed to save config: %w", err)
+		// Only set value if not overridden by flag
+		if !flagOverrides {
+			// Parse value based on key type
+			if err := setConfigValue(cfg, key, valueStr); err != nil {
+				return err
+			}
+			dirty = true
 		}
 
-		cmd.Printf("Updated %s = %s\n", key, valueStr)
-		configPath, _ := config.ConfigPath()
-		cmd.Println("Configuration saved to", configPath)
+		// Save configuration if any changes were made
+		if dirty {
+			if err := cfg.Validate(); err != nil {
+				return fmt.Errorf("invalid configuration: %w", err)
+			}
+			if err := cfg.Save(); err != nil {
+				return fmt.Errorf("failed to save config: %w", err)
+			}
+			configPath, _ := config.ConfigPath()
+			cmd.Println("Configuration saved to", configPath)
+			if !flagOverrides {
+				cmd.Printf("Updated %s = %s\n", key, valueStr)
+			}
+		} else {
+			cmd.Println("No configuration changes made")
+		}
 
 		// If setting token, also store in auth manager for secure storage
 		if key == "token" || key == "token_type" {
@@ -403,5 +472,77 @@ func printValueYAML(cmd *cobra.Command, key string, value interface{}) error {
 		return err
 	}
 	cmd.Println(string(data))
+	return nil
+}
+
+// processConfigFlags updates configuration based on CLI flags and returns whether any changes were made.
+func processConfigFlags(cmd *cobra.Command, cfg *config.Config) (dirty bool, err error) {
+	// Process token flag if explicitly set
+	if cmd.Flags().Changed("token") {
+		token, _ := cmd.Flags().GetString("token")
+		cfg.Token = token
+		dirty = true
+	}
+	// Process output format flag if explicitly set
+	if cmd.Flags().Changed("output") {
+		output, _ := cmd.Flags().GetString("output")
+		cfg.OutputFormat = output
+		dirty = true
+	}
+	// Process export directory flag if explicitly set
+	if cmd.Flags().Changed("export-dir") {
+		exportDir, _ := cmd.Flags().GetString("export-dir")
+		cfg.ExportDir = exportDir
+		dirty = true
+	}
+	return dirty, nil
+}
+
+// configRunE handles the config command with flags
+func configRunE(cmd *cobra.Command, args []string) error {
+	cfg, err := GetConfig(cmd)
+	if err != nil {
+		return err
+	}
+
+	dirty, err := processConfigFlags(cmd, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Save configuration if any changes were made
+	if dirty {
+		if err := cfg.Validate(); err != nil {
+			return fmt.Errorf("invalid configuration: %w", err)
+		}
+		if err := cfg.Save(); err != nil {
+			return fmt.Errorf("failed to save config: %w", err)
+		}
+		configPath, _ := config.ConfigPath()
+		cmd.Printf("Configuration saved to %s\n", configPath)
+	}
+
+	// Show configuration if --show flag is set
+	show, _ := cmd.Flags().GetBool("show")
+	if show {
+		outputFormat := cfg.OutputFormat
+		if outputFormat == "" {
+			outputFormat = "text"
+		}
+		switch outputFormat {
+		case "json":
+			return printConfigJSON(cmd, cfg)
+		case "yaml":
+			return printConfigYAML(cmd, cfg)
+		default:
+			return printConfigText(cmd, cfg)
+		}
+	}
+
+	// If no flags were provided, show help
+	if !dirty && !show {
+		cmd.Help()
+	}
+
 	return nil
 }

@@ -22,15 +22,16 @@ func NewLoggingClient(client Client, logger logging.Logger) *LoggingClient {
 }
 
 // GetFile implements Client.GetFile with logging.
-func (lc *LoggingClient) GetFile(ctx context.Context, fileKey string) (*File, error) {
+func (lc *LoggingClient) GetFile(ctx context.Context, fileKey string, branch string) (*File, error) {
 	start := time.Now()
-	lc.logger.Debug(ctx, "GetFile request", logging.String("file_key", fileKey))
+	lc.logger.Debug(ctx, "GetFile request", logging.String("file_key", fileKey), logging.String("branch", branch))
 
-	file, err := lc.client.GetFile(ctx, fileKey)
+	file, err := lc.client.GetFile(ctx, fileKey, branch)
 
 	duration := time.Since(start)
 	fields := []logging.Field{
 		logging.String("file_key", fileKey),
+		logging.String("branch", branch),
 		logging.Float64("duration_ms", duration.Seconds()*1000),
 	}
 	if err != nil {

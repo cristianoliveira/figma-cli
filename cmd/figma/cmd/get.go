@@ -75,7 +75,7 @@ func runGet(cmd *cobra.Command, args []string) error {
 
 	// Fetch file
 	logger.Debug(ctx, "Fetching file", logging.String("file_key", parsed.FileKey))
-	file, err := client.GetFile(ctx, parsed.FileKey)
+	file, err := client.GetFile(ctx, parsed.FileKey, "")
 	if err != nil {
 		logger.Error(ctx, "Failed to fetch file", logging.Err(err), logging.String("file_key", parsed.FileKey))
 		return fmt.Errorf("failed to fetch file: %w", err)

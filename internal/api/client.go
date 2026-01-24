@@ -6,8 +6,8 @@ import (
 
 // Client defines the interface for interacting with the Figma API.
 type Client interface {
-	// GetFile retrieves a Figma file by its key.
-	GetFile(ctx context.Context, fileKey string) (*File, error)
+	// GetFile retrieves a Figma file by its key. If branch is not empty, fetches from the specified branch.
+	GetFile(ctx context.Context, fileKey string, branch string) (*File, error)
 
 	// GetNode retrieves a specific node within a file.
 	GetNode(ctx context.Context, fileKey, nodeID string) (*Node, error)
@@ -39,8 +39,8 @@ type Client interface {
 	// GetFileMeta retrieves metadata about a file.
 	GetFileMeta(ctx context.Context, fileKey string) (*FileMeta, error)
 
-	// GetFileVersions retrieves version history of a file.
-	GetFileVersions(ctx context.Context, fileKey string) ([]*Version, error)
+	// GetFileVersions retrieves version history of a file with pagination support.
+	GetFileVersions(ctx context.Context, fileKey string, pageSize int, before, after string) ([]*Version, error)
 
 	// GetTeamStyles retrieves published styles for a team.
 	GetTeamStyles(ctx context.Context, teamID string) ([]*Style, error)

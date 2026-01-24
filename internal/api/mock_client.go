@@ -12,8 +12,8 @@ type MockClient struct {
 }
 
 // GetFile mocks the GetFile method.
-func (m *MockClient) GetFile(ctx context.Context, fileKey string) (*File, error) {
-	args := m.Called(ctx, fileKey)
+func (m *MockClient) GetFile(ctx context.Context, fileKey string, branch string) (*File, error) {
+	args := m.Called(ctx, fileKey, branch)
 	if args.Get(0) != nil {
 		return args.Get(0).(*File), args.Error(1)
 	}
@@ -102,8 +102,8 @@ func (m *MockClient) GetFileMeta(ctx context.Context, fileKey string) (*FileMeta
 }
 
 // GetFileVersions mocks the GetFileVersions method.
-func (m *MockClient) GetFileVersions(ctx context.Context, fileKey string) ([]*Version, error) {
-	args := m.Called(ctx, fileKey)
+func (m *MockClient) GetFileVersions(ctx context.Context, fileKey string, pageSize int, before, after string) ([]*Version, error) {
+	args := m.Called(ctx, fileKey, pageSize, before, after)
 	if args.Get(0) != nil {
 		return args.Get(0).([]*Version), args.Error(1)
 	}

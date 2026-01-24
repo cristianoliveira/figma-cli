@@ -42,9 +42,9 @@ func TestGetFile_TableDriven(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &api.MockClient{}
-			mockClient.On("GetFile", context.Background(), tt.fileKey).Return(tt.mockFile, tt.mockError)
+			mockClient.On("GetFile", context.Background(), tt.fileKey, "").Return(tt.mockFile, tt.mockError)
 
-			file, err := mockClient.GetFile(context.Background(), tt.fileKey)
+			file, err := mockClient.GetFile(context.Background(), tt.fileKey, "")
 			if tt.expectedError {
 				assert.Error(t, err)
 				return
@@ -66,9 +66,9 @@ func TestGetFile_WithFixture(t *testing.T) {
 		Name:         "Fixture Design",
 		LastModified: "2025-01-23T08:33:00Z",
 	}
-	mockClient.On("GetFile", context.Background(), "fixture").Return(expectedFile, nil)
+	mockClient.On("GetFile", context.Background(), "fixture", "").Return(expectedFile, nil)
 
-	file, err := mockClient.GetFile(context.Background(), "fixture")
+	file, err := mockClient.GetFile(context.Background(), "fixture", "")
 	require.NoError(t, err)
 	assert.Equal(t, expectedFile, file)
 	mockClient.AssertExpectations(t)

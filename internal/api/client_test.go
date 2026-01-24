@@ -20,9 +20,9 @@ func (s *ClientTestSuite) SetupTest() {
 func (s *ClientTestSuite) TestGetFile() {
 	ctx := context.Background()
 	expectedFile := &File{Key: "test", Name: "Test File"}
-	s.mockClient.On("GetFile", ctx, "test").Return(expectedFile, nil)
+	s.mockClient.On("GetFile", ctx, "test", "").Return(expectedFile, nil)
 
-	file, err := s.mockClient.GetFile(ctx, "test")
+	file, err := s.mockClient.GetFile(ctx, "test", "")
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), expectedFile, file)
 	s.mockClient.AssertExpectations(s.T())
