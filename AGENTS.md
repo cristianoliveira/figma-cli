@@ -40,20 +40,38 @@ bd sync               # Sync with git
 
 ---
 
-## Index of Indexed Documentation (ZK)
+## Research Collection for Agent Outputs
 
-Zk indexes documentation for search by tags and content.
+This project uses **qmd** (Librarian CLI) for indexing agent reports and research findings for semantic search.
 
-**Essential commands:**
-- Install: `brew install zk`
-- List/search: `zk list --tags "figma-api"`, `zk list --match "authentication"`
-- Create/edit: `zk new --title "Note Title"`, `zk edit --interactive`
+**Installation**: qmd is already installed via Nix (no manual installation needed).
 
-**Tag categories:** `resources`, `figma-api`, `api-docs`, `github`, `references`
+**Available Collections**:
+- **research** - Research documents, agent reports, temporary files (indexes `.tmp/reports/`, `.tmp/researches/`, and `research/`)
+- **figma-cli** - Project documentation (28 files)
 
-**Adding documentation:** Place markdown files in `docs/` with frontmatter (`title`, `tags`). Files are auto-indexed; run `zk index` if needed.
+**Where to write outputs**:
+- **Reports**: Write task completion reports to `.tmp/reports/` with `.md` extension
+- **Research**: Write research notes and findings to `.tmp/researches/` with `.md` extension
 
-**IMPORTANT:** Use zk to index new documents.
+**How indexing works**:
+- All markdown files in `.tmp/reports/`, `.tmp/researches/`, and `research/` are automatically indexed in the `research` collection
+- Files are available for semantic search via `qmd`
+
+**qmd Search Commands**:
+```bash
+qmd search "query" -c research        # Keyword search (BM25)
+qmd vsearch "query" -c research       # Semantic search
+qmd query "query" -c research         # Hybrid search (keyword + semantic + LLM reranking)
+qmd list -c research                  # List all documents in collection
+```
+
+**Agent Usage**:
+- Write reports to `.tmp/reports/<task>-report.md` as specified in agent instructions
+- Write research notes to `.tmp/researches/` for future reference
+- Use `qmd search` to find previous agent work and research findings
+
+**Important**: Always write reports to `.tmp/reports/<task>-report.md` as specified in agent instructions.
 
 ---
 
@@ -139,5 +157,4 @@ git push                # Push to remote
 - Create new issues with `bd create` when you discover tasks
 - Use descriptive titles and set appropriate priority/type
 - Always `bd sync` before ending session
-
 <!-- end-bv-agent-instructions -->
