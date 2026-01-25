@@ -1,0 +1,20 @@
+[
+  {
+    "id": "proj_123",
+    "name": "Design System",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "modifiedAt": "2024-06-20T14:45:00Z"
+  },
+  {
+    "id": "proj_456",
+    "name": "Mobile App",
+    "createdAt": "2024-02-01T09:15:00Z",
+    "modifiedAt": "2024-07-10T11:20:00Z"
+  },
+  {
+    "id": "proj_789",
+    "name": "Website Redesign",
+    "createdAt": "2024-03-10T13:00:00Z",
+    "modifiedAt": "2024-08-05T16:30:00Z"
+  }
+]

@@ -47,6 +47,12 @@ type ComponentSet struct {
 	User        User   `json:"user"`
 }
 
+// Team represents a Figma team.
+type Team struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // Project represents a Figma project.
 type Project struct {
 	ID         string `json:"id"`

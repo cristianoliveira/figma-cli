@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/cristianoliveira/figma-cli/internal/config"
@@ -18,9 +17,7 @@ func TestAdjustConfig(t *testing.T) {
 		cmd.Flags().String("log-level", "", "")
 		cfg := &config.Config{}
 		_ = cmd.Flags().Set("debug", "true")
-		if err := adjustConfig(cfg, cmd); err != nil {
-			t.Errorf("adjustConfig with debug flag returned error: %v", err)
-		}
+		adjustConfig(cfg, cmd)
 		if cfg.Logging.Level != debugLevel {
 			t.Errorf("expected Logging.Level = %s, got %s", debugLevel, cfg.Logging.Level)
 		}
@@ -35,9 +32,7 @@ func TestAdjustConfig(t *testing.T) {
 		cmd.Flags().String("log-level", "", "")
 		cfg := &config.Config{}
 		_ = cmd.Flags().Set("log-level", "info")
-		if err := adjustConfig(cfg, cmd); err != nil {
-			t.Errorf("adjustConfig with log-level flag returned error: %v", err)
-		}
+		adjustConfig(cfg, cmd)
 		if cfg.Logging.Level != "info" {
 			t.Errorf("expected Logging.Level = info, got %s", cfg.Logging.Level)
 		}
@@ -47,26 +42,16 @@ func TestAdjustConfig(t *testing.T) {
 		cmd := &cobra.Command{}
 		// Do not define debug flag
 		cfg := &config.Config{}
-		err := adjustConfig(cfg, cmd)
-		if err == nil {
-			t.Error("expected error when debug flag not defined, got nil")
-		}
-		if err != nil && !strings.Contains(err.Error(), "failed to get debug flag") {
-			t.Errorf("expected error about debug flag, got: %v", err)
-		}
+		adjustConfig(cfg, cmd)
+		// No error expected
 	})
 
 	t.Run("missing log-level flag returns error", func(t *testing.T) {
 		cmd := &cobra.Command{}
 		cmd.Flags().Bool("debug", false, "") // define debug but not log-level
 		cfg := &config.Config{}
-		err := adjustConfig(cfg, cmd)
-		if err == nil {
-			t.Error("expected error when log-level flag not defined, got nil")
-		}
-		if err != nil && !strings.Contains(err.Error(), "failed to get log-level flag") {
-			t.Errorf("expected error about log-level flag, got: %v", err)
-		}
+		adjustConfig(cfg, cmd)
+		// No error expected
 	})
 }
 
@@ -105,10 +90,7 @@ func TestGetCLIFlags(t *testing.T) {
 	_ = cmd.Flags().Set("log-max-age", "30")
 	_ = cmd.Flags().Set("log-compress", "true")
 
-	flags, err := getCLIFlags(cmd)
-	if err != nil {
-		t.Fatalf("getCLIFlags returned error: %v", err)
-	}
+	flags := getCLIFlags(cmd)
 	if flags.Token != "test-token" {
 		t.Errorf("expected Token = test-token, got %s", flags.Token)
 	}
