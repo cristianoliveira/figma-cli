@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+const textNodeType = "TEXT"
+
 type TextNode struct {
 	ID   string
 	Name string
@@ -34,6 +36,13 @@ type TextOutput struct {
 	Added   []TextNodeOutput    `json:"added"`
 	Removed []TextNodeOutput    `json:"removed"`
 	Changed []ChangedTextOutput `json:"changed"`
+}
+
+type LayerTextOutput struct {
+	ID    string           `json:"id"`
+	Name  string           `json:"name"`
+	Type  string           `json:"type"`
+	Texts []TextNodeOutput `json:"texts"`
 }
 
 func Text(from []TextNode, to []TextNode) TextOutput {
@@ -91,13 +100,79 @@ func ExtractTextNodes(value any) []TextNode {
 	return nodes
 }
 
+func FindTextByLayerName(value any, layerName string, recursive bool) []LayerTextOutput {
+	var matches []LayerTextOutput
+	walkLayers(value, layerName, recursive, &matches)
+	return matches
+}
+
+func walkLayers(value any, layerName string, recursive bool, matches *[]LayerTextOutput) {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return
+	}
+
+	if object["name"] == layerName {
+		*matches = append(*matches, LayerTextOutput{
+			ID:    stringValue(object["id"]),
+			Name:  stringValue(object["name"]),
+			Type:  stringValue(object["type"]),
+			Texts: textOutputsForLayer(object, recursive),
+		})
+	}
+
+	children, ok := object["children"].([]any)
+	if !ok {
+		return
+	}
+	for _, child := range children {
+		walkLayers(child, layerName, recursive, matches)
+	}
+}
+
+func textOutputsForLayer(object map[string]any, recursive bool) []TextNodeOutput {
+	if object["type"] == textNodeType {
+		return []TextNodeOutput{{ID: stringValue(object["id"]), Name: stringValue(object["name"]), Text: stringValue(object["characters"])}}
+	}
+	if recursive {
+		return textNodeOutputs(ExtractTextNodes(object))
+	}
+
+	var nodes []TextNode
+	children, ok := object["children"].([]any)
+	if !ok {
+		return nil
+	}
+	for _, child := range children {
+		childObject, ok := child.(map[string]any)
+		if !ok || childObject["type"] != textNodeType {
+			continue
+		}
+		nodes = append(nodes, TextNode{ID: stringValue(childObject["id"]), Name: stringValue(childObject["name"]), Text: stringValue(childObject["characters"])})
+	}
+	return textNodeOutputs(nodes)
+}
+
+func textNodeOutputs(nodes []TextNode) []TextNodeOutput {
+	outputs := make([]TextNodeOutput, 0, len(nodes))
+	for _, node := range nodes {
+		outputs = append(outputs, TextNodeOutput(node))
+	}
+	return outputs
+}
+
+func stringValue(value any) string {
+	text, _ := value.(string)
+	return text
+}
+
 func walkTextNodes(value any, nodes *[]TextNode) {
 	object, ok := value.(map[string]any)
 	if !ok {
 		return
 	}
 
-	if object["type"] == "TEXT" {
+	if object["type"] == textNodeType {
 		id, _ := object["id"].(string)
 		name, _ := object["name"].(string)
 		text, _ := object["characters"].(string)
