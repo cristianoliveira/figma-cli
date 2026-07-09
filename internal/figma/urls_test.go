@@ -21,6 +21,12 @@ func TestBuildFileURLWithoutNodeIDs(t *testing.T) {
 	assert.Equal(t, "https://api.figma.com/v1/files/file123", got)
 }
 
+func TestBuildMeURL(t *testing.T) {
+	got := BuildMeURL()
+
+	assert.Equal(t, "https://api.figma.com/v1/me", got)
+}
+
 func TestBuildVersionsURL(t *testing.T) {
 	got := BuildVersionsURL("grnVU2vAihHXwYgHryu2xE")
 

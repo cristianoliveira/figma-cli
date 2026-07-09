@@ -44,6 +44,11 @@ func BuildNodesURL(fileID string, nodeIDs []string) (string, error) {
 	return u.String(), nil
 }
 
+// BuildMeURL builds the API URL for the currently authenticated user (/v1/me).
+func BuildMeURL() string {
+	return baseURL + "/me"
+}
+
 // BuildVersionsURL builds the API URL for fetching version history of a Figma file.
 func BuildVersionsURL(fileID string) string {
 	return fmt.Sprintf("%s/files/%s/versions", baseURL, fileID)
