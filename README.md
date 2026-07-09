@@ -84,8 +84,12 @@ figma nodes --hierarchy "https://www.figma.com/file/abc123/My-Design"
 # Extract all text layers from a design
 figma text "https://www.figma.com/design/xyz456/Another-Design"
 
-# Export assets from a frame
-figma export --format png --scale 2 "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
+# Export one frame as PNG
+figma export --format png "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
+
+# Download image, instance, and vector assets from a frame
+figma assets --output ./assets "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
+figma assets --json --output ./assets "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
 
 # Generate design tokens (CSS variables, Tailwind theme, or JSON)
 figma tokens --format css "https://www.figma.com/design/abc123/My-Design"
