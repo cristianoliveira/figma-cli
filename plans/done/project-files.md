@@ -1,10 +1,18 @@
 # projects & files (discovery primitives)
 
-> **Status (09-07-26):** Implemented locally; pending live URL validation and
-> commit. `figma me` (the first discovery slice) is implemented in `410040c`.
-> `figma projects` and `figma files` now exist as thin, single-endpoint
-> **primitives** — composable via `--json` — not a dashboard. See
-> "Reconciliation with team.md".
+> **Status (09-07-26):** Shipped in `115d92f` (`feat(discovery): add project
+> and file listing commands`). `figma me` shipped earlier in `410040c`.
+>
+> The implementation matches this plan: thin `RunE` commands, `--json` via
+> `cli.NewPrinter`, curated camelCase output (`lastModified`, `thumbnailUrl`),
+> `ParseTeamInput`/`ParseProjectInput` URL parsing (Task 0), and the
+> team-id-cannot-be-derived-from-token constraint documented in `projects`
+> help. Confirmed: pagination is absent on both endpoints per spec, so no
+> `--cursor`.
+>
+> **Open:** the `team` dashboard (`plans/todo/team.md`) should be built as a
+> composition layer over these primitives, not the standalone monolith — see
+> the status note added there.
 
 ## Problem
 

@@ -1,5 +1,14 @@
 # team (organization dashboard)
 
+> **Status (09-07-26):** Deferred / re-scoped. The discovery primitives it
+> depended on now exist: `figma me`, `figma projects`, `figma files` (see
+> `plans/done/project-files.md`). **Decision: do not build this as the
+> standalone monolith described below.** Build `team` as a thin composition
+> layer over `projects` + `files` (one REST call each, already shipped), or
+> skip a dedicated command and compose in shell with `--json`. The
+> `--list/--stats/--activity/--components/--find` flags below are a wishlist for
+> whenever someone does build the dashboard; they are not the next step.
+
 ## Problem
 
 In a medium-to-large org, Figma files multiply fast. The questions that arise:
