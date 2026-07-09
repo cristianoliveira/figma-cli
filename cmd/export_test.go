@@ -1,30 +1,34 @@
 package cmd
 
-import "testing"
+import (
+	"testing"
 
-func TestBuildExportAPIURL(t *testing.T) {
-	got, err := buildExportAPIURL("file123", []string{"1:2"}, "png")
+	"github.com/cristianoliveira/figma-cli/internal/figma"
+)
+
+func TestBuildExportURL(t *testing.T) {
+	got, err := figma.BuildExportURL("file123", []string{"1:2"}, "png")
 	if err != nil {
-		t.Fatalf("buildExportAPIURL() error = %v", err)
+		t.Fatalf("BuildExportURL() error = %v", err)
 	}
 
 	expected := "https://api.figma.com/v1/images/file123?format=png&ids=1%3A2"
 	if got != expected {
-		t.Fatalf("buildExportAPIURL() = %v, expected %v", got, expected)
+		t.Fatalf("BuildExportURL() = %v, expected %v", got, expected)
 	}
 }
 
-func TestBuildExportAPIURLRequiresNodeID(t *testing.T) {
-	_, err := buildExportAPIURL("file123", nil, "png")
+func TestBuildExportURLRequiresNodeID(t *testing.T) {
+	_, err := figma.BuildExportURL("file123", nil, "png")
 	if err == nil {
-		t.Fatal("buildExportAPIURL() error = nil, expected error")
+		t.Fatal("BuildExportURL() error = nil, expected error")
 	}
 }
 
-func TestBuildExportAPIURLRequiresFormat(t *testing.T) {
-	_, err := buildExportAPIURL("file123", []string{"1:2"}, "")
+func TestBuildExportURLRequiresFormat(t *testing.T) {
+	_, err := figma.BuildExportURL("file123", []string{"1:2"}, "")
 	if err == nil {
-		t.Fatal("buildExportAPIURL() error = nil, expected error")
+		t.Fatal("BuildExportURL() error = nil, expected error")
 	}
 }
 

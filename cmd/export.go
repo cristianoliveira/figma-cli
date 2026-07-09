@@ -2,14 +2,14 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 
+	"github.com/cristianoliveira/figma-cli/internal/env"
+	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
 )
 
@@ -26,26 +26,26 @@ var exportCmd = &cobra.Command{
 		outputPath, _ := cmd.Flags().GetString("output")
 		nodeID, _ := cmd.Flags().GetString("id")
 
-		input, err := parseInput(args[0])
+		input, err := figma.ParseInput(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
-		nodeIDs := resolveNodeIDs(input, nodeID)
+		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		if len(nodeIDs) == 0 {
 			fmt.Fprintln(os.Stderr, "error: export requires --id or a Figma URL with node-id")
 			os.Exit(1)
 		}
 		if outputPath == "" {
-			outputPath = defaultExportOutputPath(input.fileID, nodeIDs[0], format)
+			outputPath = defaultExportOutputPath(input.FileID, nodeIDs[0], format)
 		}
 
-		token, err := getFigmaToken()
+		token, err := env.GetFigmaToken()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
-		apiURL, err := buildExportAPIURL(input.fileID, []string{nodeIDs[0]}, format)
+		apiURL, err := figma.BuildExportURL(input.FileID, []string{nodeIDs[0]}, format)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error building export URL: %v\n", err)
 			os.Exit(1)
@@ -61,25 +61,6 @@ var exportCmd = &cobra.Command{
 		}
 		fmt.Println(outputPath)
 	},
-}
-
-func buildExportAPIURL(fileID string, nodeIDs []string, format string) (string, error) {
-	if len(nodeIDs) == 0 {
-		return "", errors.New("node ID is required")
-	}
-	if format == "" {
-		return "", errors.New("format is required")
-	}
-
-	u, err := url.Parse(fmt.Sprintf("https://api.figma.com/v1/images/%s", fileID))
-	if err != nil {
-		return "", err
-	}
-	q := u.Query()
-	q.Set("format", format)
-	q.Set("ids", strings.Join(nodeIDs, ","))
-	u.RawQuery = q.Encode()
-	return u.String(), nil
 }
 
 func defaultExportOutputPath(fileID string, nodeID string, format string) string {

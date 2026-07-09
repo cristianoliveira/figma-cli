@@ -1,4 +1,4 @@
-package cmd
+package figma
 
 import "testing"
 
@@ -14,37 +14,37 @@ func TestNormalizeNodeID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := normalizeNodeID(tt.input)
+			got := NormalizeNodeID(tt.input)
 			if got != tt.expected {
-				t.Fatalf("normalizeNodeID() = %v, expected %v", got, tt.expected)
+				t.Fatalf("NormalizeNodeID() = %v, expected %v", got, tt.expected)
 			}
 		})
 	}
 }
 
 func TestResolveNodeIDsPrefersExplicitID(t *testing.T) {
-	input := &fileInput{fileID: "file123", nodeIDs: []string{"1:2"}}
-	got := resolveNodeIDs(input, "3:4")
+	input := &FileInput{FileID: "file123", NodeIDs: []string{"1:2"}}
+	got := ResolveNodeIDs(input, "3:4")
 
 	if len(got) != 1 || got[0] != "3:4" {
-		t.Fatalf("resolveNodeIDs() = %#v", got)
+		t.Fatalf("ResolveNodeIDs() = %#v", got)
 	}
 }
 
 func TestResolveNodeIDsFallsBackToURLNodeIDs(t *testing.T) {
-	input := &fileInput{fileID: "file123", nodeIDs: []string{"1:2"}}
-	got := resolveNodeIDs(input, "")
+	input := &FileInput{FileID: "file123", NodeIDs: []string{"1:2"}}
+	got := ResolveNodeIDs(input, "")
 
 	if len(got) != 1 || got[0] != "1:2" {
-		t.Fatalf("resolveNodeIDs() = %#v", got)
+		t.Fatalf("ResolveNodeIDs() = %#v", got)
 	}
 }
 
 func TestResolveNodeIDsAllowsCommaSeparatedExplicitIDs(t *testing.T) {
-	input := &fileInput{fileID: "file123"}
-	got := resolveNodeIDs(input, "3-4,5:6")
+	input := &FileInput{FileID: "file123"}
+	got := ResolveNodeIDs(input, "3-4,5:6")
 
 	if len(got) != 2 || got[0] != "3:4" || got[1] != "5:6" {
-		t.Fatalf("resolveNodeIDs() = %#v", got)
+		t.Fatalf("ResolveNodeIDs() = %#v", got)
 	}
 }

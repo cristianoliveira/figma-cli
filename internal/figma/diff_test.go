@@ -1,8 +1,8 @@
-package diff
+package figma
 
 import "testing"
 
-func TestText(t *testing.T) {
+func TestDiffText(t *testing.T) {
 	from := []TextNode{
 		{ID: "1:1", Name: "Title", Text: "Old title"},
 		{ID: "1:2", Name: "Removed", Text: "Gone"},
@@ -14,7 +14,7 @@ func TestText(t *testing.T) {
 		{ID: "1:4", Name: "Added", Text: "New"},
 	}
 
-	got := Text(from, to)
+	got := DiffText(from, to)
 
 	if len(got.Changed) != 1 || got.Changed[0].From != "Old title" || got.Changed[0].To != "New title" {
 		t.Fatalf("changed diff = %#v", got.Changed)

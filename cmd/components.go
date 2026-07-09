@@ -6,7 +6,8 @@ import (
 	"math"
 	"os"
 
-	figmadiff "github.com/cristianoliveira/figma-cli/internal/diff"
+	"github.com/cristianoliveira/figma-cli/internal/env"
+	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
 )
 
@@ -95,27 +96,29 @@ var componentsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		nodeID, _ := cmd.Flags().GetString("id")
 		raw, _ := cmd.Flags().GetBool("raw")
-		input, err := parseInput(args[0])
+		input, err := figma.ParseInput(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
-		nodeIDs := resolveNodeIDs(input, nodeID)
+		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		if len(nodeIDs) == 0 {
 			fmt.Fprintln(os.Stderr, "error: components requires --id or a Figma URL with node-id")
 			os.Exit(1)
 		}
-		token, err := getFigmaToken()
+		token, err := env.GetFigmaToken()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
-		apiURL, err := buildFindAPIURL(input.fileID, nodeIDs)
+		apiURL, err := figma.BuildFileURL(input.FileID, nodeIDs, "", "")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error building components URL: %v\n", err)
 			os.Exit(1)
 		}
-		figmaJSON, err := figmadiff.FetchFigmaJSON(apiURL, token)
+
+		client := figma.NewClient(token)
+		figmaJSON, err := client.FetchJSON(apiURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error fetching Figma node: %v\n", err)
 			os.Exit(1)
@@ -199,18 +202,18 @@ func extractComponents(value any) []componentOutput {
 		return nil
 	}
 	component := componentOutput{
-		ID:                layerStringValue(object["id"]),
-		Name:              layerStringValue(object["name"]),
-		Type:              layerStringValue(object["type"]),
-		Text:              layerStringValue(object["characters"]),
-		ComponentID:       layerStringValue(object["componentId"]),
-		ComponentSetID:    layerStringValue(object["componentSetId"]),
+		ID:                figma.StringValue(object["id"]),
+		Name:              figma.StringValue(object["name"]),
+		Type:              figma.StringValue(object["type"]),
+		Text:              figma.StringValue(object["characters"]),
+		ComponentID:       figma.StringValue(object["componentId"]),
+		ComponentSetID:    figma.StringValue(object["componentSetId"]),
 		VariantProperties: mapValue(object["variantProperties"]),
 		Fills:             colorsFromPaints(object["fills"]),
 		Strokes:           colorsFromPaints(object["strokes"]),
 		Paints:            paintsFromObject(object),
 		StrokeWeight:      numberValue(object["strokeWeight"]),
-		StrokeAlign:       layerStringValue(object["strokeAlign"]),
+		StrokeAlign:       figma.StringValue(object["strokeAlign"]),
 		StrokeDashes:      numberSlice(object["strokeDashes"]),
 		Effects:           effectsFromValue(object["effects"]),
 		Opacity:           optionalNumber(object["opacity"]),
@@ -265,7 +268,7 @@ func paintOutputsFromValue(value any) []paintOutput {
 			continue
 		}
 		outputs = append(outputs, paintOutput{
-			Type:    layerStringValue(paintObject["type"]),
+			Type:    figma.StringValue(paintObject["type"]),
 			Color:   colorHexFromPaint(paintObject),
 			Opacity: numberValue(paintObject["opacity"]),
 			Visible: paintObject["visible"] != false,
@@ -294,7 +297,7 @@ func effectsFromValue(value any) []effectOutput {
 			continue
 		}
 		outputs = append(outputs, effectOutput{
-			Type:    layerStringValue(effectObject["type"]),
+			Type:    figma.StringValue(effectObject["type"]),
 			Color:   colorHexFromPaint(effectObject),
 			Radius:  numberValue(effectObject["radius"]),
 			Visible: effectObject["visible"] != false,
@@ -313,20 +316,20 @@ func boundsFromValue(value any) boundsOutput {
 
 func layoutFromObject(object map[string]any) layoutOutput {
 	return layoutOutput{
-		Mode:                   layerStringValue(object["layoutMode"]),
+		Mode:                   figma.StringValue(object["layoutMode"]),
 		Gap:                    numberValue(object["itemSpacing"]),
 		PaddingTop:             numberValue(object["paddingTop"]),
 		PaddingRight:           numberValue(object["paddingRight"]),
 		PaddingBottom:          numberValue(object["paddingBottom"]),
 		PaddingLeft:            numberValue(object["paddingLeft"]),
-		LayoutAlign:            layerStringValue(object["layoutAlign"]),
+		LayoutAlign:            figma.StringValue(object["layoutAlign"]),
 		LayoutGrow:             numberValue(object["layoutGrow"]),
-		LayoutSizingHorizontal: layerStringValue(object["layoutSizingHorizontal"]),
-		LayoutSizingVertical:   layerStringValue(object["layoutSizingVertical"]),
-		PrimaryAxisSizingMode:  layerStringValue(object["primaryAxisSizingMode"]),
-		CounterAxisSizingMode:  layerStringValue(object["counterAxisSizingMode"]),
-		PrimaryAxisAlignItems:  layerStringValue(object["primaryAxisAlignItems"]),
-		CounterAxisAlignItems:  layerStringValue(object["counterAxisAlignItems"]),
+		LayoutSizingHorizontal: figma.StringValue(object["layoutSizingHorizontal"]),
+		LayoutSizingVertical:   figma.StringValue(object["layoutSizingVertical"]),
+		PrimaryAxisSizingMode:  figma.StringValue(object["primaryAxisSizingMode"]),
+		CounterAxisSizingMode:  figma.StringValue(object["counterAxisSizingMode"]),
+		PrimaryAxisAlignItems:  figma.StringValue(object["primaryAxisAlignItems"]),
+		CounterAxisAlignItems:  figma.StringValue(object["counterAxisAlignItems"]),
 	}
 }
 
@@ -336,16 +339,16 @@ func typographyFromValue(value any) typographyOutput {
 		return typographyOutput{}
 	}
 	return typographyOutput{
-		FontFamily:          layerStringValue(style["fontFamily"]),
+		FontFamily:          figma.StringValue(style["fontFamily"]),
 		FontSize:            numberValue(style["fontSize"]),
 		FontWeight:          numberValue(style["fontWeight"]),
 		LineHeight:          numberValue(style["lineHeightPx"]),
 		LetterSpacing:       numberValue(style["letterSpacing"]),
 		ParagraphSpacing:    numberValue(style["paragraphSpacing"]),
-		TextCase:            layerStringValue(style["textCase"]),
-		TextDecoration:      layerStringValue(style["textDecoration"]),
-		TextAlignHorizontal: layerStringValue(style["textAlignHorizontal"]),
-		TextAlignVertical:   layerStringValue(style["textAlignVertical"]),
+		TextCase:            figma.StringValue(style["textCase"]),
+		TextDecoration:      figma.StringValue(style["textDecoration"]),
+		TextAlignHorizontal: figma.StringValue(style["textAlignHorizontal"]),
+		TextAlignVertical:   figma.StringValue(style["textAlignVertical"]),
 	}
 }
 

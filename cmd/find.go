@@ -3,11 +3,10 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
-	"strings"
 
-	figmadiff "github.com/cristianoliveira/figma-cli/internal/diff"
+	"github.com/cristianoliveira/figma-cli/internal/env"
+	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
 )
 
@@ -29,22 +28,26 @@ var findCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		input, err := parseInput(args[0])
+		input, err := figma.ParseInput(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
-		token, err := getFigmaToken()
+		token, err := env.GetFigmaToken()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
-		apiURL, err := buildFindAPIURL(input.fileID, resolveNodeIDs(input, nodeID))
+
+		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
+		apiURL, err := figma.BuildFileURL(input.FileID, nodeIDs, "", "")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error building find URL: %v\n", err)
 			os.Exit(1)
 		}
-		figmaJSON, err := figmadiff.FetchFigmaJSON(apiURL, token)
+
+		client := figma.NewClient(token)
+		figmaJSON, err := client.FetchJSON(apiURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error fetching Figma file: %v\n", err)
 			os.Exit(1)
@@ -58,22 +61,6 @@ var findCmd = &cobra.Command{
 		}
 		fmt.Println(string(output))
 	},
-}
-
-func buildFindAPIURL(fileID string, nodeIDs []string) (string, error) {
-	apiURL := fmt.Sprintf("https://api.figma.com/v1/files/%s", fileID)
-	if len(nodeIDs) == 0 {
-		return apiURL, nil
-	}
-
-	u, err := url.Parse(apiURL + "/nodes")
-	if err != nil {
-		return "", err
-	}
-	q := u.Query()
-	q.Set("ids", strings.Join(nodeIDs, ","))
-	u.RawQuery = q.Encode()
-	return u.String(), nil
 }
 
 func findLayersInFigmaJSON(figmaJSON map[string]any, layerName string) []layerMatchOutput {
@@ -100,11 +87,6 @@ func findLayersInFigmaJSON(figmaJSON map[string]any, layerName string) []layerMa
 	return matches
 }
 
-func layerStringValue(value any) string {
-	text, _ := value.(string)
-	return text
-}
-
 func findLayersByName(value any, layerName string) []layerMatchOutput {
 	object, ok := value.(map[string]any)
 	if !ok {
@@ -114,9 +96,9 @@ func findLayersByName(value any, layerName string) []layerMatchOutput {
 	var matches []layerMatchOutput
 	if object["name"] == layerName {
 		matches = append(matches, layerMatchOutput{
-			ID:   layerStringValue(object["id"]),
-			Name: layerStringValue(object["name"]),
-			Type: layerStringValue(object["type"]),
+			ID:   figma.StringValue(object["id"]),
+			Name: figma.StringValue(object["name"]),
+			Type: figma.StringValue(object["type"]),
 		})
 	}
 

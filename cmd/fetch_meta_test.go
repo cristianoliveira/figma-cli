@@ -2,72 +2,9 @@ package cmd
 
 import (
 	"testing"
+
+	"github.com/cristianoliveira/figma-cli/internal/figma"
 )
-
-func TestExtractFileID(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-		wantErr  bool
-	}{
-		{
-			name:     "plain file ID",
-			input:    "grnVU2vAihHXwYgHryu2xE",
-			expected: "grnVU2vAihHXwYgHryu2xE",
-			wantErr:  false,
-		},
-		{
-			name:     "Figma design URL with query",
-			input:    "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=339-27545&p=f&m=dev",
-			expected: "grnVU2vAihHXwYgHryu2xE",
-			wantErr:  false,
-		},
-		{
-			name:     "Figma file URL",
-			input:    "https://www.figma.com/file/abc123/My-Design",
-			expected: "abc123",
-			wantErr:  false,
-		},
-		{
-			name:     "Figma URL without design or file",
-			input:    "https://www.figma.com/community/abc",
-			expected: "",
-			wantErr:  true,
-		},
-		{
-			name:     "URL with http prefix but invalid format",
-			input:    "http:///example",
-			expected: "",
-			wantErr:  true,
-		},
-		{
-			name:     "URL missing file ID after design",
-			input:    "https://www.figma.com/design/",
-			expected: "",
-			wantErr:  true,
-		},
-		{
-			name:     "HTTP URL",
-			input:    "http://figma.com/design/abc123/Title",
-			expected: "abc123",
-			wantErr:  false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := extractFileID(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("extractFileID() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.expected {
-				t.Errorf("extractFileID() = %v, expected %v", got, tt.expected)
-			}
-		})
-	}
-}
 
 func TestParseInput(t *testing.T) {
 	tests := []struct {
@@ -136,24 +73,24 @@ func TestParseInput(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseInput(tt.input)
+			got, err := figma.ParseInput(tt.input)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("parseInput() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseInput() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if err != nil {
 				return
 			}
-			if got.fileID != tt.expectedID {
-				t.Errorf("parseInput() fileID = %v, expected %v", got.fileID, tt.expectedID)
+			if got.FileID != tt.expectedID {
+				t.Errorf("ParseInput() FileID = %v, expected %v", got.FileID, tt.expectedID)
 			}
-			if len(got.nodeIDs) != len(tt.expectedIDs) {
-				t.Errorf("parseInput() nodeIDs length = %v, expected %v", len(got.nodeIDs), len(tt.expectedIDs))
+			if len(got.NodeIDs) != len(tt.expectedIDs) {
+				t.Errorf("ParseInput() NodeIDs length = %v, expected %v", len(got.NodeIDs), len(tt.expectedIDs))
 				return
 			}
-			for i := range got.nodeIDs {
-				if got.nodeIDs[i] != tt.expectedIDs[i] {
-					t.Errorf("parseInput() nodeIDs[%d] = %v, expected %v", i, got.nodeIDs[i], tt.expectedIDs[i])
+			for i := range got.NodeIDs {
+				if got.NodeIDs[i] != tt.expectedIDs[i] {
+					t.Errorf("ParseInput() NodeIDs[%d] = %v, expected %v", i, got.NodeIDs[i], tt.expectedIDs[i])
 				}
 			}
 		})
