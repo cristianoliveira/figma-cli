@@ -6,6 +6,10 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 )
 
+// blackColor is skipped when building a palette: it is the default "no color"
+// and would otherwise dominate every result.
+const blackColor = "#000000"
+
 // ColorEntry is one color and where it appears, used by `figma colors`.
 type ColorEntry struct {
 	Color string   `json:"color"`
@@ -53,7 +57,7 @@ func walkColors(value any, colorMap map[string]*ColorEntry) {
 				continue
 			}
 			c := colorHexFromPaint(paint)
-			if c == "" || c == "#000000" {
+			if c == "" || c == blackColor {
 				continue
 			}
 			entry, exists := colorMap[c]
@@ -73,7 +77,7 @@ func walkColors(value any, colorMap map[string]*ColorEntry) {
 
 	if bg, ok := object["backgroundColor"].(map[string]any); ok {
 		c := colorHexFromPaint(bg)
-		if c != "" && c != "#000000" {
+		if c != "" && c != blackColor {
 			entry, exists := colorMap[c]
 			if !exists {
 				entry = &ColorEntry{Color: c, Usage: []string{}}
