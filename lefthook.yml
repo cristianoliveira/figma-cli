@@ -12,7 +12,7 @@ pre-commit:
     # Go formatting with gofmt
     gofmt:
       glob: "*.go"
-      run: go fmt {staged_files}
+      run: for f in {staged_files}; do go fmt "$f"; done
       stage_fixed: true
 
     # Fix imports with goimports
