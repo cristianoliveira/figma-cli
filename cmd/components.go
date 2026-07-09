@@ -33,19 +33,9 @@ var componentsCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		var outputValue any
+		var outputValue any = extract.ExtractComponentsFromDocuments(documents)
 		if raw {
-			components := make([]map[string]any, 0)
-			for _, document := range documents {
-				components = append(components, extract.ExtractRawComponents(document)...)
-			}
-			outputValue = components
-		} else {
-			components := make([]extract.ComponentOutput, 0)
-			for _, document := range documents {
-				components = append(components, extract.ExtractComponents(document)...)
-			}
-			outputValue = components
+			outputValue = extract.ExtractRawComponentsFromDocuments(documents)
 		}
 		if nameFilter != "" {
 			outputValue = extract.FilterByName(outputValue, nameFilter)

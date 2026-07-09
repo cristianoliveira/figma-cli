@@ -27,6 +27,24 @@ type ComponentOutput struct {
 	Typography        typographyOutput `json:"typography,omitempty"`
 }
 
+// ExtractComponentsFromDocuments extracts and combines multiple node subtrees.
+func ExtractComponentsFromDocuments(documents []any) []ComponentOutput {
+	components := make([]ComponentOutput, 0)
+	for _, document := range documents {
+		components = append(components, ExtractComponents(document)...)
+	}
+	return components
+}
+
+// ExtractRawComponentsFromDocuments extracts and combines raw node subtrees.
+func ExtractRawComponentsFromDocuments(documents []any) []map[string]any {
+	components := make([]map[string]any, 0)
+	for _, document := range documents {
+		components = append(components, ExtractRawComponents(document)...)
+	}
+	return components
+}
+
 // ExtractComponents walks a document and returns a ComponentOutput per node.
 func ExtractComponents(value any) []ComponentOutput {
 	object, ok := value.(map[string]any)

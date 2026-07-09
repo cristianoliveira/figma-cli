@@ -82,6 +82,33 @@ func TestExtractComponents(t *testing.T) {
 	})
 }
 
+func TestExtractComponentsFromDocuments(t *testing.T) {
+	documents := []any{
+		map[string]any{"id": "1:1", "name": "First", "type": "FRAME"},
+		map[string]any{"id": "2:2", "name": "Second", "type": "FRAME"},
+	}
+
+	got := ExtractComponentsFromDocuments(documents)
+
+	assert.Len(t, got, 2)
+	assert.Equal(t, "1:1", got[0].ID)
+	assert.Equal(t, "2:2", got[1].ID)
+}
+
+func TestExtractRawComponentsFromDocuments(t *testing.T) {
+	documents := []any{
+		map[string]any{"id": "1:1", "children": []any{map[string]any{"id": "1:2"}}},
+		map[string]any{"id": "2:2"},
+	}
+
+	got := ExtractRawComponentsFromDocuments(documents)
+
+	assert.Len(t, got, 3)
+	assert.Equal(t, "1:1", got[0]["id"])
+	assert.Equal(t, "1:2", got[1]["id"])
+	assert.Equal(t, "2:2", got[2]["id"])
+}
+
 func TestExtractRawComponents(t *testing.T) {
 	const buttonID = "1:1"
 	document := map[string]any{
