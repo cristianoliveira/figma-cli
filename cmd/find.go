@@ -7,6 +7,7 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -47,13 +48,18 @@ var findCmd = &cobra.Command{
 		}
 
 		client := figma.NewClient(token)
-		figmaJSON, err := client.FetchJSON(apiURL)
-		if err != nil {
+		var resp api.GetFileResponse
+		if err := client.Fetch(apiURL, &resp); err != nil {
 			fmt.Fprintf(os.Stderr, "error fetching Figma file: %v\n", err)
 			os.Exit(1)
 		}
+		doc, err := figma.UnmarshalDocument(resp.Document)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error parsing document: %v\n", err)
+			os.Exit(1)
+		}
 
-		matches := findLayersInFigmaJSON(figmaJSON, layerName)
+		matches := findLayersByName(doc, layerName)
 		output, err := json.MarshalIndent(map[string]any{"name": layerName, "matches": matches}, "", "  ")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error formatting output: %v\n", err)
@@ -61,30 +67,6 @@ var findCmd = &cobra.Command{
 		}
 		fmt.Println(string(output))
 	},
-}
-
-func findLayersInFigmaJSON(figmaJSON map[string]any, layerName string) []layerMatchOutput {
-	if document, ok := figmaJSON["document"]; ok {
-		return findLayersByName(document, layerName)
-	}
-
-	var matches []layerMatchOutput
-	nodes, ok := figmaJSON["nodes"].(map[string]any)
-	if !ok {
-		return matches
-	}
-	for _, node := range nodes {
-		nodeObject, ok := node.(map[string]any)
-		if !ok {
-			continue
-		}
-		document, ok := nodeObject["document"]
-		if !ok {
-			continue
-		}
-		matches = append(matches, findLayersByName(document, layerName)...)
-	}
-	return matches
 }
 
 func findLayersByName(value any, layerName string) []layerMatchOutput {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -36,23 +37,42 @@ var textsCmd = &cobra.Command{
 		client := figma.NewClient(token)
 
 		var apiURL string
+		var doc any
 		if len(input.NodeIDs) > 0 {
 			apiURL, err = figma.BuildNodesURL(input.FileID, input.NodeIDs)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error building API URL: %v\n", err)
+				os.Exit(1)
+			}
+			var resp api.GetFileNodesResponse
+			if err := client.Fetch(apiURL, &resp); err != nil {
+				fmt.Fprintf(os.Stderr, "error fetching Figma file: %v\n", err)
+				os.Exit(1)
+			}
+			// Extract document from the first (or only) node
+			for _, node := range resp.Nodes {
+				doc, err = figma.UnmarshalDocument(node.Document)
+				break // Use first node's document
+			}
 		} else {
 			apiURL, err = figma.BuildFileURL(input.FileID, nil, "", "")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error building API URL: %v\n", err)
+				os.Exit(1)
+			}
+			var resp api.GetFileResponse
+			if err := client.Fetch(apiURL, &resp); err != nil {
+				fmt.Fprintf(os.Stderr, "error fetching Figma file: %v\n", err)
+				os.Exit(1)
+			}
+			doc, err = figma.UnmarshalDocument(resp.Document)
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error building API URL: %v\n", err)
+			fmt.Fprintf(os.Stderr, "error parsing document: %v\n", err)
 			os.Exit(1)
 		}
 
-		figmaJSON, err := client.FetchJSON(apiURL)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error fetching Figma file: %v\n", err)
-			os.Exit(1)
-		}
-
-		matches := figma.FindLayerTexts(figmaJSON, layerName, recursive)
+		matches := figma.FindTextByLayerName(doc, layerName, recursive)
 		output, err := json.MarshalIndent(map[string]any{"layer": layerName, "matches": matches}, "", "  ")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error formatting output: %v\n", err)

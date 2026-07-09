@@ -7,6 +7,7 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -46,20 +47,30 @@ var diffTextCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fromJSON, err := client.FetchJSON(fromURL)
-		if err != nil {
+		var fromResp, toResp api.GetFileResponse
+		if err := client.Fetch(fromURL, &fromResp); err != nil {
 			fmt.Fprintf(os.Stderr, "error fetching from version: %v\n", err)
 			os.Exit(1)
 		}
-		toJSON, err := client.FetchJSON(toURL)
-		if err != nil {
+		if err := client.Fetch(toURL, &toResp); err != nil {
 			fmt.Fprintf(os.Stderr, "error fetching to version: %v\n", err)
 			os.Exit(1)
 		}
 
+		fromDoc, err := figma.UnmarshalDocument(fromResp.Document)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error parsing from document: %v\n", err)
+			os.Exit(1)
+		}
+		toDoc, err := figma.UnmarshalDocument(toResp.Document)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error parsing to document: %v\n", err)
+			os.Exit(1)
+		}
+
 		textDiff := figma.DiffText(
-			figma.ExtractTextNodes(fromJSON["document"]),
-			figma.ExtractTextNodes(toJSON["document"]),
+			figma.ExtractTextNodes(fromDoc),
+			figma.ExtractTextNodes(toDoc),
 		)
 		output, err := json.MarshalIndent(textDiff, "", "  ")
 		if err != nil {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -118,14 +119,19 @@ var componentsCmd = &cobra.Command{
 		}
 
 		client := figma.NewClient(token)
-		figmaJSON, err := client.FetchJSON(apiURL)
-		if err != nil {
+		var resp api.GetFileResponse
+		if err := client.Fetch(apiURL, &resp); err != nil {
 			fmt.Fprintf(os.Stderr, "error fetching Figma node: %v\n", err)
 			os.Exit(1)
 		}
-		var outputValue any = extractComponentsFromFigmaJSON(figmaJSON)
+		doc, err := figma.UnmarshalDocument(resp.Document)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error parsing document: %v\n", err)
+			os.Exit(1)
+		}
+		var outputValue any = extractComponents(doc)
 		if raw {
-			outputValue = extractRawComponentsFromFigmaJSON(figmaJSON)
+			outputValue = extractRawComponents(doc)
 		}
 		output, err := json.MarshalIndent(outputValue, "", "  ")
 		if err != nil {
@@ -134,28 +140,6 @@ var componentsCmd = &cobra.Command{
 		}
 		fmt.Println(string(output))
 	},
-}
-
-func extractRawComponentsFromFigmaJSON(figmaJSON map[string]any) []map[string]any {
-	if document, ok := figmaJSON["document"]; ok {
-		return extractRawComponents(document)
-	}
-	var components []map[string]any
-	nodes, ok := figmaJSON["nodes"].(map[string]any)
-	if !ok {
-		return components
-	}
-	for _, node := range nodes {
-		nodeObject, ok := node.(map[string]any)
-		if !ok {
-			continue
-		}
-		document, ok := nodeObject["document"]
-		if ok {
-			components = append(components, extractRawComponents(document)...)
-		}
-	}
-	return components
 }
 
 func extractRawComponents(value any) []map[string]any {
@@ -170,28 +154,6 @@ func extractRawComponents(value any) []map[string]any {
 	}
 	for _, child := range children {
 		components = append(components, extractRawComponents(child)...)
-	}
-	return components
-}
-
-func extractComponentsFromFigmaJSON(figmaJSON map[string]any) []componentOutput {
-	if document, ok := figmaJSON["document"]; ok {
-		return extractComponents(document)
-	}
-	var components []componentOutput
-	nodes, ok := figmaJSON["nodes"].(map[string]any)
-	if !ok {
-		return components
-	}
-	for _, node := range nodes {
-		nodeObject, ok := node.(map[string]any)
-		if !ok {
-			continue
-		}
-		document, ok := nodeObject["document"]
-		if ok {
-			components = append(components, extractComponents(document)...)
-		}
 	}
 	return components
 }

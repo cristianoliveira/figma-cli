@@ -1,8 +1,25 @@
 package figma
 
-import "sort"
+import (
+	"encoding/json"
+	"sort"
+)
 
 const textNodeType = "TEXT"
+
+// UnmarshalDocument converts a typed document node (from the generated API types)
+// into a generic tree for use with the walker functions.
+func UnmarshalDocument(node any) (any, error) {
+	data, err := json.Marshal(node)
+	if err != nil {
+		return nil, err
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return nil, err
+	}
+	return doc, nil
+}
 
 // ExtractTextNodes walks a Figma document tree and collects all TEXT nodes.
 func ExtractTextNodes(value any) []TextNode {
@@ -16,31 +33,6 @@ func ExtractTextNodes(value any) []TextNode {
 func FindTextByLayerName(value any, layerName string, recursive bool) []LayerTextOutput {
 	var matches []LayerTextOutput
 	walkLayers(value, layerName, recursive, &matches)
-	return matches
-}
-
-// FindLayerTexts extracts texts from a Figma JSON response that may contain "document" or "nodes".
-func FindLayerTexts(figmaJSON map[string]any, layerName string, recursive bool) []LayerTextOutput {
-	if document, ok := figmaJSON["document"]; ok {
-		return FindTextByLayerName(document, layerName, recursive)
-	}
-
-	var matches []LayerTextOutput
-	nodes, ok := figmaJSON["nodes"].(map[string]any)
-	if !ok {
-		return matches
-	}
-	for _, node := range nodes {
-		nodeObject, ok := node.(map[string]any)
-		if !ok {
-			continue
-		}
-		document, ok := nodeObject["document"]
-		if !ok {
-			continue
-		}
-		matches = append(matches, FindTextByLayerName(document, layerName, recursive)...)
-	}
 	return matches
 }
 
