@@ -38,6 +38,38 @@ func TestParseInput(t *testing.T) {
 	}
 }
 
+func TestParseDiscoveryInput(t *testing.T) {
+	tests := []struct {
+		name    string
+		parse   func(string) (string, error)
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{name: "bare team ID", parse: ParseTeamInput, input: "123456789", want: "123456789"},
+		{name: "files team URL", parse: ParseTeamInput, input: "https://www.figma.com/files/team/123456789/Wire", want: "123456789"},
+		{name: "short team URL", parse: ParseTeamInput, input: "https://figma.com/team/123456789/Wire", want: "123456789"},
+		{name: "bare project ID", parse: ParseProjectInput, input: "987654321", want: "987654321"},
+		{name: "files project URL", parse: ParseProjectInput, input: "https://www.figma.com/files/project/987654321/Design-System", want: "987654321"},
+		{name: "short project URL", parse: ParseProjectInput, input: "https://figma.com/project/987654321/Design-System", want: "987654321"},
+		{name: "non-numeric bare ID", parse: ParseTeamInput, input: "team-123", wantErr: true},
+		{name: "wrong URL kind", parse: ParseTeamInput, input: "https://figma.com/files/project/987/Design", wantErr: true},
+		{name: "foreign host", parse: ParseProjectInput, input: "https://example.com/files/project/987/Design", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.parse(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestParseInputNormalizesNodeIDs(t *testing.T) {
 	// node-id uses URL hyphens; the API expects colons. Covered by the table above,
 	// this pins the behaviour explicitly.

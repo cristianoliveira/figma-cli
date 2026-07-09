@@ -33,6 +33,15 @@ func TestBuildVersionsURL(t *testing.T) {
 	assert.Equal(t, "https://api.figma.com/v1/files/grnVU2vAihHXwYgHryu2xE/versions", got)
 }
 
+func TestBuildTeamProjectsURL(t *testing.T) {
+	assert.Equal(t, "https://api.figma.com/v1/teams/123/projects", BuildTeamProjectsURL("123"))
+}
+
+func TestBuildProjectFilesURL(t *testing.T) {
+	assert.Equal(t, "https://api.figma.com/v1/projects/987/files", BuildProjectFilesURL("987", false))
+	assert.Equal(t, "https://api.figma.com/v1/projects/987/files?branch_data=true", BuildProjectFilesURL("987", true))
+}
+
 func TestBuildExportURL(t *testing.T) {
 	got, err := BuildExportURL("file123", []string{"1:2"}, "png")
 

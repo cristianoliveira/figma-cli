@@ -3,6 +3,7 @@ package figma
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -15,6 +16,47 @@ type FileInput struct {
 // ParseInput extracts file ID and node IDs from either a file ID or a Figma URL.
 // Node IDs are extracted from the node-id query parameter (multiple node IDs can be comma-separated).
 // The node-id format uses hyphens (e.g., "339-27545") which are converted to colons for the API.
+var numericID = regexp.MustCompile(`^[0-9]+$`)
+
+// ParseTeamInput extracts a numeric team ID from a bare ID or Figma team URL.
+func ParseTeamInput(input string) (string, error) {
+	return parseDiscoveryInput(input, "team")
+}
+
+// ParseProjectInput extracts a numeric project ID from a bare ID or Figma project URL.
+func ParseProjectInput(input string) (string, error) {
+	return parseDiscoveryInput(input, "project")
+}
+
+func parseDiscoveryInput(input, kind string) (string, error) {
+	if !strings.HasPrefix(input, "http://") && !strings.HasPrefix(input, "https://") {
+		if numericID.MatchString(input) {
+			return input, nil
+		}
+		return "", fmt.Errorf("invalid %s ID %q: expected a numeric ID or Figma %s URL", kind, input, kind)
+	}
+
+	u, err := url.Parse(input)
+	if err != nil {
+		return "", fmt.Errorf("invalid %s URL: %w", kind, err)
+	}
+	if u.Hostname() != "figma.com" && u.Hostname() != "www.figma.com" {
+		return "", fmt.Errorf("invalid %s URL: expected figma.com host", kind)
+	}
+
+	segments := strings.Split(strings.Trim(u.Path, "/"), "/")
+	for i, segment := range segments {
+		if segment != kind {
+			continue
+		}
+		if i+1 < len(segments) && numericID.MatchString(segments[i+1]) {
+			return segments[i+1], nil
+		}
+		return "", fmt.Errorf("invalid %s URL: missing numeric ID after /%s/", kind, kind)
+	}
+	return "", fmt.Errorf("invalid %s URL: path does not contain /%s/", kind, kind)
+}
+
 func ParseInput(input string) (*FileInput, error) {
 	if !strings.HasPrefix(input, "http://") && !strings.HasPrefix(input, "https://") {
 		return &FileInput{FileID: input}, nil

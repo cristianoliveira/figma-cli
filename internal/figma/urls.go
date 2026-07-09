@@ -49,6 +49,20 @@ func BuildMeURL() string {
 	return baseURL + "/me"
 }
 
+// BuildTeamProjectsURL builds the API URL for listing a team's projects.
+func BuildTeamProjectsURL(teamID string) string {
+	return fmt.Sprintf("%s/teams/%s/projects", baseURL, teamID)
+}
+
+// BuildProjectFilesURL builds the API URL for listing a project's files.
+func BuildProjectFilesURL(projectID string, branchData bool) string {
+	raw := fmt.Sprintf("%s/projects/%s/files", baseURL, projectID)
+	if !branchData {
+		return raw
+	}
+	return raw + "?branch_data=true"
+}
+
 // BuildVersionsURL builds the API URL for fetching version history of a Figma file.
 func BuildVersionsURL(fileID string) string {
 	return fmt.Sprintf("%s/files/%s/versions", baseURL, fileID)
