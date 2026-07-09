@@ -16,8 +16,8 @@ Examples:
   figma versions grnVU2vAihHXwYgHryu2xE
   figma versions https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=4-1082&p=f&m=dev`,
 	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		cli.RunSimpleFetch(cmd, args, func(fileID string) (string, error) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cli.RunSimpleFetch(cmd, args, func(fileID string) (string, error) {
 			return figma.BuildVersionsURL(fileID), nil
 		}, "versions")
 	},

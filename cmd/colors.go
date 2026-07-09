@@ -13,28 +13,29 @@ var colorsCmd = &cobra.Command{
 	Use:   "colors [figma-url-or-file-id]",
 	Short: "Extract the color palette from a Figma node",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		nodeID, _ := cmd.Flags().GetString("id")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		if len(nodeIDs) == 0 {
-			cli.Die(fmt.Errorf("colors requires --id or a Figma URL with node-id"))
+			return fmt.Errorf("colors requires --id or a Figma URL with node-id")
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		palette := extract.CollectColors(doc)
 		if err := cli.NewPrinter(cmd).JSON(palette); err != nil {
-			cli.Die(err)
+			return err
 		}
+		return nil
 	},
 }
 

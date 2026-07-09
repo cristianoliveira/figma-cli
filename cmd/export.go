@@ -13,39 +13,40 @@ var exportCmd = &cobra.Command{
 	Use:   "export [figma-url-with-node-id]",
 	Short: "Export a Figma node asset",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		format, _ := cmd.Flags().GetString("format")
 		outputPath, _ := cmd.Flags().GetString("output")
 		nodeID, _ := cmd.Flags().GetString("id")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		if len(nodeIDs) == 0 {
-			cli.Die(fmt.Errorf("export requires --id or a Figma URL with node-id"))
+			return fmt.Errorf("export requires --id or a Figma URL with node-id")
 		}
 		if outputPath == "" {
 			outputPath = cli.DefaultExportOutputPath(input.FileID, nodeIDs[0], format)
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		apiURL, err := figma.BuildExportURL(input.FileID, []string{nodeIDs[0]}, format)
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		assetURL, err := figma.FetchExportURL(client, apiURL, nodeIDs[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		if err := cli.DownloadFile(http.DefaultClient, outputPath, assetURL); err != nil {
-			cli.Die(err)
+			return err
 		}
 		if err := cli.NewPrinter(cmd).File(outputPath, map[string]any{"format": format, "node": nodeIDs[0]}); err != nil {
-			cli.Die(err)
+			return err
 		}
+		return nil
 	},
 }
 

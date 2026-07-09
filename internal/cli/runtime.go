@@ -4,7 +4,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/cristianoliveira/figma-cli/internal/env"
@@ -12,13 +11,6 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/spf13/cobra"
 )
-
-// Die prints err to stderr and exits with status 1.
-// It is the single error-exit path, so wording and exit code live in one place.
-func Die(err error) {
-	fmt.Fprintln(os.Stderr, "error:", err)
-	os.Exit(1)
-}
 
 // NewPrinter builds an output.Printer bound to stdout, reading the global
 // --json flag from cmd. Centralising this keeps the flag lookup in one place

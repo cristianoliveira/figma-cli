@@ -25,39 +25,40 @@ batchable, and CI-safe. Semantic token names (--Base-Primary) are only available
 via Variables (Enterprise); use 'figma tokens' for the color palette.
 `,
 	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		nodeID, _ := cmd.Flags().GetString("id")
 		outputPath, _ := cmd.Flags().GetString("output")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		if len(nodeIDs) == 0 {
-			cli.Die(fmt.Errorf("css requires --id or a Figma URL with node-id"))
+			return fmt.Errorf("css requires --id or a Figma URL with node-id")
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		rules := extract.ExtractCSSRules(doc)
 		out := extract.FormatCSSRules(rules)
 		if outputPath != "" {
 			if err := os.WriteFile(outputPath, []byte(out), 0o644); err != nil {
-				cli.Die(err)
+				return err
 			}
 			if err := cli.NewPrinter(cmd).File(outputPath, map[string]any{"format": "css", "bytes": len(out)}); err != nil {
-				cli.Die(err)
+				return err
 			}
-			return
+			return nil
 		}
 		if err := cli.NewPrinter(cmd).Text("css", out); err != nil {
-			cli.Die(err)
+			return err
 		}
+		return nil
 	},
 }
 

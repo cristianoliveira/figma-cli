@@ -13,29 +13,30 @@ var findCmd = &cobra.Command{
 	Use:   "find [figma-url-or-file-id]",
 	Short: "Find Figma layers by name",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		layerName, _ := cmd.Flags().GetString("name")
 		nodeID, _ := cmd.Flags().GetString("id")
 		if layerName == "" {
-			cli.Die(fmt.Errorf("--name is required"))
+			return fmt.Errorf("--name is required")
 		}
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		matches := extract.FindLayersByName(doc, layerName)
 		if err := cli.NewPrinter(cmd).JSON(map[string]any{"name": layerName, "matches": matches}); err != nil {
-			cli.Die(err)
+			return err
 		}
+		return nil
 	},
 }
 

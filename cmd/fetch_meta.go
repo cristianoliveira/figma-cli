@@ -19,29 +19,30 @@ Examples:
   # Using Figma URL:
   figma-cli fetch-meta https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=339-27545`,
 	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 
 		apiURL, err := figma.BuildFileURL(input.FileID, input.NodeIDs, "", "1")
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 
 		result, err := client.FetchJSON(apiURL)
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 
 		if err := cli.NewPrinter(cmd).JSON(result); err != nil {
-			cli.Die(err)
+			return err
 		}
+		return nil
 	},
 }
 

@@ -21,14 +21,14 @@ Examples:
   figma comments https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=4-1082&p=f&m=dev
   figma comments --id 20089:685897 <file-url>`,
 	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		var nodeID string
 		if commentsNodeID != "" {
@@ -37,7 +37,7 @@ Examples:
 		apiURL := figma.BuildCommentsURL(input.FileID, nodeID)
 		var response api.GetCommentsResponse
 		if err := client.Fetch(apiURL, &response); err != nil {
-			cli.Die(err)
+			return err
 		}
 		outputs := make([]extract.CommentOutput, 0, len(response.Comments))
 		for _, c := range response.Comments {
@@ -55,8 +55,9 @@ Examples:
 			outputs = append(outputs, out)
 		}
 		if err := cli.NewPrinter(cmd).JSON(outputs); err != nil {
-			cli.Die(err)
+			return err
 		}
+		return nil
 	},
 }
 

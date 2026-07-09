@@ -13,25 +13,25 @@ var componentsCmd = &cobra.Command{
 	Use:   "components [figma-url-or-file-id]",
 	Short: "List descendant nodes within a Figma element as JSON",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		nodeID, _ := cmd.Flags().GetString("id")
 		nameFilter, _ := cmd.Flags().GetString("name")
 		raw, _ := cmd.Flags().GetBool("raw")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		if len(nodeIDs) == 0 {
-			cli.Die(fmt.Errorf("components requires --id or a Figma URL with node-id"))
+			return fmt.Errorf("components requires --id or a Figma URL with node-id")
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		var outputValue any = extract.ExtractComponents(doc)
 		if raw {
@@ -41,8 +41,9 @@ var componentsCmd = &cobra.Command{
 			outputValue = extract.FilterByName(outputValue, nameFilter)
 		}
 		if err := cli.NewPrinter(cmd).JSON(outputValue); err != nil {
-			cli.Die(err)
+			return err
 		}
+		return nil
 	},
 }
 

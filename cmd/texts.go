@@ -14,20 +14,20 @@ var textsCmd = &cobra.Command{
 	Use:   "texts [file-id-or-url]",
 	Short: "Extract text from Figma layers",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		layerName, _ := cmd.Flags().GetString("layer")
 		recursive, _ := cmd.Flags().GetBool("recursive")
 		if layerName == "" {
-			cli.Die(fmt.Errorf("--layer is required"))
+			return fmt.Errorf("--layer is required")
 		}
 
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 
 		var doc any
@@ -35,16 +35,16 @@ var textsCmd = &cobra.Command{
 			// Specific nodes use the /nodes endpoint, which returns one document per node.
 			nodesURL, err := figma.BuildNodesURL(input.FileID, input.NodeIDs)
 			if err != nil {
-				cli.Die(err)
+				return err
 			}
 			var resp api.GetFileNodesResponse
 			if err := client.Fetch(nodesURL, &resp); err != nil {
-				cli.Die(err)
+				return err
 			}
 			for _, node := range resp.Nodes {
 				d, err := figma.UnmarshalDocument(node.Document)
 				if err != nil {
-					cli.Die(err)
+					return err
 				}
 				doc = d
 				break
@@ -53,14 +53,15 @@ var textsCmd = &cobra.Command{
 			var err error
 			doc, err = figma.FetchDocument(client, input.FileID, nil, "", "")
 			if err != nil {
-				cli.Die(err)
+				return err
 			}
 		}
 
 		matches := extract.FindTextByLayerName(doc, layerName, recursive)
 		if err := cli.NewPrinter(cmd).JSON(map[string]any{"layer": layerName, "matches": matches}); err != nil {
-			cli.Die(err)
+			return err
 		}
+		return nil
 	},
 }
 

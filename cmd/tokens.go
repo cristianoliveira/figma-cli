@@ -32,41 +32,42 @@ falls back to scanning document nodes and naming tokens by value -- this is
 on by default so raw-fill files still produce output. Pass --scan-fallback=false
 for named tokens only. Pin --source in CI for deterministic output.`,
 	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if tokensTeamURL != "" {
-			cli.Die(fmt.Errorf("--team is not supported yet; pass a file URL or file key"))
+			return fmt.Errorf("--team is not supported yet; pass a file URL or file key")
 		}
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 
 		tokens, err := collectTokens(client, input.FileID, input.NodeIDs, tokensSource, tokensMode, tokensScanFallback)
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 
 		out, err := extract.FormatTokens(tokens, tokensFormat, tokensPrefix)
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 
 		if tokensOutput != "" {
 			if err := os.WriteFile(tokensOutput, []byte(out), 0o644); err != nil {
-				cli.Die(err)
+				return err
 			}
 			if err := cli.NewPrinter(cmd).File(tokensOutput, map[string]any{"format": tokensFormat, "bytes": len(out)}); err != nil {
-				cli.Die(err)
+				return err
 			}
-			return
+			return nil
 		}
 		if err := cli.NewPrinter(cmd).Text("tokens", out); err != nil {
-			cli.Die(err)
+			return err
 		}
+		return nil
 	},
 }
 

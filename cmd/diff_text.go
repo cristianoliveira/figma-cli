@@ -13,29 +13,29 @@ var diffTextCmd = &cobra.Command{
 	Use:   "text [file-id-or-url] --from version-id --to version-id",
 	Short: "Diff text nodes between two Figma file versions",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fromVersion, _ := cmd.Flags().GetString("from")
 		toVersion, _ := cmd.Flags().GetString("to")
 		if fromVersion == "" || toVersion == "" {
-			cli.Die(fmt.Errorf("--from and --to are required"))
+			return fmt.Errorf("--from and --to are required")
 		}
 
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 
 		fromDoc, err := figma.FetchDocument(client, input.FileID, input.NodeIDs, fromVersion, "")
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 		toDoc, err := figma.FetchDocument(client, input.FileID, input.NodeIDs, toVersion, "")
 		if err != nil {
-			cli.Die(err)
+			return err
 		}
 
 		textDiff := extract.DiffText(
@@ -43,8 +43,9 @@ var diffTextCmd = &cobra.Command{
 			extract.ExtractTextNodes(toDoc),
 		)
 		if err := cli.NewPrinter(cmd).JSON(textDiff); err != nil {
-			cli.Die(err)
+			return err
 		}
+		return nil
 	},
 }
 
