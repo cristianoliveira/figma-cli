@@ -29,13 +29,23 @@ var componentsCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
+		documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
 		if err != nil {
 			return err
 		}
-		var outputValue any = extract.ExtractComponents(doc)
+		var outputValue any
 		if raw {
-			outputValue = extract.ExtractRawComponents(doc)
+			components := make([]map[string]any, 0)
+			for _, document := range documents {
+				components = append(components, extract.ExtractRawComponents(document)...)
+			}
+			outputValue = components
+		} else {
+			components := make([]extract.ComponentOutput, 0)
+			for _, document := range documents {
+				components = append(components, extract.ExtractComponents(document)...)
+			}
+			outputValue = components
 		}
 		if nameFilter != "" {
 			outputValue = extract.FilterByName(outputValue, nameFilter)

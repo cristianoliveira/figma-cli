@@ -48,6 +48,48 @@ func TestFetchDocument_NodeIDsVersionDepth(t *testing.T) {
 	}
 }
 
+func TestFetchNodeDocuments(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/files/FILE/nodes", r.URL.Path)
+		assert.Equal(t, "1:2,3:4", r.URL.Query().Get("ids"))
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"nodes": map[string]any{
+				"1:2": map[string]any{"document": map[string]any{"id": "1:2", "name": "First", "type": "FRAME"}},
+				"3:4": map[string]any{"document": map[string]any{"id": "3:4", "name": "Second", "type": "FRAME"}},
+			},
+		})
+	}))
+	defer server.Close()
+
+	withBaseURL(t, server.URL)
+
+	docs, err := FetchNodeDocuments(NewClient("test-token"), "FILE", []string{"1:2", "3:4"})
+
+	require.NoError(t, err)
+	require.Len(t, docs, 2)
+	assert.Equal(t, "First", docs[0].(map[string]any)["name"])
+	assert.Equal(t, "Second", docs[1].(map[string]any)["name"])
+}
+
+func TestFetchNodeDocumentsRequiresNodeIDs(t *testing.T) {
+	_, err := FetchNodeDocuments(NewClient("test-token"), "FILE", nil)
+
+	require.Error(t, err)
+}
+
+func TestFetchNodeDocumentsMissingNode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"nodes":{"1:2":null}}`))
+	}))
+	defer server.Close()
+	withBaseURL(t, server.URL)
+
+	_, err := FetchNodeDocuments(NewClient("test-token"), "FILE", []string{"1:2"})
+
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "1:2")
+}
+
 func TestFetchDocument_ServerError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

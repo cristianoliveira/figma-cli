@@ -2,6 +2,7 @@ package figma
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 )
@@ -19,6 +20,40 @@ func FetchDocument(client *Client, fileID string, nodeIDs []string, version, dep
 		return nil, err
 	}
 	return UnmarshalDocument(resp.Document)
+}
+
+// FetchNodeDocuments fetches only the requested node subtrees, preserving the
+// caller's node ID order. Use this when traversal must not include siblings.
+func FetchNodeDocuments(client *Client, fileID string, nodeIDs []string) ([]any, error) {
+	if len(nodeIDs) == 0 {
+		return nil, fmt.Errorf("at least one node ID is required")
+	}
+	u, err := BuildNodesURL(fileID, nodeIDs)
+	if err != nil {
+		return nil, err
+	}
+	var resp api.GetFileNodesResponse
+	if err := client.Fetch(u, &resp); err != nil {
+		return nil, err
+	}
+
+	documents := make([]any, 0, len(nodeIDs))
+	for _, nodeID := range nodeIDs {
+		node, ok := resp.Nodes[nodeID]
+		if !ok {
+			return nil, fmt.Errorf("node %s was not returned by Figma", nodeID)
+		}
+		document, err := UnmarshalDocument(node.Document)
+		if err != nil {
+			return nil, fmt.Errorf("decoding node %s: %w", nodeID, err)
+		}
+		documentObject, ok := document.(map[string]any)
+		if !ok || documentObject["id"] == nil {
+			return nil, fmt.Errorf("node %s was not returned by Figma", nodeID)
+		}
+		documents = append(documents, document)
+	}
+	return documents, nil
 }
 
 // UnmarshalDocument converts a typed document node (from the generated API types)
