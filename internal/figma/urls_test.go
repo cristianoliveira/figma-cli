@@ -54,3 +54,19 @@ func TestBuildExportURLRequiresFormat(t *testing.T) {
 		t.Fatal("BuildExportURL() error = nil, expected error")
 	}
 }
+
+func TestBuildStylesURL(t *testing.T) {
+	got := BuildStylesURL("file123")
+	expected := "https://api.figma.com/v1/files/file123/styles"
+	if got != expected {
+		t.Errorf("BuildStylesURL() = %v, expected %v", got, expected)
+	}
+}
+
+func TestBuildVariablesURL(t *testing.T) {
+	got := BuildVariablesURL("file123")
+	expected := "https://api.figma.com/v1/files/file123/variables/local"
+	if got != expected {
+		t.Errorf("BuildVariablesURL() = %v, expected %v", got, expected)
+	}
+}

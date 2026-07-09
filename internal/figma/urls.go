@@ -49,6 +49,17 @@ func BuildVersionsURL(fileID string) string {
 	return fmt.Sprintf("%s/files/%s/versions", baseURL, fileID)
 }
 
+// BuildStylesURL builds the API URL for listing the published styles of a file.
+func BuildStylesURL(fileID string) string {
+	return fmt.Sprintf("%s/files/%s/styles", baseURL, fileID)
+}
+
+// BuildVariablesURL builds the API URL for the local variables of a file
+// (Figma's design-token system; requires Enterprise org access).
+func BuildVariablesURL(fileID string) string {
+	return fmt.Sprintf("%s/files/%s/variables/local", baseURL, fileID)
+}
+
 // BuildCommentsURL builds the API URL for fetching comments of a Figma file.
 // If nodeID is non-empty, filters comments to that node.
 func BuildCommentsURL(fileID string, nodeID string) string {
