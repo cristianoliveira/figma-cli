@@ -94,6 +94,7 @@ var componentsCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		nodeID, _ := cmd.Flags().GetString("id")
+		raw, _ := cmd.Flags().GetBool("raw")
 		input, err := parseInput(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
@@ -119,13 +120,55 @@ var componentsCmd = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "error fetching Figma node: %v\n", err)
 			os.Exit(1)
 		}
-		output, err := json.MarshalIndent(extractComponentsFromFigmaJSON(figmaJSON), "", "  ")
+		var outputValue any = extractComponentsFromFigmaJSON(figmaJSON)
+		if raw {
+			outputValue = extractRawComponentsFromFigmaJSON(figmaJSON)
+		}
+		output, err := json.MarshalIndent(outputValue, "", "  ")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error formatting output: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Println(string(output))
 	},
+}
+
+func extractRawComponentsFromFigmaJSON(figmaJSON map[string]any) []map[string]any {
+	if document, ok := figmaJSON["document"]; ok {
+		return extractRawComponents(document)
+	}
+	var components []map[string]any
+	nodes, ok := figmaJSON["nodes"].(map[string]any)
+	if !ok {
+		return components
+	}
+	for _, node := range nodes {
+		nodeObject, ok := node.(map[string]any)
+		if !ok {
+			continue
+		}
+		document, ok := nodeObject["document"]
+		if ok {
+			components = append(components, extractRawComponents(document)...)
+		}
+	}
+	return components
+}
+
+func extractRawComponents(value any) []map[string]any {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	components := []map[string]any{object}
+	children, ok := object["children"].([]any)
+	if !ok {
+		return components
+	}
+	for _, child := range children {
+		components = append(components, extractRawComponents(child)...)
+	}
+	return components
 }
 
 func extractComponentsFromFigmaJSON(figmaJSON map[string]any) []componentOutput {
@@ -345,5 +388,6 @@ func colorChannel(value any) int {
 
 func init() {
 	componentsCmd.Flags().String("id", "", "node ID to inspect; accepts 20089:685897 or 20089-685897")
+	componentsCmd.Flags().Bool("raw", false, "output raw Figma node JSON for jq power users")
 	rootCmd.AddCommand(componentsCmd)
 }

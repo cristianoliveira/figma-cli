@@ -3,6 +3,7 @@ package cmd
 import "testing"
 
 func TestExtractComponents(t *testing.T) {
+	const buttonID = "1:1"
 	document := map[string]any{
 		"id":                  "root",
 		"name":                "Root",
@@ -20,7 +21,7 @@ func TestExtractComponents(t *testing.T) {
 		"strokeWeight":        2.0,
 		"strokeAlign":         "INSIDE",
 		"children": []any{
-			map[string]any{"id": "1:1", "name": "Button", "type": "INSTANCE"},
+			map[string]any{"id": buttonID, "name": "Button", "type": "INSTANCE"},
 			map[string]any{"id": "1:2", "name": "Title", "type": "TEXT", "characters": "Hello", "style": map[string]any{"fontFamily": "Inter", "fontSize": 14.0, "fontWeight": 700.0, "letterSpacing": 0.2, "textAlignHorizontal": "CENTER"}},
 		},
 	}
@@ -42,7 +43,7 @@ func TestExtractComponents(t *testing.T) {
 	if got[0].StrokeWeight != 2 || got[0].StrokeAlign != "INSIDE" || got[0].Paints.Strokes[0].Color != "#FF0000" {
 		t.Fatalf("root component strokes = %#v", got[0])
 	}
-	if got[1].ID != "1:1" || got[1].Name != "Button" || got[1].Type != "INSTANCE" {
+	if got[1].ID != buttonID || got[1].Name != "Button" || got[1].Type != "INSTANCE" {
 		t.Fatalf("component = %#v", got[1])
 	}
 	if got[2].Text != "Hello" || got[2].Typography.FontFamily != "Inter" || got[2].Typography.FontWeight != 700 {
@@ -50,6 +51,27 @@ func TestExtractComponents(t *testing.T) {
 	}
 	if got[2].Typography.LetterSpacing != 0.2 || got[2].Typography.TextAlignHorizontal != "CENTER" {
 		t.Fatalf("text typography = %#v", got[2])
+	}
+}
+
+func TestExtractRawComponents(t *testing.T) {
+	const buttonID = "1:1"
+	document := map[string]any{
+		"id":   "root",
+		"name": "Root",
+		"type": "FRAME",
+		"children": []any{
+			map[string]any{"id": buttonID, "name": "Button", "type": "INSTANCE"},
+		},
+	}
+
+	got := extractRawComponents(document)
+
+	if len(got) != 2 {
+		t.Fatalf("raw components = %#v", got)
+	}
+	if got[1]["id"] != buttonID || got[1]["name"] != "Button" {
+		t.Fatalf("raw component = %#v", got[1])
 	}
 }
 
