@@ -31,6 +31,12 @@
 
              # Pre-commit hooks manager
              lefthook
+
+             # OpenAPI code generation (npm package for spec conversion)
+             nodejs
+
+             # Go code generation from OpenAPI specs
+             oapi-codegen
            ];
         };
     });
