@@ -3,9 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
-	"github.com/cristianoliveira/figma-cli/internal/env"
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
@@ -37,14 +36,12 @@ Examples:
 	Run: func(cmd *cobra.Command, args []string) {
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 
-		token, err := env.GetFigmaToken()
+		client, err := cli.LoadClient()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 
 		var nodeID string
@@ -53,11 +50,9 @@ Examples:
 		}
 		apiURL := figma.BuildCommentsURL(input.FileID, nodeID)
 
-		client := figma.NewClient(token)
 		var response api.GetCommentsResponse
 		if err := client.Fetch(apiURL, &response); err != nil {
-			fmt.Fprintf(os.Stderr, "error fetching comments: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 
 		outputs := make([]commentOutput, 0, len(response.Comments))
@@ -78,8 +73,7 @@ Examples:
 
 		result, err := json.MarshalIndent(outputs, "", "  ")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error formatting output: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		fmt.Println(string(result))
 	},

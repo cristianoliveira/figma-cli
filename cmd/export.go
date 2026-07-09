@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cristianoliveira/figma-cli/internal/env"
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
@@ -24,37 +24,30 @@ var exportCmd = &cobra.Command{
 
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		if len(nodeIDs) == 0 {
-			fmt.Fprintln(os.Stderr, "error: export requires --id or a Figma URL with node-id")
-			os.Exit(1)
+			cli.Die(fmt.Errorf("export requires --id or a Figma URL with node-id"))
 		}
 		if outputPath == "" {
 			outputPath = defaultExportOutputPath(input.FileID, nodeIDs[0], format)
 		}
 
-		token, err := env.GetFigmaToken()
+		client, err := cli.LoadClient()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		apiURL, err := figma.BuildExportURL(input.FileID, []string{nodeIDs[0]}, format)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error building export URL: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
-		client := figma.NewClient(token)
 		assetURL, err := fetchExportURL(client, apiURL, nodeIDs[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error fetching export URL: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		if err := downloadFile(http.DefaultClient, outputPath, assetURL); err != nil {
-			fmt.Fprintf(os.Stderr, "error downloading export: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		fmt.Println(outputPath)
 	},

@@ -3,11 +3,9 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
-	"github.com/cristianoliveira/figma-cli/internal/env"
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -38,56 +36,37 @@ var inspectCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		nodeID, _ := cmd.Flags().GetString("id")
 		if nodeID == "" {
-			fmt.Fprintln(os.Stderr, "error: --id is required")
-			os.Exit(1)
+			cli.Die(fmt.Errorf("--id is required"))
 		}
 
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		if len(nodeIDs) == 0 {
-			fmt.Fprintln(os.Stderr, "error: could not resolve node ID")
-			os.Exit(1)
+			cli.Die(fmt.Errorf("could not resolve node ID"))
 		}
 
-		token, err := env.GetFigmaToken()
+		client, err := cli.LoadClient()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 
-		apiURL, err := figma.BuildFileURL(input.FileID, nodeIDs, "", "")
+		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error building URL: %v\n", err)
-			os.Exit(1)
-		}
-
-		client := figma.NewClient(token)
-		var resp api.GetFileResponse
-		if err := client.Fetch(apiURL, &resp); err != nil {
-			fmt.Fprintf(os.Stderr, "error fetching Figma node: %v\n", err)
-			os.Exit(1)
-		}
-		doc, err := figma.UnmarshalDocument(resp.Document)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error parsing document: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 
 		found := findNodeByID(doc, nodeIDs[0])
 		if found == nil {
-			fmt.Fprintf(os.Stderr, "error: node %s not found\n", nodeIDs[0])
-			os.Exit(1)
+			cli.Die(fmt.Errorf("node %s not found", nodeIDs[0]))
 		}
 
 		node := nodeToInspectOutput(found)
 		output, err := json.MarshalIndent(node, "", "  ")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error formatting output: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		fmt.Println(string(output))
 	},

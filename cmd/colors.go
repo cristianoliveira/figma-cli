@@ -3,12 +3,10 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 
-	"github.com/cristianoliveira/figma-cli/internal/env"
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -26,44 +24,27 @@ var colorsCmd = &cobra.Command{
 		nodeID, _ := cmd.Flags().GetString("id")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		if len(nodeIDs) == 0 {
-			fmt.Fprintln(os.Stderr, "error: colors requires --id or a Figma URL with node-id")
-			os.Exit(1)
+			cli.Die(fmt.Errorf("colors requires --id or a Figma URL with node-id"))
 		}
 
-		token, err := env.GetFigmaToken()
+		client, err := cli.LoadClient()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 
-		apiURL, err := figma.BuildFileURL(input.FileID, nodeIDs, "", "")
+		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error building URL: %v\n", err)
-			os.Exit(1)
-		}
-
-		client := figma.NewClient(token)
-		var resp api.GetFileResponse
-		if err := client.Fetch(apiURL, &resp); err != nil {
-			fmt.Fprintf(os.Stderr, "error fetching Figma node: %v\n", err)
-			os.Exit(1)
-		}
-		doc, err := figma.UnmarshalDocument(resp.Document)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error parsing document: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 
 		palette := collectColors(doc)
 		output, err := json.MarshalIndent(palette, "", "  ")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error formatting output: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		fmt.Println(string(output))
 	},

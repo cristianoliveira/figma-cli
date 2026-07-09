@@ -3,9 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
-	"github.com/cristianoliveira/figma-cli/internal/env"
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 )
 
@@ -14,33 +13,27 @@ import (
 func runSimpleFetch(args []string, buildURL func(fileID string) (string, error), label string) {
 	input, err := figma.ParseInput(args[0])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
+		cli.Die(err)
 	}
 
-	token, err := env.GetFigmaToken()
+	client, err := cli.LoadClient()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
+		cli.Die(err)
 	}
 
 	apiURL, err := buildURL(input.FileID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error building %s URL: %v\n", label, err)
-		os.Exit(1)
+		cli.Die(fmt.Errorf("building %s URL: %w", label, err))
 	}
 
-	client := figma.NewClient(token)
 	result, err := client.FetchJSON(apiURL)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error fetching %s: %v\n", label, err)
-		os.Exit(1)
+		cli.Die(fmt.Errorf("fetching %s: %w", label, err))
 	}
 
 	output, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error formatting output: %v\n", err)
-		os.Exit(1)
+		cli.Die(err)
 	}
 	fmt.Println(string(output))
 }

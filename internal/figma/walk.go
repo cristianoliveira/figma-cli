@@ -103,9 +103,9 @@ func walkLayers(value any, layerName string, recursive bool, matches *[]LayerTex
 
 	if object["name"] == layerName {
 		*matches = append(*matches, LayerTextOutput{
-			ID:    stringValue(object["id"]),
-			Name:  stringValue(object["name"]),
-			Type:  stringValue(object["type"]),
+			ID:    StringValue(object["id"]),
+			Name:  StringValue(object["name"]),
+			Type:  StringValue(object["type"]),
 			Texts: textOutputsForLayer(object, recursive),
 		})
 	}
@@ -121,7 +121,7 @@ func walkLayers(value any, layerName string, recursive bool, matches *[]LayerTex
 
 func textOutputsForLayer(object map[string]any, recursive bool) []TextNodeOutput {
 	if object["type"] == textNodeType {
-		return []TextNodeOutput{{ID: stringValue(object["id"]), Name: stringValue(object["name"]), Text: stringValue(object["characters"])}}
+		return []TextNodeOutput{{ID: StringValue(object["id"]), Name: StringValue(object["name"]), Text: StringValue(object["characters"])}}
 	}
 	if recursive {
 		return textNodeOutputs(ExtractTextNodes(object))
@@ -137,7 +137,7 @@ func textOutputsForLayer(object map[string]any, recursive bool) []TextNodeOutput
 		if !ok || childObject["type"] != textNodeType {
 			continue
 		}
-		nodes = append(nodes, TextNode{ID: stringValue(childObject["id"]), Name: stringValue(childObject["name"]), Text: stringValue(childObject["characters"])})
+		nodes = append(nodes, TextNode{ID: StringValue(childObject["id"]), Name: StringValue(childObject["name"]), Text: StringValue(childObject["characters"])})
 	}
 	return textNodeOutputs(nodes)
 }
@@ -154,8 +154,4 @@ func textNodeOutputs(nodes []TextNode) []TextNodeOutput {
 func StringValue(value any) string {
 	text, _ := value.(string)
 	return text
-}
-
-func stringValue(value any) string {
-	return StringValue(value)
 }

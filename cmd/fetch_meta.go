@@ -3,9 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
-	"github.com/cristianoliveira/figma-cli/internal/env"
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
 )
@@ -26,32 +25,26 @@ Examples:
 	Run: func(cmd *cobra.Command, args []string) {
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
-		token, err := env.GetFigmaToken()
+		client, err := cli.LoadClient()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 
 		apiURL, err := figma.BuildFileURL(input.FileID, input.NodeIDs, "", "1")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error building API URL: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 
-		client := figma.NewClient(token)
 		result, err := client.FetchJSON(apiURL)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error fetching Figma file: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 
 		output, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error formatting output: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		fmt.Println(string(output))
 	},

@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"strings"
 
-	"github.com/cristianoliveira/figma-cli/internal/env"
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -101,35 +99,19 @@ var componentsCmd = &cobra.Command{
 		raw, _ := cmd.Flags().GetBool("raw")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		if len(nodeIDs) == 0 {
-			fmt.Fprintln(os.Stderr, "error: components requires --id or a Figma URL with node-id")
-			os.Exit(1)
+			cli.Die(fmt.Errorf("components requires --id or a Figma URL with node-id"))
 		}
-		token, err := env.GetFigmaToken()
+		client, err := cli.LoadClient()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
-		apiURL, err := figma.BuildFileURL(input.FileID, nodeIDs, "", "")
+		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error building components URL: %v\n", err)
-			os.Exit(1)
-		}
-
-		client := figma.NewClient(token)
-		var resp api.GetFileResponse
-		if err := client.Fetch(apiURL, &resp); err != nil {
-			fmt.Fprintf(os.Stderr, "error fetching Figma node: %v\n", err)
-			os.Exit(1)
-		}
-		doc, err := figma.UnmarshalDocument(resp.Document)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error parsing document: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		var outputValue any = extractComponents(doc)
 		if raw {
@@ -140,8 +122,7 @@ var componentsCmd = &cobra.Command{
 		}
 		output, err := json.MarshalIndent(outputValue, "", "  ")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error formatting output: %v\n", err)
-			os.Exit(1)
+			cli.Die(err)
 		}
 		fmt.Println(string(output))
 	},

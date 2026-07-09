@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const baseURL = "https://api.figma.com/v1"
+var baseURL = "https://api.figma.com/v1"
 
 // BuildFileURL builds the API URL for fetching a Figma file.
 func BuildFileURL(fileID string, nodeIDs []string, versionID string, depth string) (string, error) {
