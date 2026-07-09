@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strings"
 
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -96,6 +97,7 @@ var componentsCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		nodeID, _ := cmd.Flags().GetString("id")
+		nameFilter, _ := cmd.Flags().GetString("name")
 		raw, _ := cmd.Flags().GetBool("raw")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
@@ -132,6 +134,9 @@ var componentsCmd = &cobra.Command{
 		var outputValue any = extractComponents(doc)
 		if raw {
 			outputValue = extractRawComponents(doc)
+		}
+		if nameFilter != "" {
+			outputValue = filterByName(outputValue, nameFilter)
 		}
 		output, err := json.MarshalIndent(outputValue, "", "  ")
 		if err != nil {
@@ -353,6 +358,31 @@ func colorChannel(value any) int {
 
 func init() {
 	componentsCmd.Flags().String("id", "", "node ID to inspect; accepts 20089:685897 or 20089-685897")
+	componentsCmd.Flags().String("name", "", "filter nodes by name (case-insensitive substring match)")
 	componentsCmd.Flags().Bool("raw", false, "output raw Figma node JSON for jq power users")
 	rootCmd.AddCommand(componentsCmd)
+}
+
+func filterByName(value any, nameFilter string) any {
+	lower := strings.ToLower(nameFilter)
+	switch v := value.(type) {
+	case []componentOutput:
+		var filtered []componentOutput
+		for _, c := range v {
+			if strings.Contains(strings.ToLower(c.Name), lower) {
+				filtered = append(filtered, c)
+			}
+		}
+		return filtered
+	case []map[string]any:
+		var filtered []map[string]any
+		for _, c := range v {
+			name, _ := c["name"].(string)
+			if strings.Contains(strings.ToLower(name), lower) {
+				filtered = append(filtered, c)
+			}
+		}
+		return filtered
+	}
+	return value
 }
