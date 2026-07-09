@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 )
 
 func TestBuildExportURL(t *testing.T) {
@@ -46,8 +47,9 @@ func TestDefaultExportOutputPath(t *testing.T) {
 }
 
 func TestFetchExportURL(t *testing.T) {
+	imageURL := "https://cdn.example.com/asset.png"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := exportResponse{Images: map[string]string{"1:2": "https://cdn.example.com/asset.png"}}
+		resp := api.GetImagesResponse{Images: map[string]*string{"1:2": &imageURL}}
 		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
@@ -65,7 +67,7 @@ func TestFetchExportURL(t *testing.T) {
 
 func TestFetchExportURLMissingNodeID(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode(exportResponse{Images: map[string]string{}})
+		_ = json.NewEncoder(w).Encode(api.GetImagesResponse{Images: map[string]*string{}})
 	}))
 	defer server.Close()
 

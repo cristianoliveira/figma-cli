@@ -9,12 +9,9 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
-
-type exportResponse struct {
-	Images map[string]string `json:"images"`
-}
 
 var exportCmd = &cobra.Command{
 	Use:   "export [figma-url-with-node-id]",
@@ -68,15 +65,15 @@ func defaultExportOutputPath(fileID string, nodeID string, format string) string
 }
 
 func fetchExportURL(client *figma.Client, apiURL string, nodeID string) (string, error) {
-	var result exportResponse
+	var result api.GetImagesResponse
 	if err := client.Fetch(apiURL, &result); err != nil {
 		return "", fmt.Errorf("fetching export URL: %w", err)
 	}
-	assetURL := result.Images[nodeID]
-	if assetURL == "" {
+	assetURL, ok := result.Images[nodeID]
+	if !ok || assetURL == nil {
 		return "", fmt.Errorf("no export URL returned for node %s", nodeID)
 	}
-	return assetURL, nil
+	return *assetURL, nil
 }
 
 func downloadFile(httpClient *http.Client, outputPath string, fileURL string) error {
