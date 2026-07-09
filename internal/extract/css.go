@@ -19,17 +19,18 @@ type CSSProp struct {
 	Value string
 }
 
-// ExtractCSSRules walks a Figma document subtree and returns one CSS rule per
-// node that contributes at least one meaningful visual/layout property.
-// Output is deterministic: properties are sorted within each rule.
-func ExtractCSSRules(doc any) []CSSRule {
+// ExtractCSSRules returns CSS for the root node and, when recursive is true,
+// every descendant that contributes meaningful visual/layout properties.
+// Recursive defaults to true for callers that omit it.
+func ExtractCSSRules(doc any, recursive ...bool) []CSSRule {
+	includeDescendants := len(recursive) == 0 || recursive[0]
 	seen := map[string]int{}
 	var rules []CSSRule
-	walkCSS(doc, seen, &rules)
+	walkCSS(doc, includeDescendants, seen, &rules)
 	return rules
 }
 
-func walkCSS(value any, seen map[string]int, rules *[]CSSRule) {
+func walkCSS(value any, recursive bool, seen map[string]int, rules *[]CSSRule) {
 	node, ok := value.(map[string]any)
 	if !ok {
 		return
@@ -42,9 +43,12 @@ func walkCSS(value any, seen map[string]int, rules *[]CSSRule) {
 			Props:    sortCSSProps(props),
 		})
 	}
+	if !recursive {
+		return
+	}
 	if children, ok := node["children"].([]any); ok {
 		for _, child := range children {
-			walkCSS(child, seen, rules)
+			walkCSS(child, true, seen, rules)
 		}
 	}
 }

@@ -15,8 +15,9 @@ var cssCmd = &cobra.Command{
 	Short: "Generate CSS rules from a Figma element's layout and styles",
 	Long: `Generate CSS from a Figma node tree.
 
-Walks the node subtree and emits one CSS rule per node that contributes a
-meaningful property (autolayout, fills, borders, radius, text). Layout maps to
+Emits CSS for the selected node. With --recursive, walks its subtree and emits
+one rule per node that contributes a meaningful property (autolayout, fills,
+borders, radius, text). Layout maps to
 flexbox: layoutMode -> display:flex, itemSpacing -> gap, paddings -> shorthand,
 sizing modes -> width/height. Output is deterministic (sorted properties).
 
@@ -28,6 +29,7 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		nodeID, _ := cmd.Flags().GetString("id")
 		outputPath, _ := cmd.Flags().GetString("output")
+		recursive, _ := cmd.Flags().GetBool("recursive")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
 			return err
@@ -40,11 +42,14 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 		if err != nil {
 			return err
 		}
-		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
+		documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
 		if err != nil {
 			return err
 		}
-		rules := extract.ExtractCSSRules(doc)
+		var rules []extract.CSSRule
+		for _, document := range documents {
+			rules = append(rules, extract.ExtractCSSRules(document, recursive)...)
+		}
 		out := extract.FormatCSSRules(rules)
 		if outputPath != "" {
 			if err := os.WriteFile(outputPath, []byte(out), 0o644); err != nil {
@@ -65,5 +70,6 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 func init() {
 	cssCmd.Flags().String("id", "", "node ID to inspect; accepts 20089:685897 or 20089-685897")
 	cssCmd.Flags().String("output", "", "write CSS to a file instead of stdout")
+	cssCmd.Flags().Bool("recursive", false, "include CSS rules from all descendant nodes")
 	rootCmd.AddCommand(cssCmd)
 }

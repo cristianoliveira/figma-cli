@@ -57,6 +57,23 @@ func TestExtractCSSRules_VerticalLayout(t *testing.T) {
 	}
 }
 
+func TestExtractCSSRules_RecursiveControlsDescendantRules(t *testing.T) {
+	doc := map[string]any{
+		"name": "Parent", "layoutMode": "VERTICAL",
+		"children": []any{
+			map[string]any{"name": "Child", "layoutMode": "HORIZONTAL"},
+		},
+	}
+
+	nonRecursive := ExtractCSSRules(doc, false)
+	_, hasChild := findRule(nonRecursive, ".child")
+	assert.False(t, hasChild)
+
+	recursive := ExtractCSSRules(doc, true)
+	_, hasChild = findRule(recursive, ".child")
+	assert.True(t, hasChild)
+}
+
 func TestExtractCSSRules_HorizontalLayoutOmitsDirection(t *testing.T) {
 	doc := map[string]any{"name": "Row", "layoutMode": "HORIZONTAL"}
 	rules := ExtractCSSRules(doc)
