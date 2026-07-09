@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFetchDocument(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/files/FILE" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
+		assert.Equal(t, "/files/FILE", r.URL.Path, "unexpected path")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"document": map[string]any{"id": "0:0", "name": "Root", "type": "DOCUMENT"},
 		})
@@ -23,13 +23,9 @@ func TestFetchDocument(t *testing.T) {
 
 	client := NewClient("test-token")
 	doc, err := FetchDocument(client, "FILE", nil, "", "")
-	if err != nil {
-		t.Fatalf("FetchDocument() error = %v", err)
-	}
+	require.NoError(t, err)
 	name := doc.(map[string]any)["name"]
-	if name != "Root" {
-		t.Errorf("FetchDocument() doc name = %v, want Root", name)
-	}
+	assert.Equal(t, "Root", name)
 }
 
 func TestFetchDocument_NodeIDsVersionDepth(t *testing.T) {
@@ -45,13 +41,10 @@ func TestFetchDocument_NodeIDsVersionDepth(t *testing.T) {
 	withBaseURL(t, server.URL)
 
 	client := NewClient("test-token")
-	if _, err := FetchDocument(client, "FILE", []string{"1:2"}, "v9", "2"); err != nil {
-		t.Fatalf("FetchDocument() error = %v", err)
-	}
+	_, err := FetchDocument(client, "FILE", []string{"1:2"}, "v9", "2")
+	require.NoError(t, err)
 	for _, want := range []string{"ids=1%3A2", "version=v9", "depth=2"} {
-		if !strings.Contains(gotQuery, want) {
-			t.Errorf("query missing %q: %s", want, gotQuery)
-		}
+		assert.Contains(t, gotQuery, want)
 	}
 }
 
@@ -64,9 +57,8 @@ func TestFetchDocument_ServerError(t *testing.T) {
 	withBaseURL(t, server.URL)
 
 	client := NewClient("test-token")
-	if _, err := FetchDocument(client, "FILE", nil, "", ""); err == nil {
-		t.Fatal("FetchDocument() expected error for 500, got nil")
-	}
+	_, err := FetchDocument(client, "FILE", nil, "", "")
+	require.Error(t, err, "FetchDocument() expected error for 500")
 }
 
 // withBaseURL swaps the package baseURL for the duration of the test.

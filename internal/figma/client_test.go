@@ -5,13 +5,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClientFetch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Figma-Token") != "test-token" {
-			t.Errorf("missing auth header")
-		}
+		assert.Equal(t, "test-token", r.Header.Get("X-Figma-Token"), "missing auth header")
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"key": "value"})
 	}))
@@ -21,12 +22,8 @@ func TestClientFetch(t *testing.T) {
 	var got map[string]string
 	err := client.Fetch(server.URL, &got)
 
-	if err != nil {
-		t.Fatalf("Fetch() error = %v", err)
-	}
-	if got["key"] != "value" {
-		t.Errorf("Fetch() got = %v, want key=value", got)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "value", got["key"])
 }
 
 func TestClientFetchNilHTTPDefaults(t *testing.T) {
@@ -41,12 +38,8 @@ func TestClientFetchNilHTTPDefaults(t *testing.T) {
 	var got map[string]int
 	err := client.Fetch(server.URL, &got)
 
-	if err != nil {
-		t.Fatalf("Fetch() with nil HTTP error = %v", err)
-	}
-	if got["ok"] != 1 {
-		t.Errorf("Fetch() got = %v, want ok=1", got)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, 1, got["ok"])
 }
 
 func TestClientFetchErrorStatus(t *testing.T) {
@@ -60,9 +53,7 @@ func TestClientFetchErrorStatus(t *testing.T) {
 	var got map[string]any
 	err := client.Fetch(server.URL, &got)
 
-	if err == nil {
-		t.Fatal("Fetch() expected error for 404, got nil")
-	}
+	require.Error(t, err, "Fetch() expected error for 404")
 }
 
 func TestClientFetchJSON(t *testing.T) {
@@ -75,11 +66,8 @@ func TestClientFetchJSON(t *testing.T) {
 	client := NewClient("test-token")
 	got, err := client.FetchJSON(server.URL)
 
-	if err != nil {
-		t.Fatalf("FetchJSON() error = %v", err)
-	}
+	require.NoError(t, err)
 	items, ok := got["items"].([]any)
-	if !ok || len(items) != 3 {
-		t.Errorf("FetchJSON() got = %v", got)
-	}
+	require.True(t, ok)
+	assert.Len(t, items, 3)
 }

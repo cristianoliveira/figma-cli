@@ -1,6 +1,10 @@
 package extract
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestFindNodeByID(t *testing.T) {
 	doc := map[string]any{
@@ -13,13 +17,11 @@ func TestFindNodeByID(t *testing.T) {
 		},
 	}
 
-	if got := FindNodeByID(doc, "missing"); got != nil {
-		t.Errorf("missing returned %#v, want nil", got)
-	}
+	assert.Nil(t, FindNodeByID(doc, "missing"))
 
 	got := FindNodeByID(doc, "1:3")
-	if got == nil || got["name"] != "C" {
-		t.Fatalf("FindNodeByID(1:3) = %#v, want node C", got)
+	if assert.NotNil(t, got) {
+		assert.Equal(t, "C", got["name"])
 	}
 }
 
@@ -35,16 +37,12 @@ func TestNodeToInspectOutput(t *testing.T) {
 
 	out := NodeToInspectOutput(node)
 
-	if out.ID != "1:1" || out.Name != "Card" || out.Type != "FRAME" {
-		t.Errorf("identity = %#v", out)
-	}
-	if out.Bounds.Width != 10 || out.Bounds.Height != 20 {
-		t.Errorf("bounds = %#v", out.Bounds)
-	}
-	if len(out.Fills) != 1 || out.Fills[0] != "#FF0000" {
-		t.Errorf("fills = %v", out.Fills)
-	}
-	if out.BackgroundColor != "#000000" {
-		t.Errorf("backgroundColor = %q, want #000000", out.BackgroundColor)
-	}
+	assert.Equal(t, "1:1", out.ID)
+	assert.Equal(t, "Card", out.Name)
+	assert.Equal(t, "FRAME", out.Type)
+	assert.Equal(t, 10.0, out.Bounds.Width)
+	assert.Equal(t, 20.0, out.Bounds.Height)
+	assert.Len(t, out.Fills, 1)
+	assert.Equal(t, "#FF0000", out.Fills[0])
+	assert.Equal(t, "#000000", out.BackgroundColor)
 }

@@ -1,8 +1,9 @@
 package extract
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func propsMap(rule CSSRule) map[string]string {
@@ -52,9 +53,7 @@ func TestExtractCSSRules_VerticalLayout(t *testing.T) {
 		"width":           "575px",
 	}
 	for k, want := range expectations {
-		if p[k] != want {
-			t.Errorf("prop %s = %q, want %q", k, p[k], want)
-		}
+		assert.Equal(t, want, p[k], "prop %s", k)
 	}
 }
 
@@ -66,12 +65,9 @@ func TestExtractCSSRules_HorizontalLayoutOmitsDirection(t *testing.T) {
 		t.Fatalf("expected rule .row")
 	}
 	p := propsMap(r)
-	if p["display"] != "flex" {
-		t.Errorf("display = %q, want flex", p["display"])
-	}
-	if _, has := p["flex-direction"]; has {
-		t.Errorf("flex-direction should be omitted for row, got %q", p["flex-direction"])
-	}
+	assert.Equal(t, "flex", p["display"], "display")
+	_, has := p["flex-direction"]
+	assert.False(t, has, "flex-direction should be omitted for row")
 }
 
 func TestExtractCSSRules_PaddingShorthand(t *testing.T) {
@@ -92,9 +88,7 @@ func TestExtractCSSRules_PaddingShorthand(t *testing.T) {
 				"paddingBottom": c.pb, "paddingLeft": c.pl,
 			}
 			p := propsMap(mustFindRule(t, ExtractCSSRules(doc), ".p"))
-			if p["padding"] != c.want {
-				t.Errorf("padding = %q, want %q", p["padding"], c.want)
-			}
+			assert.Equal(t, c.want, p["padding"], "padding")
 		})
 	}
 }
@@ -117,12 +111,8 @@ func TestExtractCSSRules_BackgroundAndRadius(t *testing.T) {
 		"cornerRadius": float64(8),
 	}
 	p := propsMap(mustFindRule(t, ExtractCSSRules(doc), ".card"))
-	if p["background"] != "#FFFFFF" {
-		t.Errorf("background = %q, want #FFFFFF", p["background"])
-	}
-	if p["border-radius"] != "8px" {
-		t.Errorf("border-radius = %q, want 8px", p["border-radius"])
-	}
+	assert.Equal(t, "#FFFFFF", p["background"], "background")
+	assert.Equal(t, "8px", p["border-radius"], "border-radius")
 }
 
 func TestExtractCSSRules_HiddenFillSkipped(t *testing.T) {
@@ -133,9 +123,7 @@ func TestExtractCSSRules_HiddenFillSkipped(t *testing.T) {
 		},
 	}
 	rules := ExtractCSSRules(doc)
-	if len(rules) != 0 {
-		t.Errorf("expected no rules for hidden-only fill, got %+v", rules)
-	}
+	assert.Empty(t, rules, "expected no rules for hidden-only fill")
 }
 
 func TestExtractCSSRules_TextNode(t *testing.T) {
@@ -165,9 +153,7 @@ func TestExtractCSSRules_TextNode(t *testing.T) {
 		"text-align":     "center",
 	}
 	for k, want := range expectations {
-		if p[k] != want {
-			t.Errorf("%s = %q, want %q", k, p[k], want)
-		}
+		assert.Equal(t, want, p[k], k)
 	}
 }
 
@@ -184,9 +170,8 @@ func TestExtractCSSRules_DedupClassName(t *testing.T) {
 	for _, r := range rules {
 		selectors[r.Selector] = true
 	}
-	if !selectors[".item"] || !selectors[".item-2"] {
-		t.Errorf("expected .item and .item-2, got %+v", selectors)
-	}
+	assert.True(t, selectors[".item"], "expected .item")
+	assert.True(t, selectors[".item-2"], "expected .item-2")
 }
 
 func TestExtractCSSRules_SkipsEmpty(t *testing.T) {
@@ -198,9 +183,7 @@ func TestExtractCSSRules_SkipsEmpty(t *testing.T) {
 		},
 	}
 	rules := ExtractCSSRules(doc)
-	if len(rules) != 1 {
-		t.Errorf("expected 1 rule (Frame only), got %d: %+v", len(rules), rules)
-	}
+	assert.Len(t, rules, 1, "expected 1 rule (Frame only)")
 }
 
 func TestFormatCSSRules(t *testing.T) {
@@ -209,10 +192,6 @@ func TestFormatCSSRules(t *testing.T) {
 		{Selector: ".a", Props: []CSSProp{{Key: "color", Value: "red"}}},
 	}
 	out := FormatCSSRules(rules)
-	if !strings.Contains(out, ".a {\n  color: red;\n}") {
-		t.Errorf("missing sorted .a rule in:\n%s", out)
-	}
-	if !strings.Contains(out, ".b {\n  display: flex;\n  z-index: 1;\n}") {
-		t.Errorf("props not sorted alphabetically in:\n%s", out)
-	}
+	assert.Contains(t, out, ".a {\n  color: red;\n}")
+	assert.Contains(t, out, ".b {\n  display: flex;\n  z-index: 1;\n}")
 }

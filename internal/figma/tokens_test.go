@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/cristianoliveira/figma-cli/internal/extract"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // stubFigma serves canned JSON for the endpoints tokens use, so the whole
@@ -38,17 +40,11 @@ func TestFetchVariablesRoundTrip(t *testing.T) {
 	t.Cleanup(func() { baseURL = old })
 
 	meta, err := FetchVariables(NewClient("token"), "file123")
-	if err != nil {
-		t.Fatalf("FetchVariables: %v", err)
-	}
+	require.NoError(t, err)
 	vars, _ := meta["variables"].(map[string]any)
-	if len(vars) != 1 {
-		t.Fatalf("expected 1 variable, got %v", vars)
-	}
+	require.Len(t, vars, 1)
 	v := vars["v1"].(map[string]any)
-	if v["name"] != "Color/Red" {
-		t.Fatalf("name = %v", v["name"])
-	}
+	assert.Equal(t, "Color/Red", v["name"])
 }
 
 func TestFetchStylesAndNodesRoundTrip(t *testing.T) {
@@ -61,20 +57,14 @@ func TestFetchStylesAndNodesRoundTrip(t *testing.T) {
 
 	c := NewClient("token")
 	styles, err := FetchStyles(c, "file123")
-	if err != nil {
-		t.Fatalf("FetchStyles: %v", err)
-	}
-	if len(styles) != 1 || styles[0]["name"] != "Brand" {
-		t.Fatalf("styles = %#v", styles)
-	}
+	require.NoError(t, err)
+	require.Len(t, styles, 1)
+	assert.Equal(t, "Brand", styles[0]["name"])
+
 	nodes, err := FetchNodes(c, "file123", []string{"1:1"})
-	if err != nil {
-		t.Fatalf("FetchNodes: %v", err)
-	}
+	require.NoError(t, err)
 	entry := nodes["1:1"].(map[string]any)
-	if entry["document"] == nil {
-		t.Fatalf("nodes entry missing document: %#v", entry)
-	}
+	assert.NotNil(t, entry["document"])
 }
 
 // TestTokensStylesEndToEnd proves URL → HTTP → typed decode → toMap → extract
@@ -89,13 +79,9 @@ func TestTokensStylesEndToEnd(t *testing.T) {
 
 	c := NewClient("token")
 	styles, err := FetchStyles(c, "file123")
-	if err != nil {
-		t.Fatalf("FetchStyles: %v", err)
-	}
+	require.NoError(t, err)
 	nodes, err := FetchNodes(c, "file123", []string{"1:1"})
-	if err != nil {
-		t.Fatalf("FetchNodes: %v", err)
-	}
+	require.NoError(t, err)
 
 	tokens := extract.ExtractTokensFromStyles(styles, nodes)
 	var got string
@@ -104,7 +90,5 @@ func TestTokensStylesEndToEnd(t *testing.T) {
 			got = tk.Value
 		}
 	}
-	if got != "#FF0000" {
-		t.Fatalf("brand color = %v, want #FF0000", got)
-	}
+	assert.Equal(t, "#FF0000", got)
 }

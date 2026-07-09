@@ -1,6 +1,10 @@
 package extract
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestDiffText(t *testing.T) {
 	from := []TextNode{
@@ -16,13 +20,13 @@ func TestDiffText(t *testing.T) {
 
 	got := DiffText(from, to)
 
-	if len(got.Changed) != 1 || got.Changed[0].From != "Old title" || got.Changed[0].To != "New title" {
-		t.Fatalf("changed diff = %#v", got.Changed)
-	}
-	if len(got.Removed) != 1 || got.Removed[0].Text != "Gone" {
-		t.Fatalf("removed diff = %#v", got.Removed)
-	}
-	if len(got.Added) != 1 || got.Added[0].Text != "New" {
-		t.Fatalf("added diff = %#v", got.Added)
-	}
+	assert.Len(t, got.Changed, 1)
+	assert.Equal(t, "Old title", got.Changed[0].From)
+	assert.Equal(t, "New title", got.Changed[0].To)
+
+	assert.Len(t, got.Removed, 1)
+	assert.Equal(t, "Gone", got.Removed[0].Text)
+
+	assert.Len(t, got.Added, 1)
+	assert.Equal(t, "New", got.Added[0].Text)
 }

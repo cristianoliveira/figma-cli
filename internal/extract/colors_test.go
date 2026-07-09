@@ -1,6 +1,11 @@
 package extract
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 func paint(typ string, r, g, b float64, visible bool) map[string]any {
 	return map[string]any{
@@ -24,12 +29,10 @@ func TestCollectColors(t *testing.T) {
 
 	palette := CollectColors(doc)
 
-	if len(palette) != 3 {
-		t.Fatalf("got %d entries, want 3: %#v", len(palette), palette)
-	}
-	if palette[0].Color != "#FF0000" || palette[0].Count != 2 {
-		t.Errorf("first = %#v, want #FF0000 count 2 (sorted desc)", palette[0])
-	}
+	require.Len(t, palette, 3)
+	assert.Equal(t, "#FF0000", palette[0].Color)
+	assert.Equal(t, 2, palette[0].Count)
+
 	// background color collected with "(bg)" suffix
 	var bg *ColorEntry
 	for i := range palette {
@@ -37,17 +40,14 @@ func TestCollectColors(t *testing.T) {
 			bg = &palette[i]
 		}
 	}
-	if bg == nil || len(bg.Usage) == 0 || bg.Usage[0] != "d (bg)" {
-		t.Errorf("background entry = %#v, want Usage containing 'd (bg)'", bg)
-	}
+	require.NotNil(t, bg)
+	require.NotEmpty(t, bg.Usage)
+	assert.Equal(t, "d (bg)", bg.Usage[0])
 }
 
 func TestCollectColorsEmpty(t *testing.T) {
 	palette := CollectColors(map[string]any{"id": "0:0", "name": "empty", "type": "FRAME"})
-	if palette == nil {
-		t.Fatal("got nil, want non-empty slice")
-	}
-	if len(palette) != 0 {
-		t.Errorf("got %d entries, want 0", len(palette))
-	}
+
+	assert.NotNil(t, palette)
+	assert.Empty(t, palette)
 }

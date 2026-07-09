@@ -1,6 +1,10 @@
 package extract
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestExtractComponents(t *testing.T) {
 	const buttonID = "1:1"
@@ -29,9 +33,7 @@ func TestExtractComponents(t *testing.T) {
 	components := ExtractComponents(document)
 
 	t.Run("count", func(t *testing.T) {
-		if len(components) != 3 {
-			t.Fatalf("got %d components, want 3", len(components))
-		}
+		assert.Len(t, components, 3)
 	})
 
 	root := components[0]
@@ -59,42 +61,24 @@ func TestExtractComponents(t *testing.T) {
 
 	for _, tt := range rootTests {
 		t.Run("root/"+tt.name, func(t *testing.T) {
-			if tt.got != tt.want {
-				t.Errorf("%s = %v, want %v", tt.name, tt.got, tt.want)
-			}
+			assert.Equal(t, tt.want, tt.got, tt.name)
 		})
 	}
 
 	t.Run("instance child", func(t *testing.T) {
 		child := components[1]
-		if child.ID != buttonID {
-			t.Errorf("ID = %v, want %v", child.ID, buttonID)
-		}
-		if child.Name != "Button" {
-			t.Errorf("Name = %v, want Button", child.Name)
-		}
-		if child.Type != "INSTANCE" {
-			t.Errorf("Type = %v, want INSTANCE", child.Type)
-		}
+		assert.Equal(t, buttonID, child.ID, "ID")
+		assert.Equal(t, "Button", child.Name, "Name")
+		assert.Equal(t, "INSTANCE", child.Type, "Type")
 	})
 
 	t.Run("text child", func(t *testing.T) {
 		text := components[2]
-		if text.Text != "Hello" {
-			t.Errorf("Text = %v, want Hello", text.Text)
-		}
-		if text.Typography.FontFamily != "Inter" {
-			t.Errorf("FontFamily = %v, want Inter", text.Typography.FontFamily)
-		}
-		if text.Typography.FontWeight != 700 {
-			t.Errorf("FontWeight = %v, want 700", text.Typography.FontWeight)
-		}
-		if text.Typography.LetterSpacing != 0.2 {
-			t.Errorf("LetterSpacing = %v, want 0.2", text.Typography.LetterSpacing)
-		}
-		if text.Typography.TextAlignHorizontal != "CENTER" {
-			t.Errorf("TextAlignHorizontal = %v, want CENTER", text.Typography.TextAlignHorizontal)
-		}
+		assert.Equal(t, "Hello", text.Text, "Text")
+		assert.Equal(t, "Inter", text.Typography.FontFamily, "FontFamily")
+		assert.Equal(t, float64(700), text.Typography.FontWeight, "FontWeight")
+		assert.Equal(t, 0.2, text.Typography.LetterSpacing, "LetterSpacing")
+		assert.Equal(t, "CENTER", text.Typography.TextAlignHorizontal, "TextAlignHorizontal")
 	})
 }
 
@@ -111,12 +95,9 @@ func TestExtractRawComponents(t *testing.T) {
 
 	got := ExtractRawComponents(document)
 
-	if len(got) != 2 {
-		t.Fatalf("raw components = %#v", got)
-	}
-	if got[1]["id"] != buttonID || got[1]["name"] != "Button" {
-		t.Fatalf("raw component = %#v", got[1])
-	}
+	assert.Len(t, got, 2)
+	assert.Equal(t, buttonID, got[1]["id"])
+	assert.Equal(t, "Button", got[1]["name"])
 }
 
 func TestColorHexFromPaint(t *testing.T) {
@@ -124,7 +105,5 @@ func TestColorHexFromPaint(t *testing.T) {
 
 	got := colorHexFromPaint(paint)
 
-	if got != "#0066CC" {
-		t.Fatalf("colorHexFromPaint() = %v, expected #0066CC", got)
-	}
+	assert.Equal(t, "#0066CC", got)
 }

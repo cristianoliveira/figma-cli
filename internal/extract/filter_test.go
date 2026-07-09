@@ -1,6 +1,10 @@
 package extract
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestFilterByNameComponents(t *testing.T) {
 	components := []ComponentOutput{
@@ -11,9 +15,7 @@ func TestFilterByNameComponents(t *testing.T) {
 
 	got := FilterByName(components, "button").([]ComponentOutput)
 
-	if len(got) != 2 {
-		t.Fatalf("got %d, want 2: %#v", len(got), got)
-	}
+	assert.Len(t, got, 2)
 }
 
 func TestFilterByNameRaw(t *testing.T) {
@@ -25,14 +27,10 @@ func TestFilterByNameRaw(t *testing.T) {
 
 	got := FilterByName(raw, "log").([]map[string]any)
 
-	if len(got) != 2 {
-		t.Fatalf("got %d, want 2: %#v", len(got), got)
-	}
+	assert.Len(t, got, 2)
 }
 
 func TestFilterByNamePassthrough(t *testing.T) {
 	// Unknown shapes pass through unchanged.
-	if got := FilterByName(42, "x"); got != 42 {
-		t.Errorf("passthrough = %v, want 42", got)
-	}
+	assert.Equal(t, 42, FilterByName(42, "x"))
 }

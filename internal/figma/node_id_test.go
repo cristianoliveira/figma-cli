@@ -1,6 +1,10 @@
 package figma
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestNormalizeNodeID(t *testing.T) {
 	tests := []struct {
@@ -14,37 +18,31 @@ func TestNormalizeNodeID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NormalizeNodeID(tt.input)
-			if got != tt.expected {
-				t.Fatalf("NormalizeNodeID() = %v, expected %v", got, tt.expected)
-			}
+			assert.Equal(t, tt.expected, NormalizeNodeID(tt.input))
 		})
 	}
 }
 
 func TestResolveNodeIDsPrefersExplicitID(t *testing.T) {
 	input := &FileInput{FileID: "file123", NodeIDs: []string{"1:2"}}
+
 	got := ResolveNodeIDs(input, "3:4")
 
-	if len(got) != 1 || got[0] != "3:4" {
-		t.Fatalf("ResolveNodeIDs() = %#v", got)
-	}
+	assert.Equal(t, []string{"3:4"}, got)
 }
 
 func TestResolveNodeIDsFallsBackToURLNodeIDs(t *testing.T) {
 	input := &FileInput{FileID: "file123", NodeIDs: []string{"1:2"}}
+
 	got := ResolveNodeIDs(input, "")
 
-	if len(got) != 1 || got[0] != "1:2" {
-		t.Fatalf("ResolveNodeIDs() = %#v", got)
-	}
+	assert.Equal(t, []string{"1:2"}, got)
 }
 
 func TestResolveNodeIDsAllowsCommaSeparatedExplicitIDs(t *testing.T) {
 	input := &FileInput{FileID: "file123"}
+
 	got := ResolveNodeIDs(input, "3-4,5:6")
 
-	if len(got) != 2 || got[0] != "3:4" || got[1] != "5:6" {
-		t.Fatalf("ResolveNodeIDs() = %#v", got)
-	}
+	assert.Equal(t, []string{"3:4", "5:6"}, got)
 }

@@ -1,6 +1,11 @@
 package figma
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 func TestParseInput(t *testing.T) {
 	tests := []struct {
@@ -22,25 +27,13 @@ func TestParseInput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ParseInput(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseInput() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if err != nil {
-				return
-			}
-			if got.FileID != tt.expectedID {
-				t.Errorf("FileID = %v, want %v", got.FileID, tt.expectedID)
-			}
-			if len(got.NodeIDs) != len(tt.expectedIDs) {
-				t.Errorf("NodeIDs len = %v, want %v", len(got.NodeIDs), len(tt.expectedIDs))
-				return
-			}
-			for i := range got.NodeIDs {
-				if got.NodeIDs[i] != tt.expectedIDs[i] {
-					t.Errorf("NodeIDs[%d] = %v, want %v", i, got.NodeIDs[i], tt.expectedIDs[i])
-				}
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedID, got.FileID)
+			assert.Equal(t, tt.expectedIDs, got.NodeIDs)
 		})
 	}
 }
@@ -49,10 +42,6 @@ func TestParseInputNormalizesNodeIDs(t *testing.T) {
 	// node-id uses URL hyphens; the API expects colons. Covered by the table above,
 	// this pins the behaviour explicitly.
 	got, err := ParseInput("https://www.figma.com/design/FILE/T?node-id=10-20")
-	if err != nil {
-		t.Fatalf("ParseInput() error = %v", err)
-	}
-	if len(got.NodeIDs) != 1 || got.NodeIDs[0] != "10:20" {
-		t.Fatalf("NodeIDs = %v, want [10:20]", got.NodeIDs)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, []string{"10:20"}, got.NodeIDs)
 }

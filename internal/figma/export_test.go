@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/cristianoliveira/figma-cli/internal/figma/api"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFetchExportURL(t *testing.T) {
@@ -20,12 +22,8 @@ func TestFetchExportURL(t *testing.T) {
 	client := &Client{Token: "test-token", HTTP: server.Client()}
 	got, err := FetchExportURL(client, server.URL, "1:2")
 
-	if err != nil {
-		t.Fatalf("FetchExportURL() error = %v", err)
-	}
-	if got != imageURL {
-		t.Errorf("FetchExportURL() = %v, want %v", got, imageURL)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, imageURL, got)
 }
 
 func TestFetchExportURLMissingNodeID(t *testing.T) {
@@ -35,9 +33,8 @@ func TestFetchExportURLMissingNodeID(t *testing.T) {
 	defer server.Close()
 
 	client := &Client{Token: "test-token", HTTP: server.Client()}
-	if _, err := FetchExportURL(client, server.URL, "1:2"); err == nil {
-		t.Fatal("FetchExportURL() expected error for missing node, got nil")
-	}
+	_, err := FetchExportURL(client, server.URL, "1:2")
+	require.Error(t, err, "FetchExportURL() expected error for missing node")
 }
 
 func TestFetchExportURLErrorStatus(t *testing.T) {
@@ -48,7 +45,6 @@ func TestFetchExportURLErrorStatus(t *testing.T) {
 	defer server.Close()
 
 	client := &Client{Token: "test-token", HTTP: server.Client()}
-	if _, err := FetchExportURL(client, server.URL, "1:2"); err == nil {
-		t.Fatal("FetchExportURL() expected error for 403, got nil")
-	}
+	_, err := FetchExportURL(client, server.URL, "1:2")
+	require.Error(t, err, "FetchExportURL() expected error for 403")
 }

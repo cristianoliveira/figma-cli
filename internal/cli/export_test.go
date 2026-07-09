@@ -6,14 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDefaultExportOutputPath(t *testing.T) {
 	got := DefaultExportOutputPath("file123", "1:2", "png")
-	expected := "file123_1-2.png"
-	if got != expected {
-		t.Fatalf("DefaultExportOutputPath() = %v, expected %v", got, expected)
-	}
+	assert.Equal(t, "file123_1-2.png", got)
 }
 
 func TestDownloadFile(t *testing.T) {
@@ -25,16 +25,10 @@ func TestDownloadFile(t *testing.T) {
 	outputPath := filepath.Join(t.TempDir(), "export.png")
 	err := DownloadFile(server.Client(), outputPath, server.URL)
 
-	if err != nil {
-		t.Fatalf("DownloadFile() error = %v", err)
-	}
+	require.NoError(t, err)
 	data, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatalf("reading output file: %v", err)
-	}
-	if string(data) != "fake-image-data" {
-		t.Errorf("DownloadFile() wrote %q, want fake-image-data", string(data))
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "fake-image-data", string(data))
 }
 
 func TestDownloadFileErrorStatus(t *testing.T) {
@@ -46,7 +40,5 @@ func TestDownloadFileErrorStatus(t *testing.T) {
 	outputPath := filepath.Join(t.TempDir(), "export.png")
 	err := DownloadFile(server.Client(), outputPath, server.URL)
 
-	if err == nil {
-		t.Fatal("DownloadFile() expected error for 404, got nil")
-	}
+	require.Error(t, err, "DownloadFile() expected error for 404")
 }

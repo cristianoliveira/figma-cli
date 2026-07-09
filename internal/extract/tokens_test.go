@@ -3,6 +3,9 @@ package extract
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ---- Variables extraction ----
@@ -78,12 +81,8 @@ func TestExtractTokensFromVariablesDefaultMode(t *testing.T) {
 	}
 	for name, want := range cases {
 		got, ok := byCSS[name]
-		if !ok {
-			t.Errorf("missing token %s; have %v", name, byCSS)
-			continue
-		}
-		if got != want {
-			t.Errorf("token %s = %q, want %q", name, got, want)
+		if assert.True(t, ok, "missing token %s", name) {
+			assert.Equal(t, want, got, "token %s", name)
 		}
 	}
 }
@@ -93,17 +92,15 @@ func TestExtractTokensFromVariablesSpecificMode(t *testing.T) {
 
 	want := "#3399FF"
 	for _, tk := range tokens {
-		if tokenCSSName(tk, "") == "--color-primary-500" && tk.Value != want {
-			t.Errorf("Dark mode color = %q, want %q", tk.Value, want)
+		if tokenCSSName(tk, "") == "--color-primary-500" {
+			assert.Equal(t, want, tk.Value, "Dark mode color")
 		}
 	}
 }
 
 func TestExtractTokensFromVariablesUnknownModeErrors(t *testing.T) {
 	_, err := ExtractTokensFromVariablesE(variablesMeta(t), "Nope")
-	if err == nil {
-		t.Fatal("expected error for unknown mode")
-	}
+	require.Error(t, err, "expected error for unknown mode")
 }
 
 // ---- Styles extraction ----
@@ -149,12 +146,8 @@ func TestExtractTokensFromStyles(t *testing.T) {
 	}
 	for name, want := range cases {
 		got, ok := byCSS[name]
-		if !ok {
-			t.Errorf("missing token %s; have %v", name, byCSS)
-			continue
-		}
-		if got != want {
-			t.Errorf("token %s = %q, want %q", name, got, want)
+		if assert.True(t, ok, "missing token %s", name) {
+			assert.Equal(t, want, got, "token %s", name)
 		}
 	}
 }
@@ -167,20 +160,15 @@ func TestFormatCSS(t *testing.T) {
 		{Path: []string{"color", "bg"}, Category: "color", Value: "#FFFFFF", Type: "color"},
 	}
 	out, err := FormatTokens(tokens, "css", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(out, ":root {") || !strings.Contains(out, "--color-primary: #0666C8;") {
-		t.Fatalf("css output = %q", out)
-	}
+	require.NoError(t, err)
+	assert.Contains(t, out, ":root {")
+	assert.Contains(t, out, "--color-primary: #0666C8;")
 }
 
 func TestFormatCSSPrefix(t *testing.T) {
 	tokens := []Token{{Path: []string{"color", "primary"}, Category: "color", Value: "#0666C8", Type: "color"}}
 	out, _ := FormatTokens(tokens, "css", "fig-")
-	if !strings.Contains(out, "--fig-color-primary: #0666C8;") {
-		t.Fatalf("prefixed css = %q", out)
-	}
+	assert.Contains(t, out, "--fig-color-primary: #0666C8;")
 }
 
 func TestFormatCSSIdempotent(t *testing.T) {
@@ -190,9 +178,7 @@ func TestFormatCSSIdempotent(t *testing.T) {
 	}
 	first, _ := FormatTokens(tokens, "css", "")
 	second, _ := FormatTokens(tokens, "css", "")
-	if first != second {
-		t.Fatal("css output not idempotent")
-	}
+	assert.Equal(t, first, second, "css output should be idempotent")
 }
 
 func TestFormatJSON(t *testing.T) {
@@ -200,12 +186,10 @@ func TestFormatJSON(t *testing.T) {
 		{Path: []string{"color", "primary"}, Category: "color", Value: "#0666C8", Type: "color"},
 	}
 	out, err := FormatTokens(tokens, "json", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(out, `"primary": {`) || !strings.Contains(out, `"value": "#0666C8"`) || !strings.Contains(out, `"type": "color"`) {
-		t.Fatalf("json output = %q", out)
-	}
+	require.NoError(t, err)
+	assert.Contains(t, out, `"primary": {`)
+	assert.Contains(t, out, `"value": "#0666C8"`)
+	assert.Contains(t, out, `"type": "color"`)
 }
 
 func TestFormatTailwind(t *testing.T) {
@@ -216,33 +200,21 @@ func TestFormatTailwind(t *testing.T) {
 		{Path: []string{"shadow", "card"}, Category: "shadow", Value: "0px 2px 8px rgba(0,0,0,0.08)", Type: "shadow"},
 	}
 	out, err := FormatTokens(tokens, "tailwind", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(out, `primary: "#0666C8"`) {
-		t.Errorf("tailwind colors missing; got %q", out)
-	}
-	if !strings.Contains(out, `body: ["Inter"]`) && !strings.Contains(out, `body: "Inter"`) {
-		t.Errorf("tailwind fontFamily missing; got %q", out)
-	}
-	if !strings.Contains(out, `body: "14px"`) {
-		t.Errorf("tailwind fontSize missing; got %q", out)
-	}
+	require.NoError(t, err)
+	assert.Contains(t, out, `primary: "#0666C8"`)
+	assert.True(t, strings.Contains(out, `body: ["Inter"]`) || strings.Contains(out, `body: "Inter"`),
+		"tailwind fontFamily missing; got %q", out)
+	assert.Contains(t, out, `body: "14px"`)
 }
 
 func TestFormatTokensUnknownFormat(t *testing.T) {
 	_, err := FormatTokens(nil, "yaml", "")
-	if err == nil {
-		t.Fatal("expected error for unknown format")
-	}
+	require.Error(t, err, "expected error for unknown format")
 }
 
 func TestDashPath(t *testing.T) {
 	got := dashPath([]string{"Color", "Primary/500", "Sub"})
-	want := "color-primary-500-sub"
-	if got != want {
-		t.Fatalf("dashPath = %q, want %q", got, want)
-	}
+	assert.Equal(t, "color-primary-500-sub", got)
 }
 
 // ---- Document scan extraction ----
@@ -278,12 +250,8 @@ func TestExtractTokensFromDocument(t *testing.T) {
 	}
 	for name, want := range cases {
 		got, ok := byCSS[name]
-		if !ok {
-			t.Errorf("missing token %s; have %v", name, byCSS)
-			continue
-		}
-		if got != want {
-			t.Errorf("token %s = %q, want %q", name, got, want)
+		if assert.True(t, ok, "missing token %s", name) {
+			assert.Equal(t, want, got, "token %s", name)
 		}
 	}
 }
@@ -295,7 +263,5 @@ func TestExtractTokensFromDocumentIdempotent(t *testing.T) {
 	}}
 	first, _ := FormatTokens(ExtractTokensFromDocument(doc), "css", "")
 	second, _ := FormatTokens(ExtractTokensFromDocument(doc), "css", "")
-	if first != second {
-		t.Fatal("scan output not idempotent")
-	}
+	assert.Equal(t, first, second, "scan output should be idempotent")
 }

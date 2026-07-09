@@ -1,6 +1,10 @@
 package extract
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestFindLayersByName(t *testing.T) {
 	doc := map[string]any{
@@ -14,21 +18,14 @@ func TestFindLayersByName(t *testing.T) {
 	}
 
 	matches := FindLayersByName(doc, "Button")
-	if len(matches) != 2 {
-		t.Fatalf("got %d matches, want 2: %#v", len(matches), matches)
-	}
-	if matches[0].ID != "1:1" || matches[1].ID != "1:3" {
-		t.Errorf("match ids = %v, want 1:1 and 1:3", matches)
-	}
+	assert.Len(t, matches, 2)
+	assert.Equal(t, "1:1", matches[0].ID)
+	assert.Equal(t, "1:3", matches[1].ID)
 
 	// Matching is exact, not substring.
-	if len(FindLayersByName(doc, "But")) != 0 {
-		t.Errorf("partial name matched; want exact only")
-	}
+	assert.Empty(t, FindLayersByName(doc, "But"))
 }
 
 func TestFindLayersByNameNil(t *testing.T) {
-	if got := FindLayersByName(nil, "x"); got != nil {
-		t.Errorf("FindLayersByName(nil) = %#v, want nil", got)
-	}
+	assert.Nil(t, FindLayersByName(nil, "x"))
 }
