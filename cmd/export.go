@@ -24,18 +24,20 @@ var exportCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		format, _ := cmd.Flags().GetString("format")
 		outputPath, _ := cmd.Flags().GetString("output")
+		nodeID, _ := cmd.Flags().GetString("id")
 
 		input, err := parseInput(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
-		if len(input.nodeIDs) == 0 {
-			fmt.Fprintln(os.Stderr, "error: export requires a Figma URL with node-id")
+		nodeIDs := resolveNodeIDs(input, nodeID)
+		if len(nodeIDs) == 0 {
+			fmt.Fprintln(os.Stderr, "error: export requires --id or a Figma URL with node-id")
 			os.Exit(1)
 		}
 		if outputPath == "" {
-			outputPath = defaultExportOutputPath(input.fileID, input.nodeIDs[0], format)
+			outputPath = defaultExportOutputPath(input.fileID, nodeIDs[0], format)
 		}
 
 		token, err := getFigmaToken()
@@ -43,12 +45,12 @@ var exportCmd = &cobra.Command{
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
-		apiURL, err := buildExportAPIURL(input.fileID, []string{input.nodeIDs[0]}, format)
+		apiURL, err := buildExportAPIURL(input.fileID, []string{nodeIDs[0]}, format)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error building export URL: %v\n", err)
 			os.Exit(1)
 		}
-		assetURL, err := fetchExportURL(apiURL, input.nodeIDs[0], token)
+		assetURL, err := fetchExportURL(apiURL, nodeIDs[0], token)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error fetching export URL: %v\n", err)
 			os.Exit(1)
@@ -137,6 +139,7 @@ func downloadFile(outputPath string, fileURL string) error {
 
 func init() {
 	exportCmd.Flags().String("format", "png", "export format: png, jpg, svg, or pdf")
+	exportCmd.Flags().String("id", "", "node ID to export; accepts 20089:685897 or 20089-685897")
 	exportCmd.Flags().StringP("output", "o", "", "output file path; defaults to <file-key>_<node-id>.<format>")
 	rootCmd.AddCommand(exportCmd)
 }

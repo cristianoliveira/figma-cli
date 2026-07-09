@@ -16,6 +16,7 @@ var diffTextCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fromVersion, _ := cmd.Flags().GetString("from")
 		toVersion, _ := cmd.Flags().GetString("to")
+		nodeID, _ := cmd.Flags().GetString("id")
 		if fromVersion == "" || toVersion == "" {
 			fmt.Fprintln(os.Stderr, "error: --from and --to are required")
 			os.Exit(1)
@@ -32,12 +33,13 @@ var diffTextCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fromURL, err := figmadiff.BuildFileVersionURL(input.fileID, input.nodeIDs, fromVersion)
+		nodeIDs := resolveNodeIDs(input, nodeID)
+		fromURL, err := figmadiff.BuildFileVersionURL(input.fileID, nodeIDs, fromVersion)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error building from URL: %v\n", err)
 			os.Exit(1)
 		}
-		toURL, err := figmadiff.BuildFileVersionURL(input.fileID, input.nodeIDs, toVersion)
+		toURL, err := figmadiff.BuildFileVersionURL(input.fileID, nodeIDs, toVersion)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error building to URL: %v\n", err)
 			os.Exit(1)
@@ -70,6 +72,7 @@ var diffTextCmd = &cobra.Command{
 func init() {
 	diffTextCmd.Flags().String("from", "", "source Figma version ID")
 	diffTextCmd.Flags().String("to", "", "target Figma version ID")
+	diffTextCmd.Flags().String("id", "", "node ID to diff; accepts 20089:685897, 20089-685897, or comma-separated IDs")
 	diffCmd.AddCommand(diffTextCmd)
 	rootCmd.AddCommand(diffCmd)
 }

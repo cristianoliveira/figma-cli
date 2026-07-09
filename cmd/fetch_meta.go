@@ -112,6 +112,7 @@ Examples:
   figma-cli fetch-meta https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=339-27545`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		nodeID, _ := cmd.Flags().GetString("id")
 		input, err := parseInput(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
@@ -132,8 +133,9 @@ Examples:
 		}
 		q := u.Query()
 		q.Set("depth", "1")
-		if len(input.nodeIDs) > 0 {
-			q.Set("ids", strings.Join(input.nodeIDs, ","))
+		nodeIDs := resolveNodeIDs(input, nodeID)
+		if len(nodeIDs) > 0 {
+			q.Set("ids", strings.Join(nodeIDs, ","))
 		}
 		u.RawQuery = q.Encode()
 		req, err := http.NewRequest("GET", u.String(), nil)
@@ -178,5 +180,6 @@ Examples:
 }
 
 func init() {
+	fetchMetaCmd.Flags().String("id", "", "node ID to fetch; accepts 20089:685897, 20089-685897, or comma-separated IDs")
 	rootCmd.AddCommand(fetchMetaCmd)
 }

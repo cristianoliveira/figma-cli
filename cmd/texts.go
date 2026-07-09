@@ -18,6 +18,7 @@ var textsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		layerName, _ := cmd.Flags().GetString("layer")
 		recursive, _ := cmd.Flags().GetBool("recursive")
+		nodeID, _ := cmd.Flags().GetString("id")
 		if layerName == "" {
 			fmt.Fprintln(os.Stderr, "error: --layer is required")
 			os.Exit(1)
@@ -34,7 +35,7 @@ var textsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		apiURL, err := buildTextsAPIURL(input.fileID, input.nodeIDs)
+		apiURL, err := buildTextsAPIURL(input.fileID, resolveNodeIDs(input, nodeID))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error building texts API URL: %v\n", err)
 			os.Exit(1)
@@ -97,6 +98,7 @@ func findLayerTextsInFigmaJSON(figmaJSON map[string]any, layerName string, recur
 
 func init() {
 	textsCmd.Flags().String("layer", "", "layer name to extract text from")
+	textsCmd.Flags().String("id", "", "node ID to search within; accepts 20089:685897 or 20089-685897")
 	textsCmd.Flags().Bool("recursive", false, "include text from all descendant nodes")
 	rootCmd.AddCommand(textsCmd)
 }
