@@ -50,8 +50,13 @@ func BuildVersionsURL(fileID string) string {
 }
 
 // BuildCommentsURL builds the API URL for fetching comments of a Figma file.
-func BuildCommentsURL(fileID string) string {
-	return fmt.Sprintf("%s/files/%s/comments", baseURL, fileID)
+// If nodeID is non-empty, filters comments to that node.
+func BuildCommentsURL(fileID string, nodeID string) string {
+	raw := fmt.Sprintf("%s/files/%s/comments", baseURL, fileID)
+	if nodeID == "" {
+		return raw
+	}
+	return fmt.Sprintf("%s?node_id=%s", raw, nodeID)
 }
 
 // BuildExportURL builds the API URL for exporting a node image.
