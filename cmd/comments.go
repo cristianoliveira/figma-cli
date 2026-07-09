@@ -19,7 +19,10 @@ Requires FIGMA_ACCESS_TOKEN environment variable set with a personal access toke
 Examples:
   figma comments grnVU2vAihHXwYgHryu2xE
   figma comments https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=4-1082&p=f&m=dev
-  figma comments --id 20089:685897 <file-url>`,
+  figma comments --id 20089:685897 <file-url>
+
+A node ID from the URL or --id scopes comments to that node and its descendants.
+Use --recursive=false to include comments attached only to the selected node.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		input, err := figma.ParseInput(args[0])
@@ -30,11 +33,9 @@ Examples:
 		if err != nil {
 			return err
 		}
-		var nodeID string
-		if commentsNodeID != "" {
-			nodeID = figma.NormalizeNodeID(commentsNodeID)
-		}
-		apiURL := figma.BuildCommentsURL(input.FileID, nodeID)
+		nodeIDs := figma.ResolveNodeIDs(input, commentsNodeID)
+		recursive, _ := cmd.Flags().GetBool("recursive")
+		apiURL := figma.BuildCommentsURL(input.FileID, "")
 		var response api.GetCommentsResponse
 		if err := client.Fetch(apiURL, &response); err != nil {
 			return err
@@ -54,6 +55,13 @@ Examples:
 			out.NodeID = extract.ExtractNodeIDFromClientMeta(c.ClientMeta)
 			outputs = append(outputs, out)
 		}
+		if len(nodeIDs) > 0 {
+			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
+			if err != nil {
+				return err
+			}
+			outputs = extract.FilterCommentsByNodeIDs(outputs, extract.CommentNodeIDs(documents, recursive))
+		}
 		if err := cli.NewPrinter(cmd).JSON(outputs); err != nil {
 			return err
 		}
@@ -62,6 +70,7 @@ Examples:
 }
 
 func init() {
-	commentsCmd.Flags().StringVar(&commentsNodeID, "id", "", "Filter comments to a specific node ID")
+	commentsCmd.Flags().StringVar(&commentsNodeID, "id", "", "filter comments to a specific node ID; overrides URL node-id")
+	commentsCmd.Flags().Bool("recursive", true, "include comments from all descendant nodes")
 	rootCmd.AddCommand(commentsCmd)
 }
