@@ -3,6 +3,7 @@ package figma
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 )
@@ -38,22 +39,64 @@ func FetchNodeDocuments(client *Client, fileID string, nodeIDs []string) ([]any,
 	}
 
 	documents := make([]any, 0, len(nodeIDs))
+	var fileDocument any
 	for _, nodeID := range nodeIDs {
-		node, ok := resp.Nodes[nodeID]
-		if !ok {
+		if node, ok := resp.Nodes[nodeID]; ok {
+			document, decodeErr := UnmarshalDocument(node.Document)
+			if decodeErr == nil && documentNodeID(document) != "" {
+				documents = append(documents, document)
+				continue
+			}
+		}
+
+		if fileDocument == nil {
+			fileDocument, err = FetchDocument(client, fileID, nil, "", "")
+			if err != nil {
+				return nil, fmt.Errorf("fetching file to resolve node %s: %w", nodeID, err)
+			}
+		}
+		resolved := findDocumentNode(fileDocument, nodeID)
+		if resolved == nil {
 			return nil, fmt.Errorf("node %s was not returned by Figma", nodeID)
 		}
-		document, err := UnmarshalDocument(node.Document)
-		if err != nil {
-			return nil, fmt.Errorf("decoding node %s: %w", nodeID, err)
-		}
-		documentObject, ok := document.(map[string]any)
-		if !ok || documentObject["id"] == nil {
-			return nil, fmt.Errorf("node %s was not returned by Figma", nodeID)
-		}
-		documents = append(documents, document)
+		documents = append(documents, resolved)
 	}
 	return documents, nil
+}
+
+func findDocumentNode(document any, nodeID string) any {
+	if node := findNodeMatching(document, func(id string) bool { return id == nodeID }); node != nil {
+		return node
+	}
+	return findNodeMatching(document, func(id string) bool {
+		return strings.HasSuffix(id, ";"+nodeID)
+	})
+}
+
+func findNodeMatching(value any, matches func(string) bool) any {
+	node, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	if matches(documentNodeID(node)) {
+		return node
+	}
+	children, _ := node["children"].([]any)
+	for _, child := range children {
+		if match := findNodeMatching(child, matches); match != nil {
+			return match
+		}
+	}
+	return nil
+}
+
+func documentNodeID(value any) string {
+	node, ok := value.(map[string]any)
+	if !ok {
+		return ""
+	}
+	id, _ := node["id"].(string)
+	return id
 }
 
 // UnmarshalDocument converts a typed document node (from the generated API types)
