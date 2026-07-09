@@ -1,5 +1,26 @@
 # tokens
 
+> **Status (09-07-26):** Implemented for the file path — three token sources
+> (Variables, Styles, and document Scan), all three formats (css/tailwind/json),
+> `--source`, `--mode`, `--prefix`, `--output`, `--scan-fallback`. Auto tries
+> Variables → Styles (named tokens); the raw-fill document scan is opt-in via
+> `--scan-fallback` or `--source scan` so output stays deterministic per source.
+> Verified end-to-end against a real raw-fill file (0 styles, 403 variables).
+> Deferred: `--team` (returns a clear not-supported error) and `--watch`.
+> See `cmd/tokens.go`, `internal/extract/tokens.go`, `internal/figma/tokens.go`.
+
+> **Follow-up (09-07-26):** `figma css` shipped — generates layout+fills+type
+> CSS per node from the public file API (no Enterprise needed). Mirrors Dev
+> Mode's CSS panel but scriptable/batchable. See `cmd/css.go`,
+> `internal/extract/css.go`. Next candidate: `figma scaffold --react`.
+>
+> **Open finding:** Variables REST API is Enterprise-gated (403 here), so
+> semantic token names (`--Base-Primary`) are unreachable without Enterprise;
+> Dev Mode shows them via its private client. `tokens --source scan` falls
+> back to value-named tokens. Dev Mode's CSS for some nodes differs from raw
+> autolayout values (padding 43.716 vs 40) due to instance scale transforms;
+> we emit the literal stored values.
+
 ## Problem
 
 Frontend developers manually copy hex codes, font sizes, spacing values, shadows, and
