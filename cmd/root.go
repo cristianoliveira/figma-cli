@@ -11,14 +11,34 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "figma-cli",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Use:   "figma",
+	Short: "Explore and inspect Figma designs from the command line",
+	Long: `figma is a CLI for querying Figma designs. It accepts file URLs directly
+and produces structured JSON — designed for humans and AI agents alike.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Common workflows:
+
+  Explore a file's structure:
+    figma fetch-meta <file-url>
+    figma components --id <node-id> <file-url>
+
+  Find and inspect layers:
+    figma find --name "Button" --id <node-id> <file-url>
+    figma inspect --id <node-id> <file-url>
+
+  Extract design tokens:
+    figma texts --layer "Header" <file-url>
+    figma colors --id <node-id> <file-url>
+
+  Export assets:
+    figma export --id <node-id> --format png <file-url>
+
+  Track changes:
+    figma versions <file-url>
+    figma diff text --from <v1> --to <v2> <file-url>
+
+All commands accept either a Figma file key or a full Figma URL.
+Requires FIGMA_ACCESS_TOKEN environment variable.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
@@ -34,13 +54,4 @@ func Execute() {
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.figma-cli.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
