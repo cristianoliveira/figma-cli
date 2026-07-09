@@ -3,18 +3,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
 )
-
-type colorEntry struct {
-	Color string   `json:"color"`
-	Count int      `json:"count"`
-	Usage []string `json:"usage"`
-}
 
 var colorsCmd = &cobra.Command{
 	Use:   "colors [figma-url-or-file-id]",
@@ -30,105 +24,21 @@ var colorsCmd = &cobra.Command{
 		if len(nodeIDs) == 0 {
 			cli.Die(fmt.Errorf("colors requires --id or a Figma URL with node-id"))
 		}
-
 		client, err := cli.LoadClient()
 		if err != nil {
 			cli.Die(err)
 		}
-
 		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 		if err != nil {
 			cli.Die(err)
 		}
-
-		palette := collectColors(doc)
+		palette := extract.CollectColors(doc)
 		output, err := json.MarshalIndent(palette, "", "  ")
 		if err != nil {
 			cli.Die(err)
 		}
 		fmt.Println(string(output))
 	},
-}
-
-func collectColors(value any) []colorEntry {
-	colorMap := map[string]*colorEntry{}
-	walkColors(value, colorMap)
-
-	entries := make([]colorEntry, 0, len(colorMap))
-	for _, e := range colorMap {
-		entries = append(entries, *e)
-	}
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Count > entries[j].Count
-	})
-	if entries == nil {
-		entries = []colorEntry{}
-	}
-	return entries
-}
-
-func walkColors(value any, colorMap map[string]*colorEntry) {
-	object, ok := value.(map[string]any)
-	if !ok {
-		return
-	}
-
-	name := figma.StringValue(object["name"])
-
-	collectFills := func(paints any) {
-		items, ok := paints.([]any)
-		if !ok {
-			return
-		}
-		for _, p := range items {
-			paint, ok := p.(map[string]any)
-			if !ok {
-				continue
-			}
-			if paint["visible"] == false {
-				continue
-			}
-			c := colorHexFromPaint(paint)
-			if c == "" || c == "#000000" {
-				continue
-			}
-			entry, exists := colorMap[c]
-			if !exists {
-				entry = &colorEntry{Color: c, Usage: []string{}}
-				colorMap[c] = entry
-			}
-			entry.Count++
-			if len(entry.Usage) < 3 {
-				entry.Usage = append(entry.Usage, name)
-			}
-		}
-	}
-
-	collectFills(object["fills"])
-	collectFills(object["strokes"])
-
-	if bg, ok := object["backgroundColor"].(map[string]any); ok {
-		c := colorHexFromPaint(bg)
-		if c != "" && c != "#000000" {
-			entry, exists := colorMap[c]
-			if !exists {
-				entry = &colorEntry{Color: c, Usage: []string{}}
-				colorMap[c] = entry
-			}
-			entry.Count++
-			if len(entry.Usage) < 3 {
-				entry.Usage = append(entry.Usage, name+" (bg)")
-			}
-		}
-	}
-
-	children, ok := object["children"].([]any)
-	if !ok {
-		return
-	}
-	for _, child := range children {
-		walkColors(child, colorMap)
-	}
 }
 
 func init() {

@@ -1,4 +1,4 @@
-package cmd
+package extract
 
 import "testing"
 
@@ -26,7 +26,7 @@ func TestExtractComponents(t *testing.T) {
 		},
 	}
 
-	components := extractComponents(document)
+	components := ExtractComponents(document)
 
 	t.Run("count", func(t *testing.T) {
 		if len(components) != 3 {
@@ -109,7 +109,7 @@ func TestExtractRawComponents(t *testing.T) {
 		},
 	}
 
-	got := extractRawComponents(document)
+	got := ExtractRawComponents(document)
 
 	if len(got) != 2 {
 		t.Fatalf("raw components = %#v", got)

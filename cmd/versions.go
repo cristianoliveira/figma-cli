@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
 )
@@ -16,7 +17,7 @@ Examples:
   figma versions https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=4-1082&p=f&m=dev`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		runSimpleFetch(args, func(fileID string) (string, error) {
+		cli.RunSimpleFetch(args, func(fileID string) (string, error) {
 			return figma.BuildVersionsURL(fileID), nil
 		}, "versions")
 	},

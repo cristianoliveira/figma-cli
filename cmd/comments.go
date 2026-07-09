@@ -5,22 +5,13 @@ import (
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
 var commentsNodeID string
-
-type commentOutput struct {
-	ID        string `json:"id"`
-	Message   string `json:"message"`
-	CreatedAt string `json:"created_at"`
-	Resolved  bool   `json:"resolved"`
-	NodeID    string `json:"node_id,omitempty"`
-	User      string `json:"user"`
-	ParentID  string `json:"parent_id,omitempty"`
-}
 
 var commentsCmd = &cobra.Command{
 	Use:   "comments [file-id-or-url]",
@@ -38,26 +29,22 @@ Examples:
 		if err != nil {
 			cli.Die(err)
 		}
-
 		client, err := cli.LoadClient()
 		if err != nil {
 			cli.Die(err)
 		}
-
 		var nodeID string
 		if commentsNodeID != "" {
 			nodeID = figma.NormalizeNodeID(commentsNodeID)
 		}
 		apiURL := figma.BuildCommentsURL(input.FileID, nodeID)
-
 		var response api.GetCommentsResponse
 		if err := client.Fetch(apiURL, &response); err != nil {
 			cli.Die(err)
 		}
-
-		outputs := make([]commentOutput, 0, len(response.Comments))
+		outputs := make([]extract.CommentOutput, 0, len(response.Comments))
 		for _, c := range response.Comments {
-			out := commentOutput{
+			out := extract.CommentOutput{
 				ID:        c.Id,
 				Message:   c.Message,
 				CreatedAt: c.CreatedAt.String(),
@@ -67,33 +54,15 @@ Examples:
 			if c.ParentId != nil {
 				out.ParentID = *c.ParentId
 			}
-			out.NodeID = extractNodeIDFromClientMeta(c.ClientMeta)
+			out.NodeID = extract.ExtractNodeIDFromClientMeta(c.ClientMeta)
 			outputs = append(outputs, out)
 		}
-
 		result, err := json.MarshalIndent(outputs, "", "  ")
 		if err != nil {
 			cli.Die(err)
 		}
 		fmt.Println(string(result))
 	},
-}
-
-// extractNodeIDFromClientMeta extracts the node_id from a ClientMeta union.
-// ClientMeta is a discriminated union of Vector | FrameOffset | FrameOffsetRegion.
-// Vectors have no node_id; FrameOffsets and FrameOffsetRegions do.
-func extractNodeIDFromClientMeta(cm api.Comment_ClientMeta) string {
-	b, err := cm.MarshalJSON()
-	if err != nil {
-		return ""
-	}
-	var raw struct {
-		NodeID string `json:"node_id"`
-	}
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return ""
-	}
-	return raw.NodeID
 }
 
 func init() {

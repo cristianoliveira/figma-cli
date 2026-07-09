@@ -5,15 +5,10 @@ import (
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
 )
-
-type layerMatchOutput struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"`
-}
 
 var findCmd = &cobra.Command{
 	Use:   "find [figma-url-or-file-id]",
@@ -25,7 +20,6 @@ var findCmd = &cobra.Command{
 		if layerName == "" {
 			cli.Die(fmt.Errorf("--name is required"))
 		}
-
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
 			cli.Die(err)
@@ -34,45 +28,18 @@ var findCmd = &cobra.Command{
 		if err != nil {
 			cli.Die(err)
 		}
-
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 		if err != nil {
 			cli.Die(err)
 		}
-
-		matches := findLayersByName(doc, layerName)
+		matches := extract.FindLayersByName(doc, layerName)
 		output, err := json.MarshalIndent(map[string]any{"name": layerName, "matches": matches}, "", "  ")
 		if err != nil {
 			cli.Die(err)
 		}
 		fmt.Println(string(output))
 	},
-}
-
-func findLayersByName(value any, layerName string) []layerMatchOutput {
-	object, ok := value.(map[string]any)
-	if !ok {
-		return nil
-	}
-
-	var matches []layerMatchOutput
-	if object["name"] == layerName {
-		matches = append(matches, layerMatchOutput{
-			ID:   figma.StringValue(object["id"]),
-			Name: figma.StringValue(object["name"]),
-			Type: figma.StringValue(object["type"]),
-		})
-	}
-
-	children, ok := object["children"].([]any)
-	if !ok {
-		return matches
-	}
-	for _, child := range children {
-		matches = append(matches, findLayersByName(child, layerName)...)
-	}
-	return matches
 }
 
 func init() {
