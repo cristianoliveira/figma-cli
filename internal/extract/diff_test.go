@@ -1,4 +1,4 @@
-package figma
+package extract
 
 import "testing"
 

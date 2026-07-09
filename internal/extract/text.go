@@ -1,34 +1,54 @@
-package figma
+package extract
 
-import (
-	"encoding/json"
-	"sort"
-)
+import "sort"
 
 const textNodeType = "TEXT"
 
-// UnmarshalDocument converts a typed document node (from the generated API types)
-// into a generic tree for use with the walker functions.
-func UnmarshalDocument(node any) (any, error) {
-	data, err := json.Marshal(node)
-	if err != nil {
-		return nil, err
-	}
-	var doc map[string]any
-	if err := json.Unmarshal(data, &doc); err != nil {
-		return nil, err
-	}
-	return doc, nil
+// TextNode represents a TEXT node in a Figma document.
+type TextNode struct {
+	ID   string
+	Name string
+	Text string
 }
 
-// ExtractTextNodes walks a Figma document tree and collects all TEXT nodes.
+// TextNodeOutput is a JSON-serializable text node.
+type TextNodeOutput struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Text string `json:"text"`
+}
+
+// ChangedTextOutput represents a changed text node in a diff.
+type ChangedTextOutput struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+// TextOutput is the result of a text diff between two versions.
+type TextOutput struct {
+	Added   []TextNodeOutput    `json:"added"`
+	Removed []TextNodeOutput    `json:"removed"`
+	Changed []ChangedTextOutput `json:"changed"`
+}
+
+// LayerTextOutput represents a layer with its text content.
+type LayerTextOutput struct {
+	ID    string           `json:"id"`
+	Name  string           `json:"name"`
+	Type  string           `json:"type"`
+	Texts []TextNodeOutput `json:"texts"`
+}
+
+// ExtractTextNodes walks a document tree and collects all TEXT nodes.
 func ExtractTextNodes(value any) []TextNode {
 	var nodes []TextNode
 	walkTextNodes(value, &nodes)
 	return nodes
 }
 
-// FindTextByLayerName finds all layers matching the given name and extracts their text content.
+// FindTextByLayerName finds all layers matching the given name and extracts their text.
 // If recursive is true, all descendant TEXT nodes are included; otherwise only direct TEXT children.
 func FindTextByLayerName(value any, layerName string, recursive bool) []LayerTextOutput {
 	var matches []LayerTextOutput
@@ -148,10 +168,4 @@ func textNodeOutputs(nodes []TextNode) []TextNodeOutput {
 		outputs = append(outputs, TextNodeOutput(node))
 	}
 	return outputs
-}
-
-// StringValue extracts a string from an any value, or returns "".
-func StringValue(value any) string {
-	text, _ := value.(string)
-	return text
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
@@ -57,7 +58,7 @@ var textsCmd = &cobra.Command{
 			}
 		}
 
-		matches := figma.FindTextByLayerName(doc, layerName, recursive)
+		matches := extract.FindTextByLayerName(doc, layerName, recursive)
 		output, err := json.MarshalIndent(map[string]any{"layer": layerName, "matches": matches}, "", "  ")
 		if err != nil {
 			cli.Die(err)

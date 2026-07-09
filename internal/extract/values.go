@@ -72,3 +72,9 @@ func colorsFromPaints(value any) []string {
 	}
 	return colors
 }
+
+// StringValue extracts a string from an any value, or returns "".
+func StringValue(value any) string {
+	text, _ := value.(string)
+	return text
+}

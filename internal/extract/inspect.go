@@ -1,7 +1,5 @@
 package extract
 
-import "github.com/cristianoliveira/figma-cli/internal/figma"
-
 // InspectOutput is a curated single-node summary, used by `figma inspect`.
 type InspectOutput struct {
 	ID              string           `json:"id"`
@@ -53,16 +51,16 @@ func NodeToInspectOutput(object map[string]any) InspectOutput {
 		bgColor = colorHexFromPaint(bg)
 	}
 	return InspectOutput{
-		ID:              figma.StringValue(object["id"]),
-		Name:            figma.StringValue(object["name"]),
-		Type:            figma.StringValue(object["type"]),
-		Text:            figma.StringValue(object["characters"]),
-		ComponentID:     figma.StringValue(object["componentId"]),
-		ComponentSetID:  figma.StringValue(object["componentSetId"]),
+		ID:              StringValue(object["id"]),
+		Name:            StringValue(object["name"]),
+		Type:            StringValue(object["type"]),
+		Text:            StringValue(object["characters"]),
+		ComponentID:     StringValue(object["componentId"]),
+		ComponentSetID:  StringValue(object["componentSetId"]),
 		Fills:           colorsFromPaints(object["fills"]),
 		Strokes:         colorsFromPaints(object["strokes"]),
 		StrokeWeight:    numberValue(object["strokeWeight"]),
-		StrokeAlign:     figma.StringValue(object["strokeAlign"]),
+		StrokeAlign:     StringValue(object["strokeAlign"]),
 		Opacity:         optionalNumber(object["opacity"]),
 		CornerRadius:    optionalNumber(object["cornerRadius"]),
 		Bounds:          boundsFromValue(object["absoluteBoundingBox"]),

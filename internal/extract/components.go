@@ -2,8 +2,6 @@ package extract
 
 import (
 	"strings"
-
-	"github.com/cristianoliveira/figma-cli/internal/figma"
 )
 
 // ComponentOutput is a curated summary of a node, used by `figma components`.
@@ -36,18 +34,18 @@ func ExtractComponents(value any) []ComponentOutput {
 		return nil
 	}
 	component := ComponentOutput{
-		ID:                figma.StringValue(object["id"]),
-		Name:              figma.StringValue(object["name"]),
-		Type:              figma.StringValue(object["type"]),
-		Text:              figma.StringValue(object["characters"]),
-		ComponentID:       figma.StringValue(object["componentId"]),
-		ComponentSetID:    figma.StringValue(object["componentSetId"]),
+		ID:                StringValue(object["id"]),
+		Name:              StringValue(object["name"]),
+		Type:              StringValue(object["type"]),
+		Text:              StringValue(object["characters"]),
+		ComponentID:       StringValue(object["componentId"]),
+		ComponentSetID:    StringValue(object["componentSetId"]),
 		VariantProperties: mapValue(object["variantProperties"]),
 		Fills:             colorsFromPaints(object["fills"]),
 		Strokes:           colorsFromPaints(object["strokes"]),
 		Paints:            paintsFromObject(object),
 		StrokeWeight:      numberValue(object["strokeWeight"]),
-		StrokeAlign:       figma.StringValue(object["strokeAlign"]),
+		StrokeAlign:       StringValue(object["strokeAlign"]),
 		StrokeDashes:      numberSlice(object["strokeDashes"]),
 		Effects:           effectsFromValue(object["effects"]),
 		Opacity:           optionalNumber(object["opacity"]),
@@ -126,7 +124,7 @@ func paintOutputsFromValue(value any) []paintOutput {
 			continue
 		}
 		outputs = append(outputs, paintOutput{
-			Type:    figma.StringValue(paintObject["type"]),
+			Type:    StringValue(paintObject["type"]),
 			Color:   colorHexFromPaint(paintObject),
 			Opacity: numberValue(paintObject["opacity"]),
 			Visible: paintObject["visible"] != false,
@@ -147,7 +145,7 @@ func effectsFromValue(value any) []effectOutput {
 			continue
 		}
 		outputs = append(outputs, effectOutput{
-			Type:    figma.StringValue(effectObject["type"]),
+			Type:    StringValue(effectObject["type"]),
 			Color:   colorHexFromPaint(effectObject),
 			Radius:  numberValue(effectObject["radius"]),
 			Visible: effectObject["visible"] != false,
@@ -166,20 +164,20 @@ func boundsFromValue(value any) boundsOutput {
 
 func layoutFromObject(object map[string]any) layoutOutput {
 	return layoutOutput{
-		Mode:                   figma.StringValue(object["layoutMode"]),
+		Mode:                   StringValue(object["layoutMode"]),
 		Gap:                    numberValue(object["itemSpacing"]),
 		PaddingTop:             numberValue(object["paddingTop"]),
 		PaddingRight:           numberValue(object["paddingRight"]),
 		PaddingBottom:          numberValue(object["paddingBottom"]),
 		PaddingLeft:            numberValue(object["paddingLeft"]),
-		LayoutAlign:            figma.StringValue(object["layoutAlign"]),
+		LayoutAlign:            StringValue(object["layoutAlign"]),
 		LayoutGrow:             numberValue(object["layoutGrow"]),
-		LayoutSizingHorizontal: figma.StringValue(object["layoutSizingHorizontal"]),
-		LayoutSizingVertical:   figma.StringValue(object["layoutSizingVertical"]),
-		PrimaryAxisSizingMode:  figma.StringValue(object["primaryAxisSizingMode"]),
-		CounterAxisSizingMode:  figma.StringValue(object["counterAxisSizingMode"]),
-		PrimaryAxisAlignItems:  figma.StringValue(object["primaryAxisAlignItems"]),
-		CounterAxisAlignItems:  figma.StringValue(object["counterAxisAlignItems"]),
+		LayoutSizingHorizontal: StringValue(object["layoutSizingHorizontal"]),
+		LayoutSizingVertical:   StringValue(object["layoutSizingVertical"]),
+		PrimaryAxisSizingMode:  StringValue(object["primaryAxisSizingMode"]),
+		CounterAxisSizingMode:  StringValue(object["counterAxisSizingMode"]),
+		PrimaryAxisAlignItems:  StringValue(object["primaryAxisAlignItems"]),
+		CounterAxisAlignItems:  StringValue(object["counterAxisAlignItems"]),
 	}
 }
 
@@ -189,15 +187,15 @@ func typographyFromValue(value any) typographyOutput {
 		return typographyOutput{}
 	}
 	return typographyOutput{
-		FontFamily:          figma.StringValue(style["fontFamily"]),
+		FontFamily:          StringValue(style["fontFamily"]),
 		FontSize:            numberValue(style["fontSize"]),
 		FontWeight:          numberValue(style["fontWeight"]),
 		LineHeight:          numberValue(style["lineHeightPx"]),
 		LetterSpacing:       numberValue(style["letterSpacing"]),
 		ParagraphSpacing:    numberValue(style["paragraphSpacing"]),
-		TextCase:            figma.StringValue(style["textCase"]),
-		TextDecoration:      figma.StringValue(style["textDecoration"]),
-		TextAlignHorizontal: figma.StringValue(style["textAlignHorizontal"]),
-		TextAlignVertical:   figma.StringValue(style["textAlignVertical"]),
+		TextCase:            StringValue(style["textCase"]),
+		TextDecoration:      StringValue(style["textDecoration"]),
+		TextAlignHorizontal: StringValue(style["textAlignHorizontal"]),
+		TextAlignVertical:   StringValue(style["textAlignVertical"]),
 	}
 }

@@ -1,7 +1,5 @@
 package extract
 
-import "github.com/cristianoliveira/figma-cli/internal/figma"
-
 // LayerMatch is a found layer, used by `figma find`.
 type LayerMatch struct {
 	ID   string `json:"id"`
@@ -19,9 +17,9 @@ func FindLayersByName(value any, layerName string) []LayerMatch {
 	var matches []LayerMatch
 	if object["name"] == layerName {
 		matches = append(matches, LayerMatch{
-			ID:   figma.StringValue(object["id"]),
-			Name: figma.StringValue(object["name"]),
-			Type: figma.StringValue(object["type"]),
+			ID:   StringValue(object["id"]),
+			Name: StringValue(object["name"]),
+			Type: StringValue(object["type"]),
 		})
 	}
 

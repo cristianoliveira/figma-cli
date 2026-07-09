@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
 )
@@ -38,9 +39,9 @@ var diffTextCmd = &cobra.Command{
 			cli.Die(err)
 		}
 
-		textDiff := figma.DiffText(
-			figma.ExtractTextNodes(fromDoc),
-			figma.ExtractTextNodes(toDoc),
+		textDiff := extract.DiffText(
+			extract.ExtractTextNodes(fromDoc),
+			extract.ExtractTextNodes(toDoc),
 		)
 		output, err := json.MarshalIndent(textDiff, "", "  ")
 		if err != nil {

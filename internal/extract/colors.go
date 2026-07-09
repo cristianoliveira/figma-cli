@@ -2,8 +2,6 @@ package extract
 
 import (
 	"sort"
-
-	"github.com/cristianoliveira/figma-cli/internal/figma"
 )
 
 // blackColor is skipped when building a palette: it is the default "no color"
@@ -41,7 +39,7 @@ func walkColors(value any, colorMap map[string]*ColorEntry) {
 		return
 	}
 
-	name := figma.StringValue(object["name"])
+	name := StringValue(object["name"])
 
 	collectFills := func(paints any) {
 		items, ok := paints.([]any)
