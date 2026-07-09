@@ -31,6 +31,13 @@ linters:
       min-len: 3           # Minimum string length to check
       min-occurrences: 3   # Minimum occurrences to flag as duplicate
 
+  exclusions:
+    rules:
+      # Repeated string literals are normal in test fixtures.
+      - path: _test\.go$
+        linters:
+          - goconst
+
 formatters:
   enable:
     - gofmt
@@ -48,8 +55,4 @@ run:
 issues:
   max-issues-per-linter: 0      # Unlimited issues per linter
   max-same-issues: 0            # Unlimited same issues
-  exclude-rules:
-    - path: _test\.go$
-      linters:
-        - goconst
 
