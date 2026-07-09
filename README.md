@@ -86,6 +86,15 @@ figma text "https://www.figma.com/design/xyz456/Another-Design"
 
 # Export assets from a frame
 figma export --format png --scale 2 "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
+
+# Generate design tokens (CSS variables, Tailwind theme, or JSON)
+figma tokens --format css "https://www.figma.com/design/abc123/My-Design"
+figma tokens --format tailwind --output tailwind.tokens.js "https://www.figma.com/design/abc123/My-Design"
+figma tokens --source styles --prefix fig- "abc123"
+
+# Generate CSS (layout + fills + type) for a frame — scriptable Dev Mode
+echo '/* customization-page.css */' > styles.css
+figma css "https://www.figma.com/design/abc123/My-Design?node-id=42:1" >> styles.css
 ```
 
 ### JSON Output
