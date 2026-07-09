@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -57,11 +54,9 @@ Examples:
 			out.NodeID = extract.ExtractNodeIDFromClientMeta(c.ClientMeta)
 			outputs = append(outputs, out)
 		}
-		result, err := json.MarshalIndent(outputs, "", "  ")
-		if err != nil {
+		if err := cli.NewPrinter(cmd).JSON(outputs); err != nil {
 			cli.Die(err)
 		}
-		fmt.Println(string(result))
 	},
 }
 

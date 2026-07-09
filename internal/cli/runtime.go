@@ -9,6 +9,8 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/output"
+	"github.com/spf13/cobra"
 )
 
 // Die prints err to stderr and exits with status 1.
@@ -16,6 +18,14 @@ import (
 func Die(err error) {
 	fmt.Fprintln(os.Stderr, "error:", err)
 	os.Exit(1)
+}
+
+// NewPrinter builds an output.Printer bound to stdout, reading the global
+// --json flag from cmd. Centralising this keeps the flag lookup in one place
+// and stops every command from re-reading the same persistent flag.
+func NewPrinter(cmd *cobra.Command) *output.Printer {
+	asJSON, _ := cmd.Flags().GetBool("json")
+	return output.New(os.Stdout, asJSON)
 }
 
 // LoadClient builds a Figma API client from the configured access token.

@@ -43,7 +43,9 @@ var exportCmd = &cobra.Command{
 		if err := cli.DownloadFile(http.DefaultClient, outputPath, assetURL); err != nil {
 			cli.Die(err)
 		}
-		fmt.Println(outputPath)
+		if err := cli.NewPrinter(cmd).File(outputPath, map[string]any{"format": format, "node": nodeIDs[0]}); err != nil {
+			cli.Die(err)
+		}
 	},
 }
 

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
@@ -40,11 +39,9 @@ var inspectCmd = &cobra.Command{
 			cli.Die(fmt.Errorf("node %s not found", nodeIDs[0]))
 		}
 		node := extract.NodeToInspectOutput(found)
-		output, err := json.MarshalIndent(node, "", "  ")
-		if err != nil {
+		if err := cli.NewPrinter(cmd).JSON(node); err != nil {
 			cli.Die(err)
 		}
-		fmt.Println(string(output))
 	},
 }
 

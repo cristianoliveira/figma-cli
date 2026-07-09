@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
@@ -43,11 +42,9 @@ var diffTextCmd = &cobra.Command{
 			extract.ExtractTextNodes(fromDoc),
 			extract.ExtractTextNodes(toDoc),
 		)
-		output, err := json.MarshalIndent(textDiff, "", "  ")
-		if err != nil {
+		if err := cli.NewPrinter(cmd).JSON(textDiff); err != nil {
 			cli.Die(err)
 		}
-		fmt.Println(string(output))
 	},
 }
 

@@ -58,4 +58,7 @@ func Execute() {
 }
 
 func init() {
+	// Persistent so every subcommand inherits it; cli.NewPrinter reads it once.
+	rootCmd.PersistentFlags().Bool("json", false,
+		"emit every result as JSON (wraps text/file results in a JSON envelope)")
 }

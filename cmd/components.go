@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
@@ -41,11 +40,9 @@ var componentsCmd = &cobra.Command{
 		if nameFilter != "" {
 			outputValue = extract.FilterByName(outputValue, nameFilter)
 		}
-		output, err := json.MarshalIndent(outputValue, "", "  ")
-		if err != nil {
+		if err := cli.NewPrinter(cmd).JSON(outputValue); err != nil {
 			cli.Die(err)
 		}
-		fmt.Println(string(output))
 	},
 }
 

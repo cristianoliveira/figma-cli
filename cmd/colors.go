@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
@@ -33,11 +32,9 @@ var colorsCmd = &cobra.Command{
 			cli.Die(err)
 		}
 		palette := extract.CollectColors(doc)
-		output, err := json.MarshalIndent(palette, "", "  ")
-		if err != nil {
+		if err := cli.NewPrinter(cmd).JSON(palette); err != nil {
 			cli.Die(err)
 		}
-		fmt.Println(string(output))
 	},
 }
 

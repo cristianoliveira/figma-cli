@@ -50,9 +50,14 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 			if err := os.WriteFile(outputPath, []byte(out), 0o644); err != nil {
 				cli.Die(err)
 			}
+			if err := cli.NewPrinter(cmd).File(outputPath, map[string]any{"format": "css", "bytes": len(out)}); err != nil {
+				cli.Die(err)
+			}
 			return
 		}
-		fmt.Print(out)
+		if err := cli.NewPrinter(cmd).Text("css", out); err != nil {
+			cli.Die(err)
+		}
 	},
 }
 

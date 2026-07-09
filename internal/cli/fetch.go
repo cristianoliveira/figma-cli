@@ -1,15 +1,15 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/spf13/cobra"
 )
 
 // RunSimpleFetch is a shared runner for commands that fetch JSON from a Figma
 // endpoint without needing node IDs or extra flags.
-func RunSimpleFetch(args []string, buildURL func(fileID string) (string, error), label string) {
+func RunSimpleFetch(cmd *cobra.Command, args []string, buildURL func(fileID string) (string, error), label string) {
 	input, err := figma.ParseInput(args[0])
 	if err != nil {
 		Die(err)
@@ -30,9 +30,7 @@ func RunSimpleFetch(args []string, buildURL func(fileID string) (string, error),
 		Die(fmt.Errorf("fetching %s: %w", label, err))
 	}
 
-	output, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
+	if err := NewPrinter(cmd).JSON(result); err != nil {
 		Die(err)
 	}
-	fmt.Println(string(output))
 }

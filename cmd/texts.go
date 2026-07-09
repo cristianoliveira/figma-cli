@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
@@ -59,11 +58,9 @@ var textsCmd = &cobra.Command{
 		}
 
 		matches := extract.FindTextByLayerName(doc, layerName, recursive)
-		output, err := json.MarshalIndent(map[string]any{"layer": layerName, "matches": matches}, "", "  ")
-		if err != nil {
+		if err := cli.NewPrinter(cmd).JSON(map[string]any{"layer": layerName, "matches": matches}); err != nil {
 			cli.Die(err)
 		}
-		fmt.Println(string(output))
 	},
 }
 

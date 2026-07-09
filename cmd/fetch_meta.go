@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
@@ -42,11 +39,9 @@ Examples:
 			cli.Die(err)
 		}
 
-		output, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
+		if err := cli.NewPrinter(cmd).JSON(result); err != nil {
 			cli.Die(err)
 		}
-		fmt.Println(string(output))
 	},
 }
 

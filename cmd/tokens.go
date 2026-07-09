@@ -59,9 +59,14 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 			if err := os.WriteFile(tokensOutput, []byte(out), 0o644); err != nil {
 				cli.Die(err)
 			}
+			if err := cli.NewPrinter(cmd).File(tokensOutput, map[string]any{"format": tokensFormat, "bytes": len(out)}); err != nil {
+				cli.Die(err)
+			}
 			return
 		}
-		fmt.Print(out)
+		if err := cli.NewPrinter(cmd).Text("tokens", out); err != nil {
+			cli.Die(err)
+		}
 	},
 }
 
