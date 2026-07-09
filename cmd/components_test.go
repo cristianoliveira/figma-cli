@@ -26,32 +26,76 @@ func TestExtractComponents(t *testing.T) {
 		},
 	}
 
-	got := extractComponents(document)
+	components := extractComponents(document)
 
-	if len(got) != 3 {
-		t.Fatalf("components = %#v", got)
+	t.Run("count", func(t *testing.T) {
+		if len(components) != 3 {
+			t.Fatalf("got %d components, want 3", len(components))
+		}
+	})
+
+	root := components[0]
+	rootTests := []struct {
+		name string
+		got  any
+		want any
+	}{
+		{"opacity", *root.Opacity, 0.5},
+		{"cornerRadius", *root.CornerRadius, 8.0},
+		{"bounds.x", root.Bounds.X, 1.0},
+		{"bounds.y", root.Bounds.Y, 2.0},
+		{"bounds.width", root.Bounds.Width, 100.0},
+		{"bounds.height", root.Bounds.Height, 50.0},
+		{"layout.mode", root.Layout.Mode, "HORIZONTAL"},
+		{"layout.gap", root.Layout.Gap, 12.0},
+		{"layout.paddingLeft", root.Layout.PaddingLeft, 16.0},
+		{"componentId", root.ComponentID, "component-1"},
+		{"componentSetId", root.ComponentSetID, "set-1"},
+		{"strokeWeight", root.StrokeWeight, 2.0},
+		{"strokeAlign", root.StrokeAlign, "INSIDE"},
+		{"variantProperties.State", root.VariantProperties["State"], "Default"},
+		{"paints.strokes[0].color", root.Paints.Strokes[0].Color, "#FF0000"},
 	}
-	if got[0].Opacity == nil || *got[0].Opacity != 0.5 || got[0].CornerRadius == nil || *got[0].CornerRadius != 8 {
-		t.Fatalf("root component = %#v", got[0])
+
+	for _, tt := range rootTests {
+		t.Run("root/"+tt.name, func(t *testing.T) {
+			if tt.got != tt.want {
+				t.Errorf("%s = %v, want %v", tt.name, tt.got, tt.want)
+			}
+		})
 	}
-	if got[0].Bounds.Width != 100 || got[0].Layout.Mode != "HORIZONTAL" || got[0].Layout.PaddingLeft != 16 {
-		t.Fatalf("root component = %#v", got[0])
-	}
-	if got[0].ComponentID != "component-1" || got[0].ComponentSetID != "set-1" || got[0].VariantProperties["State"] != "Default" {
-		t.Fatalf("root component identity = %#v", got[0])
-	}
-	if got[0].StrokeWeight != 2 || got[0].StrokeAlign != "INSIDE" || got[0].Paints.Strokes[0].Color != "#FF0000" {
-		t.Fatalf("root component strokes = %#v", got[0])
-	}
-	if got[1].ID != buttonID || got[1].Name != "Button" || got[1].Type != "INSTANCE" {
-		t.Fatalf("component = %#v", got[1])
-	}
-	if got[2].Text != "Hello" || got[2].Typography.FontFamily != "Inter" || got[2].Typography.FontWeight != 700 {
-		t.Fatalf("text component = %#v", got[2])
-	}
-	if got[2].Typography.LetterSpacing != 0.2 || got[2].Typography.TextAlignHorizontal != "CENTER" {
-		t.Fatalf("text typography = %#v", got[2])
-	}
+
+	t.Run("instance child", func(t *testing.T) {
+		child := components[1]
+		if child.ID != buttonID {
+			t.Errorf("ID = %v, want %v", child.ID, buttonID)
+		}
+		if child.Name != "Button" {
+			t.Errorf("Name = %v, want Button", child.Name)
+		}
+		if child.Type != "INSTANCE" {
+			t.Errorf("Type = %v, want INSTANCE", child.Type)
+		}
+	})
+
+	t.Run("text child", func(t *testing.T) {
+		text := components[2]
+		if text.Text != "Hello" {
+			t.Errorf("Text = %v, want Hello", text.Text)
+		}
+		if text.Typography.FontFamily != "Inter" {
+			t.Errorf("FontFamily = %v, want Inter", text.Typography.FontFamily)
+		}
+		if text.Typography.FontWeight != 700 {
+			t.Errorf("FontWeight = %v, want 700", text.Typography.FontWeight)
+		}
+		if text.Typography.LetterSpacing != 0.2 {
+			t.Errorf("LetterSpacing = %v, want 0.2", text.Typography.LetterSpacing)
+		}
+		if text.Typography.TextAlignHorizontal != "CENTER" {
+			t.Errorf("TextAlignHorizontal = %v, want CENTER", text.Typography.TextAlignHorizontal)
+		}
+	})
 }
 
 func TestExtractRawComponents(t *testing.T) {

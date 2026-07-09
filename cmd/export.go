@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -50,12 +49,13 @@ var exportCmd = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "error building export URL: %v\n", err)
 			os.Exit(1)
 		}
-		assetURL, err := fetchExportURL(apiURL, nodeIDs[0], token)
+		client := figma.NewClient(token)
+		assetURL, err := fetchExportURL(client, apiURL, nodeIDs[0])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error fetching export URL: %v\n", err)
 			os.Exit(1)
 		}
-		if err := downloadFile(outputPath, assetURL); err != nil {
+		if err := downloadFile(http.DefaultClient, outputPath, assetURL); err != nil {
 			fmt.Fprintf(os.Stderr, "error downloading export: %v\n", err)
 			os.Exit(1)
 		}
@@ -67,27 +67,10 @@ func defaultExportOutputPath(fileID string, nodeID string, format string) string
 	return fmt.Sprintf("%s_%s.%s", fileID, strings.ReplaceAll(nodeID, ":", "-"), format)
 }
 
-func fetchExportURL(apiURL string, nodeID string, token string) (string, error) {
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("creating request: %w", err)
-	}
-	req.Header.Set("X-Figma-Token", token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("making request: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("API returned status %d: %s", resp.StatusCode, body)
-	}
-
+func fetchExportURL(client *figma.Client, apiURL string, nodeID string) (string, error) {
 	var result exportResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("decoding JSON: %w", err)
+	if err := client.Fetch(apiURL, &result); err != nil {
+		return "", fmt.Errorf("fetching export URL: %w", err)
 	}
 	assetURL := result.Images[nodeID]
 	if assetURL == "" {
@@ -96,8 +79,8 @@ func fetchExportURL(apiURL string, nodeID string, token string) (string, error) 
 	return assetURL, nil
 }
 
-func downloadFile(outputPath string, fileURL string) error {
-	resp, err := http.Get(fileURL)
+func downloadFile(httpClient *http.Client, outputPath string, fileURL string) error {
+	resp, err := httpClient.Get(fileURL)
 	if err != nil {
 		return fmt.Errorf("making request: %w", err)
 	}
