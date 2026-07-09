@@ -112,18 +112,23 @@ All commands produce JSON output for easy parsing:
 
 ```
 figma-cli/
-├── cmd/figma/             # Main CLI entry point
+├── cmd/                    # Cobra command implementations (root, texts, export, ...)
+│   └── figma/              # Main CLI entry point (main.go)
 ├── internal/               # Private application code
-│   ├── api/               # Figma API client
-│   ├── parser/            # URL and node parsing
-│   └── export/            # Asset export logic
-├── pkg/                   # Public reusable packages
-│   ├── figma/             # Figma data structures
-│   └── cli/               # CLI utilities
-├── docs/                  # Documentation
-├── .beads/                # Issue tracking (bd)
-├── go.mod                 # Go module definition
-└── README.md              # This file
+│   ├── cli/                # CLI runtime and shared command helpers
+│   ├── env/                # Environment configuration (token loading)
+│   ├── extract/            # Extraction logic (colors, comments, components, find, inspect)
+│   └── figma/              # Figma domain layer (client, document, types, URL parsing, export)
+│       └── api/            # Generated Figma REST API types (from openapi/, DO NOT EDIT)
+├── openapi/                # OpenAPI spec and oapi-codegen config (source of truth for api.gen.go)
+├── scripts/                # Codegen helpers (regenerate API types)
+├── testdata/               # Test fixtures
+├── plans/                  # Work planning notes
+├── research/               # Research notes
+├── docs/                   # Documentation
+├── flake.nix               # Nix flake (dev shell)
+├── go.mod                  # Go module definition
+└── README.md               # This file
 ```
 
 ## Development
