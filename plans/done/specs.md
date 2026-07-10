@@ -1,5 +1,7 @@
 # specs (dev handoff)
 
+> **Status (10-07-26): Implemented through `figma inspect`.** Default inspection provides single-node implementation properties; `--recursive` returns selected tree. Component properties, mixed typography, paints, effects, layout, constraints, and resolved bindings share one extraction model.
+
 ## Problem
 
 The Figma Inspect panel is the de facto handoff mechanism. But:

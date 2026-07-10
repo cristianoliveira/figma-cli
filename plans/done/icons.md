@@ -1,5 +1,7 @@
 # icons (batch asset export)
 
+> **Status (10-07-26): Implemented through `figma assets`.** Use `--kind icon`, `--name`, `--filename name`, and `--trim-name-prefix`; this reuses deterministic manifests, collision handling, downloads, and partial-failure behavior instead of adding overlapping command.
+
 ## Problem
 
 Designers create icon sets in Figma. Developers then manually:

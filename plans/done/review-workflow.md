@@ -1,5 +1,7 @@
 # Design review workflow
 
+> **Status (10-07-26): Implemented.** Comments emit ordered threads with state, author, date, node path, and direct URL. Node-scoped ancestor lookup uses scoped file requests and works on large files. Text diff and blame include readable parent paths; blame accepts explicit `--id` or URL scope.
+
 ## Problem
 
 `comments`, text diffs, and blame expose useful data but not enough context for frontend review. Comments are flat rather than threaded; copy changes lack frame paths; blame only accepts URL node scope. Developers still return to Figma to understand where and why change happened.

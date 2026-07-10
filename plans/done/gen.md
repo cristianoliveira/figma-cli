@@ -1,5 +1,7 @@
 # gen (targeted code generation)
 
+> **Status (10-07-26): Rejected as a CLI responsibility.** Structured `inspect --recursive`, `layout`, `components`, `texts`, tokens, and assets now provide stable agent inputs without generating framework-coupled source code. Keep code generation in repository-specific tooling that owns templates and conventions.
+
 ## Problem
 
 Full "Figma to code" is a trap — generated code is unmaintainable, doesn't follow team
