@@ -181,6 +181,29 @@ func TestExtractCSSRules_HiddenFillSkipped(t *testing.T) {
 	assert.Empty(t, rules, "expected no rules for hidden-only fill")
 }
 
+func TestExtractCSSRules_ShadowsAndBlurEffects(t *testing.T) {
+	doc := map[string]any{"name": "Card", "effects": []any{
+		map[string]any{"type": "DROP_SHADOW", "offset": map[string]any{"x": float64(0), "y": float64(4)}, "radius": float64(8), "spread": float64(1), "color": map[string]any{"r": float64(0), "g": float64(0), "b": float64(0), "a": float64(0.25)}},
+		map[string]any{"type": "INNER_SHADOW", "offset": map[string]any{"x": float64(0), "y": float64(1)}, "radius": float64(2), "color": map[string]any{"r": float64(1), "g": float64(0), "b": float64(0), "a": float64(0.5)}},
+		map[string]any{"type": "LAYER_BLUR", "radius": float64(6)},
+		map[string]any{"type": "BACKGROUND_BLUR", "radius": float64(12)},
+	}}
+
+	props := propsMap(mustFindRule(t, ExtractCSSRules(doc), ".card"))
+
+	assert.Equal(t, "0px 4px 8px 1px rgba(0, 0, 0, 0.25), inset 0px 1px 2px 0px rgba(255, 0, 0, 0.5)", props["box-shadow"])
+	assert.Equal(t, "blur(6px)", props["filter"])
+	assert.Equal(t, "blur(12px)", props["backdrop-filter"])
+}
+
+func TestExtractCSSRules_HiddenEffectsSkipped(t *testing.T) {
+	doc := map[string]any{"name": "Hidden effect", "effects": []any{
+		map[string]any{"type": "DROP_SHADOW", "visible": false, "radius": float64(8)},
+	}}
+
+	assert.Empty(t, ExtractCSSRules(doc))
+}
+
 func TestExtractCSSRules_NodeOpacityAndClipping(t *testing.T) {
 	doc := map[string]any{
 		"name": "Clipped overlay", "opacity": float64(0), "clipsContent": true,

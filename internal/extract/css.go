@@ -76,6 +76,7 @@ func cssPropsFor(node map[string]any) []CSSProp {
 	props = append(props, radiusProp(node)...)
 	props = append(props, opacityProp(node)...)
 	props = append(props, clippingProp(node)...)
+	props = append(props, effectProps(node)...)
 	if StringValue(node["type"]) == "TEXT" {
 		props = append(props, textProps(node)...)
 	}
@@ -264,6 +265,68 @@ func radiusProp(node map[string]any) []CSSProp {
 		return []CSSProp{{"border-radius", px(radii[0]) + " " + px(radii[1]) + " " + px(radii[2]) + " " + px(radii[3])}}
 	}
 	return nil
+}
+
+func effectProps(node map[string]any) []CSSProp {
+	effects, _ := node["effects"].([]any)
+	shadows := make([]string, 0)
+	var layerBlur string
+	var backgroundBlur string
+	for _, value := range effects {
+		effect, _ := value.(map[string]any)
+		if effect == nil || effect["visible"] == false {
+			continue
+		}
+		switch StringValue(effect["type"]) {
+		case "DROP_SHADOW":
+			if shadow := cssShadow(effect, false); shadow != "" {
+				shadows = append(shadows, shadow)
+			}
+		case "INNER_SHADOW":
+			if shadow := cssShadow(effect, true); shadow != "" {
+				shadows = append(shadows, shadow)
+			}
+		case "LAYER_BLUR":
+			if radius := numberValue(effect["radius"]); radius > 0 && layerBlur == "" {
+				layerBlur = "blur(" + px(radius) + ")"
+			}
+		case "BACKGROUND_BLUR":
+			if radius := numberValue(effect["radius"]); radius > 0 && backgroundBlur == "" {
+				backgroundBlur = "blur(" + px(radius) + ")"
+			}
+		}
+	}
+	props := make([]CSSProp, 0, 3)
+	if len(shadows) > 0 {
+		props = append(props, CSSProp{"box-shadow", strings.Join(shadows, ", ")})
+	}
+	if layerBlur != "" {
+		props = append(props, CSSProp{"filter", layerBlur})
+	}
+	if backgroundBlur != "" {
+		props = append(props, CSSProp{"backdrop-filter", backgroundBlur})
+	}
+	return props
+}
+
+func cssShadow(effect map[string]any, inset bool) string {
+	color, _ := effect["color"].(map[string]any)
+	if color == nil {
+		return ""
+	}
+	offset, _ := effect["offset"].(map[string]any)
+	parts := []string{
+		px(numberValue(offset["x"])),
+		px(numberValue(offset["y"])),
+		px(numberValue(effect["radius"])),
+		px(numberValue(effect["spread"])),
+		cssPaintColor(color, 1),
+	}
+	shadow := strings.Join(parts, " ")
+	if inset {
+		return "inset " + shadow
+	}
+	return shadow
 }
 
 func opacityProp(node map[string]any) []CSSProp {
