@@ -14,9 +14,9 @@ type commandResult struct {
 }
 
 func executeCommand(command *cobra.Command, args ...string) commandResult {
-	root := &cobra.Command{Use: "figma", SilenceErrors: true, SilenceUsage: true}
-	root.PersistentFlags().Bool("json", false, "emit JSON")
-	root.AddCommand(command)
+	root := newRootCommand(command)
+	root.SilenceErrors = true
+	root.SilenceUsage = true
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	root.SetOut(&stdout)

@@ -12,11 +12,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "figma",
-	Short: "Explore and inspect Figma designs from the command line",
-	Long: `figma is a CLI for querying Figma designs. It accepts file URLs directly
+// rootCmd is the production command tree. Tests build isolated roots with newRootCommand.
+var rootCmd = newRootCommand()
+
+func newRootCommand(children ...*cobra.Command) *cobra.Command {
+	command := &cobra.Command{
+		Use:   "figma",
+		Short: "Explore and inspect Figma designs from the command line",
+		Long: `figma is a CLI for querying Figma designs. It accepts file URLs directly
 and produces structured JSON — designed for humans and AI agents alike.
 
   What is this file about?
@@ -51,9 +54,11 @@ and produces structured JSON — designed for humans and AI agents alike.
 
 All commands accept either a Figma file key or a full Figma URL.
 Requires FIGMA_ACCESS_TOKEN environment variable.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	}
+	command.PersistentFlags().Bool("json", false,
+		"emit every result as JSON (wraps text/file results in a JSON envelope)")
+	command.AddCommand(children...)
+	return command
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -72,10 +77,4 @@ func Execute() {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
-}
-
-func init() {
-	// Persistent so every subcommand inherits it; cli.NewPrinter reads it once.
-	rootCmd.PersistentFlags().Bool("json", false,
-		"emit every result as JSON (wraps text/file results in a JSON envelope)")
 }
