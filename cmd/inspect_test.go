@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -15,7 +16,7 @@ import (
 func TestInspectCommandEmitsStableScopedContract(t *testing.T) {
 	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
 		assert.Contains(t, request.URL.Path, "/v1/files/abc/nodes")
-		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT"}}}}`
+		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","styles":{"fill":"S:fill"}},"styles":{"S:fill":{"key":"key","name":"Brand/Primary","styleType":"FILL","remote":false,"description":""}}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 	command := newInspectCommand(func() (*figma.Client, error) { return client, nil })
@@ -24,7 +25,24 @@ func TestInspectCommandEmitsStableScopedContract(t *testing.T) {
 	command.SetArgs([]string{"https://www.figma.com/design/abc/Name?node-id=42-1"})
 
 	require.NoError(t, command.Execute())
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{},"layout":{},"typography":{}}}`, stdout.String())
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{},"layout":{},"typography":{},"styleBindings":{"fill":"S:fill"},"resolvedStyles":{"fill":{"id":"S:fill","name":"Brand/Primary","type":"FILL"}}}}`, stdout.String())
+}
+
+func TestInspectCommandKeepsRawVariablesWhenMetadataIsUnavailable(t *testing.T) {
+	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","boundVariables":{"fills":[{"type":"VARIABLE_ALIAS","id":"V:brand"}]}}}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}}
+	command := newInspectCommandWithVariables(
+		func() (*figma.Client, error) { return client, nil },
+		func(*figma.Client, string) (map[string]any, error) { return nil, errors.New("forbidden") },
+	)
+	var stdout bytes.Buffer
+	command.SetOut(&stdout)
+	command.SetArgs([]string{"https://www.figma.com/design/abc/Name?node-id=42-1"})
+
+	require.NoError(t, command.Execute())
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{},"layout":{},"typography":{},"variableBindings":{"fills":["V:brand"]}}}`, stdout.String())
 }
 
 func TestInspectCommandRejectsMissingScopeWithoutLoadingClient(t *testing.T) {

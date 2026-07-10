@@ -178,8 +178,10 @@ figma components --id 42:1 --raw "abc123"               # raw nodes in the same 
 ```bash
 figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1"
 figma inspect --id 42:1 "abc123" # explicit scope for a bare file key
-# → JSON: { "scope": {...}, "result": { type, name, bounds, fills, strokes, text, children summary } }
+# → JSON: { "scope": {...}, "result": { type, name, bounds, paints, layout, effects, styleBindings, resolvedStyles, variableBindings, resolvedVariables } }
 ```
+
+Raw binding IDs are always preserved. `resolvedStyles` adds style name/type from node metadata. `resolvedVariables` adds variable and collection names when the Variables API is accessible; it is omitted without failing when metadata access is unavailable.
 
 ### `figma comments` — Review feedback
 

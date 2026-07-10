@@ -13,6 +13,13 @@ import (
 var inspectCmd = newInspectCommand(cli.LoadClient)
 
 func newInspectCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+	return newInspectCommandWithVariables(loadClient, figma.FetchVariables)
+}
+
+func newInspectCommandWithVariables(
+	loadClient func() (*figma.Client, error),
+	fetchVariables func(*figma.Client, string) (map[string]any, error),
+) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "inspect [figma-url-or-file-id]",
 		Short: "Show a curated summary of a specific Figma node",
@@ -31,15 +38,22 @@ func newInspectCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			documents, err := figma.FetchNodeDocuments(client, input.FileID, []string{nodeID})
+			details, err := figma.FetchNodeDetails(client, input.FileID, []string{nodeID})
 			if err != nil {
 				return err
 			}
-			document, ok := documents[0].(map[string]any)
+			document, ok := details.Documents[0].(map[string]any)
 			if !ok {
 				return fmt.Errorf("node %s has an invalid document", nodeID)
 			}
 			node := extract.NodeToInspectOutput(document)
+			extract.ResolveInspectStyleBindings(&node, details.Styles)
+			if len(node.VariableBindings) > 0 {
+				variables, fetchErr := fetchVariables(client, input.FileID)
+				if fetchErr == nil {
+					extract.ResolveInspectVariableBindings(&node, variables)
+				}
+			}
 			result := output.Detail[extract.InspectOutput]{
 				Scope:  output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}},
 				Result: node,

@@ -23,28 +23,53 @@ func FetchDocument(client *Client, fileID string, nodeIDs []string, version, dep
 	return UnmarshalDocument(resp.Document)
 }
 
+// NodeDetails contains requested node documents and style metadata returned with them.
+type NodeDetails struct {
+	Documents []any
+	Styles    map[string]map[string]any
+}
+
 // FetchNodeDocuments fetches only the requested node subtrees, preserving the
 // caller's node ID order. Use this when traversal must not include siblings.
 func FetchNodeDocuments(client *Client, fileID string, nodeIDs []string) ([]any, error) {
-	if len(nodeIDs) == 0 {
-		return nil, fmt.Errorf("at least one node ID is required")
-	}
-	u, err := BuildNodesURL(fileID, nodeIDs)
+	details, err := FetchNodeDetails(client, fileID, nodeIDs)
 	if err != nil {
 		return nil, err
 	}
+	return details.Documents, nil
+}
+
+// FetchNodeDetails fetches requested node subtrees with their style metadata.
+func FetchNodeDetails(client *Client, fileID string, nodeIDs []string) (NodeDetails, error) {
+	if len(nodeIDs) == 0 {
+		return NodeDetails{}, fmt.Errorf("at least one node ID is required")
+	}
+	u, err := BuildNodesURL(fileID, nodeIDs)
+	if err != nil {
+		return NodeDetails{}, err
+	}
 	var resp api.GetFileNodesResponse
 	if err := client.Fetch(u, &resp); err != nil {
-		return nil, err
+		return NodeDetails{}, err
 	}
 
-	documents := make([]any, 0, len(nodeIDs))
+	details := NodeDetails{
+		Documents: make([]any, 0, len(nodeIDs)),
+		Styles:    make(map[string]map[string]any),
+	}
 	var fileDocument any
 	for _, nodeID := range nodeIDs {
 		if node, ok := resp.Nodes[nodeID]; ok {
+			for styleID, style := range node.Styles {
+				metadata, mapErr := toMap(style)
+				if mapErr != nil {
+					return NodeDetails{}, mapErr
+				}
+				details.Styles[styleID] = metadata
+			}
 			document, decodeErr := UnmarshalDocument(node.Document)
 			if decodeErr == nil && documentNodeID(document) != "" {
-				documents = append(documents, document)
+				details.Documents = append(details.Documents, document)
 				continue
 			}
 		}
@@ -52,16 +77,16 @@ func FetchNodeDocuments(client *Client, fileID string, nodeIDs []string) ([]any,
 		if fileDocument == nil {
 			fileDocument, err = FetchDocument(client, fileID, nil, "", "")
 			if err != nil {
-				return nil, fmt.Errorf("fetching file to resolve node %s: %w", nodeID, err)
+				return NodeDetails{}, fmt.Errorf("fetching file to resolve node %s: %w", nodeID, err)
 			}
 		}
 		resolved := findDocumentNode(fileDocument, nodeID)
 		if resolved == nil {
-			return nil, fmt.Errorf("node %s was not returned by Figma", nodeID)
+			return NodeDetails{}, fmt.Errorf("node %s was not returned by Figma", nodeID)
 		}
-		documents = append(documents, resolved)
+		details.Documents = append(details.Documents, resolved)
 	}
-	return documents, nil
+	return details, nil
 }
 
 func findDocumentNode(document any, nodeID string) any {

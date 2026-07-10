@@ -111,6 +111,38 @@ func TestNodeToInspectOutputIncludesStyleAndVariableBindings(t *testing.T) {
 	assert.Equal(t, map[string][]string{"fills": {"V:brand"}, "cornerRadius": {"V:radius"}}, out.VariableBindings)
 }
 
+func TestResolveInspectStyleBindingsAddsNamesAndTypes(t *testing.T) {
+	output := NodeToInspectOutput(map[string]any{"styles": map[string]any{"fill": "S:fill", "effect": "S:missing"}})
+	styles := map[string]map[string]any{
+		"S:fill": {"name": "Brand/Primary", "styleType": "FILL"},
+	}
+
+	ResolveInspectStyleBindings(&output, styles)
+
+	assert.Equal(t, map[string]StyleBinding{
+		"fill":   {ID: "S:fill", Name: "Brand/Primary", Type: "FILL"},
+		"effect": {ID: "S:missing"},
+	}, output.ResolvedStyles)
+}
+
+func TestResolveInspectVariableBindingsAddsVariableAndCollectionNames(t *testing.T) {
+	output := NodeToInspectOutput(map[string]any{"boundVariables": map[string]any{
+		"fills": []any{map[string]any{"type": "VARIABLE_ALIAS", "id": "V:brand"}},
+	}})
+	meta := map[string]any{
+		"variables": map[string]any{"V:brand": map[string]any{
+			"name": "Color/Brand", "resolvedType": "COLOR", "variableCollectionId": "C:theme",
+		}},
+		"variableCollections": map[string]any{"C:theme": map[string]any{"name": "Theme"}},
+	}
+
+	ResolveInspectVariableBindings(&output, meta)
+
+	assert.Equal(t, []VariableBinding{{
+		ID: "V:brand", Name: "Color/Brand", Type: "COLOR", CollectionID: "C:theme", CollectionName: "Theme",
+	}}, output.ResolvedVariables["fills"])
+}
+
 func TestNodeToInspectOutputIgnoresMalformedBindings(t *testing.T) {
 	node := map[string]any{
 		"styles":         map[string]any{"fill": 42},
