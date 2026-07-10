@@ -2,6 +2,7 @@ package extract
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -153,14 +154,98 @@ func sizingProp(node map[string]any, modeKey, cssKey string) *CSSProp {
 }
 
 func backgroundProp(node map[string]any) []CSSProp {
-	if c := firstSolidColor(node["fills"]); c != "" {
-		return []CSSProp{{"background", c}}
+	fills, _ := node["fills"].([]any)
+	for _, value := range fills {
+		paint, _ := value.(map[string]any)
+		if paint == nil || paint["visible"] == false {
+			continue
+		}
+		switch StringValue(paint["type"]) {
+		case paintTypeSolid:
+			if color, ok := paint["color"].(map[string]any); ok {
+				return []CSSProp{{"background", cssPaintColor(color, paintOpacity(paint))}}
+			}
+		case "GRADIENT_LINEAR":
+			if gradient := linearGradient(paint); gradient != "" {
+				return []CSSProp{{"background", gradient}}
+			}
+		}
 	}
 	return nil
 }
 
+func linearGradient(paint map[string]any) string {
+	stops, _ := paint["gradientStops"].([]any)
+	if len(stops) == 0 {
+		return ""
+	}
+	formattedStops := make([]string, 0, len(stops))
+	for _, value := range stops {
+		stop, _ := value.(map[string]any)
+		color, _ := stop["color"].(map[string]any)
+		if color == nil {
+			continue
+		}
+		position := numStr(roundTo(numberValue(stop["position"])*100, 2)) + "%"
+		formattedStops = append(formattedStops, cssPaintColor(color, paintOpacity(paint))+" "+position)
+	}
+	if len(formattedStops) == 0 {
+		return ""
+	}
+	return "linear-gradient(" + gradientAngle(paint["gradientHandlePositions"]) + "deg, " + strings.Join(formattedStops, ", ") + ")"
+}
+
+func gradientAngle(value any) string {
+	handles, _ := value.([]any)
+	if len(handles) < 2 {
+		return "180"
+	}
+	start, _ := handles[0].(map[string]any)
+	end, _ := handles[1].(map[string]any)
+	dx := numberValue(end["x"]) - numberValue(start["x"])
+	dy := numberValue(end["y"]) - numberValue(start["y"])
+	angle := math.Atan2(dx, -dy) * 180 / math.Pi
+	if angle < 0 {
+		angle += 360
+	}
+	return numStr(roundTo(angle, 2))
+}
+
+func cssPaintColor(color map[string]any, paintAlpha float64) string {
+	colorAlpha := 1.0
+	if alpha, exists := color["a"]; exists {
+		colorAlpha = numberValue(alpha)
+	}
+	alpha := roundTo(colorAlpha*paintAlpha, 4)
+	if alpha >= 1 {
+		return fmt.Sprintf("#%02X%02X%02X", colorChannel(color["r"]), colorChannel(color["g"]), colorChannel(color["b"]))
+	}
+	return fmt.Sprintf("rgba(%d, %d, %d, %s)", colorChannel(color["r"]), colorChannel(color["g"]), colorChannel(color["b"]), numStr(alpha))
+}
+
+func paintOpacity(paint map[string]any) float64 {
+	if opacity, exists := paint["opacity"]; exists {
+		return numberValue(opacity)
+	}
+	return 1
+}
+
+func firstCSSSolidColor(value any) string {
+	paints, _ := value.([]any)
+	for _, value := range paints {
+		paint, _ := value.(map[string]any)
+		if paint == nil || paint["visible"] == false || StringValue(paint["type"]) != paintTypeSolid {
+			continue
+		}
+		if color, ok := paint["color"].(map[string]any); ok {
+			return cssPaintColor(color, paintOpacity(paint))
+		}
+	}
+	return ""
+}
+
 func borderProps(node map[string]any) []CSSProp {
-	c := firstSolidColor(node["strokes"])
+	c := firstCSSSolidColor(node["strokes"])
 	if c == "" {
 		return nil
 	}
@@ -214,7 +299,7 @@ func textProps(node map[string]any) []CSSProp {
 	if ls := numberValue(style["letterSpacing"]); ls != 0 {
 		props = append(props, CSSProp{"letter-spacing", px(ls)})
 	}
-	if c := firstSolidColor(node["fills"]); c != "" {
+	if c := firstCSSSolidColor(node["fills"]); c != "" {
 		props = append(props, CSSProp{"color", c})
 	}
 	if v := textAlign(StringValue(node["textAlignHorizontal"])); v != "" {

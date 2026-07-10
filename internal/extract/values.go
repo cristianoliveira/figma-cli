@@ -5,6 +5,8 @@ import (
 	"math"
 )
 
+const paintTypeSolid = "SOLID"
+
 // numberValue coerces a Figma numeric field to float64, defaulting to 0.
 func numberValue(value any) float64 {
 	number, ok := value.(float64)

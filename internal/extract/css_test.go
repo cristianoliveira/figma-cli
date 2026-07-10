@@ -132,6 +132,44 @@ func TestExtractCSSRules_BackgroundAndRadius(t *testing.T) {
 	assert.Equal(t, "8px", p["border-radius"], "border-radius")
 }
 
+func TestExtractCSSRules_SolidPaintOpacity(t *testing.T) {
+	doc := map[string]any{"name": "Overlay", "fills": []any{
+		map[string]any{"type": "SOLID", "opacity": float64(0.5), "color": map[string]any{"r": float64(1), "g": float64(0), "b": float64(0), "a": float64(0.5)}},
+	}}
+
+	props := propsMap(mustFindRule(t, ExtractCSSRules(doc), ".overlay"))
+
+	assert.Equal(t, "rgba(255, 0, 0, 0.25)", props["background"])
+}
+
+func TestExtractCSSRules_LinearGradient(t *testing.T) {
+	doc := map[string]any{"name": "Gradient", "fills": []any{
+		map[string]any{
+			"type": "GRADIENT_LINEAR", "opacity": float64(0.5),
+			"gradientHandlePositions": []any{
+				map[string]any{"x": float64(0), "y": float64(0.5)},
+				map[string]any{"x": float64(1), "y": float64(0.5)},
+			},
+			"gradientStops": []any{
+				map[string]any{"position": float64(0), "color": map[string]any{"r": float64(1), "g": float64(0), "b": float64(0), "a": float64(1)}},
+				map[string]any{"position": float64(1), "color": map[string]any{"r": float64(0), "g": float64(0), "b": float64(1), "a": float64(0.5)}},
+			},
+		},
+	}}
+
+	props := propsMap(mustFindRule(t, ExtractCSSRules(doc), ".gradient"))
+
+	assert.Equal(t, "linear-gradient(90deg, rgba(255, 0, 0, 0.5) 0%, rgba(0, 0, 255, 0.25) 100%)", props["background"])
+}
+
+func TestExtractCSSRules_MalformedGradientSkipped(t *testing.T) {
+	doc := map[string]any{"name": "Broken", "fills": []any{
+		map[string]any{"type": "GRADIENT_LINEAR", "gradientStops": []any{map[string]any{"position": float64(0)}}},
+	}}
+
+	assert.Empty(t, ExtractCSSRules(doc))
+}
+
 func TestExtractCSSRules_HiddenFillSkipped(t *testing.T) {
 	doc := map[string]any{
 		"name": "Hidden",

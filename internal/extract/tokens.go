@@ -467,7 +467,7 @@ func firstSolidColor(fills any) string {
 		if paint == nil || paint["visible"] == false {
 			continue
 		}
-		if t, _ := paint["type"].(string); t != "SOLID" {
+		if t, _ := paint["type"].(string); t != paintTypeSolid {
 			continue
 		}
 		if c, ok := paint["color"].(map[string]any); ok {
