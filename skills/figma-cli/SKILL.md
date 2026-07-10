@@ -23,6 +23,7 @@ Every command answers one question. Use this as a lookup table:
 | What are the Tailwind tokens? | `figma tokens --format tailwind <file-key>` |
 | What colors are used here? | `figma colors --id <node-id> <url>` |
 | What images/icons can I download? | `figma assets --output ./dir <url>?node-id=X` |
+| How is this frame structured? | `figma layout <url-with-node-id>` |
 | What's all the copy in this frame? | `figma texts <url-with-node-id>` |
 | What's the text in layers with this name? | `figma texts --layer "Name" <url>` |
 | What components exist here? | `figma components --id <node-id> <url>` |
@@ -116,6 +117,15 @@ figma export --format svg --output ./icons/star.svg --id 42:1 "url"
 ```
 
 Formats: `png`, `jpg`, `svg`, `pdf`.
+
+### `figma layout` — Inspect frame structure
+
+```bash
+figma layout "https://www.figma.com/design/abc/Name?node-id=42-1"
+# → ordered tree with id, name, type, layoutMode, gap, padding, text, and children
+```
+
+Use this for copy/layout alignment when generated CSS is too implementation-oriented. The URL node is inferred; use `--id` only with a bare file key or to override URL scope.
 
 ### `figma texts` — Extract text content
 

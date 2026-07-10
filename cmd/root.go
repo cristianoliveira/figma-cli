@@ -31,6 +31,9 @@ and produces structured JSON — designed for humans and AI agents alike.
   Show me the details of that button.
     figma inspect --id <node-id> <url>
 
+  How is this frame laid out?
+    figma layout "<url>?node-id=42-1"
+
   What text is on this screen?
     figma texts "<url>?node-id=42-1"
     figma texts --id 42:1 <url>
