@@ -11,7 +11,7 @@ Provide URL-first navigation from current file to available project/team context
 ## How
 
 - Verify which parent/team/project metadata Figma API exposes for file endpoints and document limitations clearly.
-- Add discoverable composition path such as `fetch-meta --context` or dedicated context command rather than hidden API calls.
+- Add discoverable composition path such as `meta --context` or dedicated context command rather than hidden API calls.
 - Return file metadata, containing project/team when available, and next commands for projects/files.
 - Preserve direct `projects <team>` and `files <project>` workflows.
 - Cache or avoid repeated file fetches within composed command.

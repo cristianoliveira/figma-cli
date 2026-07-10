@@ -39,7 +39,7 @@ Every command answers one question. Use this as a lookup table:
 | What unresolved feedback affects this node? | `figma comments --include-ancestors --state open <url>` |
 | What changed structurally? | `figma changes --from v1 --to v2 <url>` |
 | What changed in the copy? | `figma diff text --from v1 --to v2 <url>` |
-| What is this file about? | `figma fetch-meta <url>` |
+| What is this file about? | `figma meta <url>` |
 | What versions exist? | `figma versions <url>` |
 | When did this text appear? | `figma diff blame --to <version> <url>` |
 | What files are in this project? | `figma files <project-id-or-url>` |
@@ -276,7 +276,7 @@ figma projects                        # list projects from authenticated teams
 figma projects <team-url-or-team-id>  # select one team
 figma files <project-id-or-url>       # list files in a project
 figma files --branches <id>           # include branch data
-figma fetch-meta "abc123"             # compact file metadata
+figma meta "abc123"                   # compact file metadata
 figma versions "abc123"               # file version history
 figma versions --page-size 50 "abc123"
 figma versions --after <version-id> "abc123"   # older versions

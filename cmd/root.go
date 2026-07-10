@@ -23,7 +23,7 @@ func newRootCommand(children ...*cobra.Command) *cobra.Command {
 and produces structured JSON — designed for humans and AI agents alike.
 
   What is this file about?
-    figma fetch-meta <url>
+    figma meta <url>
 
   What's inside this screen?
     figma components --id <node-id> <url>
