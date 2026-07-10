@@ -139,12 +139,16 @@ figma find --name "button" "abc123"
 # By type
 figma find --type "COMPONENT" "abc123"
 
+# Text matches include both layer name and actual copy
+figma find --type "TEXT" "url?node-id=42-1"
+# → { "matches": [{ "id": "42:2", "name": "Stale layer name", "type": "TEXT", "text": "Actual copy" }] }
+
 # Both, scoped to a node
 figma find --id 42:1 --name "icon" --type "INSTANCE" "abc123"
 ```
 
 At least one of `--name` or `--type` is required. Types: `FRAME`, `COMPONENT`,
-`INSTANCE`, `SECTION`, `TEXT`, etc.
+`INSTANCE`, `SECTION`, `TEXT`, etc. Matching text nodes include `text`, so consumers should prioritize actual copy over potentially stale layer names.
 
 ### `figma components` — List components
 

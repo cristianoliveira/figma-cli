@@ -16,6 +16,7 @@ func searchDoc() map[string]any {
 				map[string]any{"id": "1:4", "name": "Icon", "type": "VECTOR"},
 			}},
 			map[string]any{"id": "1:5", "name": "Footer", "type": "SECTION"},
+			map[string]any{"id": "1:6", "name": "Stale title", "type": "TEXT", "characters": "Actual title"},
 		},
 	}
 }
@@ -55,6 +56,20 @@ func TestSearchNil(t *testing.T) {
 func TestSearchNoCriteriaReturnsAll(t *testing.T) {
 	matches := Search(searchDoc(), SearchCriteria{})
 
-	// root + 5 descendants = 6 nodes.
-	assert.Len(t, matches, 6)
+	// root + 6 descendants = 7 nodes.
+	assert.Len(t, matches, 7)
+}
+
+func TestSearchIncludesCharactersForTextNodes(t *testing.T) {
+	matches := Search(searchDoc(), SearchCriteria{Type: "TEXT"})
+
+	assert.Equal(t, []LayerMatch{{
+		ID: "1:6", Name: "Stale title", Type: "TEXT", Text: "Actual title",
+	}}, matches)
+}
+
+func TestSearchLeavesTextEmptyForNonTextNodes(t *testing.T) {
+	matches := Search(searchDoc(), SearchCriteria{Name: "Footer"})
+
+	assert.Equal(t, "", matches[0].Text)
 }

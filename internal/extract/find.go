@@ -7,6 +7,7 @@ type LayerMatch struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Type string `json:"type"`
+	Text string `json:"text,omitempty"`
 }
 
 // SearchCriteria filters nodes by name and/or type.
@@ -34,6 +35,7 @@ func Search(value any, criteria SearchCriteria) []LayerMatch {
 			ID:   StringValue(object["id"]),
 			Name: StringValue(object["name"]),
 			Type: StringValue(object["type"]),
+			Text: textCharacters(object),
 		})
 	}
 
@@ -45,6 +47,13 @@ func Search(value any, criteria SearchCriteria) []LayerMatch {
 		matches = append(matches, Search(child, criteria)...)
 	}
 	return matches
+}
+
+func textCharacters(object map[string]any) string {
+	if object["type"] != textNodeType {
+		return ""
+	}
+	return StringValue(object["characters"])
 }
 
 // nodeMatches reports whether a node satisfies the lower-cased criteria.
