@@ -191,7 +191,7 @@ figma comments "https://www.figma.com/design/abc?node-id=42-1&m=dev#1838610593"
 figma comments --include-ancestors --unresolved-only "url?node-id=42-2"
 ```
 
-Each comment includes a direct Figma `url`. `--recursive=false` limits normal node lookup to the selected node; hash lookup by comment ID takes precedence over node filtering.
+Comments use the stable `{scope, results}` envelope. Each result includes a direct Figma `url`. `--recursive=false` limits normal node lookup to the selected node; hash lookup by comment ID takes precedence over node filtering.
 
 ### `figma diff text` — Copy changes between versions
 

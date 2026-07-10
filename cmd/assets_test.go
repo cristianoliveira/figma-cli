@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
+	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,6 +20,17 @@ func TestAssetFilenameFallsBackForUnnamedAsset(t *testing.T) {
 	asset := extract.Asset{ID: "1:2", Name: "---"}
 
 	assert.Equal(t, "asset_1-2", assetFilename(asset))
+}
+
+func TestAssetsCommandRejectsFormatBeforeLoadingClient(t *testing.T) {
+	loaded := false
+	result := executeCommand(newAssetsCommand(func() (*figma.Client, error) {
+		loaded = true
+		return nil, nil
+	}, http.DefaultClient), "abc", "--id", "1:2", "--format", "gif")
+
+	assert.EqualError(t, result.Err, `invalid format "gif": expected png, jpg, svg, or pdf`)
+	assert.False(t, loaded)
 }
 
 func TestAssetExportResultFailsOnPartialExport(t *testing.T) {

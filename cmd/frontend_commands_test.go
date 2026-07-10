@@ -50,6 +50,25 @@ func TestFindCommandEmitsScopedResults(t *testing.T) {
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"results":[{"id":"1:1","name":"Button","type":"COMPONENT"}]}`, result.Stdout)
 }
 
+func TestColorsCommandEmitsScopedResults(t *testing.T) {
+	client := fixtureClient(t, `{"document":{"id":"0:0","name":"Document","type":"DOCUMENT"}}`)
+
+	result := executeCommand(newColorsCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--id", "1:1")
+
+	require.NoError(t, result.Err)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["1:1"]},"results":[]}`, result.Stdout)
+}
+
+func TestCSSCommandEmitsJSONWrappedArtifact(t *testing.T) {
+	client := fixtureClient(t, `{"nodes":{"1:1":{"document":{"id":"1:1","name":"Frame","type":"FRAME","layoutMode":"HORIZONTAL"}}}}`)
+
+	result := executeCommand(newCSSCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--id", "1:1", "--json")
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, `"css"`)
+	assert.Contains(t, result.Stdout, `display: flex`)
+}
+
 func TestLayoutCommandEmitsScopedDetail(t *testing.T) {
 	client := fixtureClient(t, `{"nodes":{"1:1":{"document":{"id":"1:1","name":"Frame","type":"FRAME"}}}}`)
 
@@ -61,7 +80,12 @@ func TestLayoutCommandEmitsScopedDetail(t *testing.T) {
 
 func fixtureClient(t *testing.T, body string) *figma.Client {
 	t.Helper()
+	return fixtureClientWithStatus(t, http.StatusOK, body)
+}
+
+func fixtureClientWithStatus(t *testing.T, status int, body string) *figma.Client {
+	t.Helper()
 	return &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+		return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 }
