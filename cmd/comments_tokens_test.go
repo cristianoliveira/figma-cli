@@ -32,6 +32,19 @@ func TestCommentsCommandGroupsReviewThreads(t *testing.T) {
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"results":[{"root":{"id":"root","message":"Adjust spacing","created_at":"2026-01-01 00:00:00 +0000 UTC","resolved":false,"user":"Ada","url":"https://www.figma.com/design/abc?m=dev#root"},"replies":[{"id":"reply","message":"Fixed","created_at":"2026-01-02 00:00:00 +0000 UTC","resolved":false,"user":"Cristian","parent_id":"root","url":"https://www.figma.com/design/abc?m=dev#reply"}]}]}`, result.Stdout)
 }
 
+func TestCommentsCommandSelectsNumericURLFragmentBeforeNodeScope(t *testing.T) {
+	client := fixtureClient(t, `{"comments":[
+		{"id":"12345","message":"Target","created_at":"2026-01-01T00:00:00Z","file_key":"abc","client_meta":{},"reactions":[],"user":{"handle":"Ada","id":"1","img_url":""}},
+		{"id":"other","message":"Ignored","created_at":"2026-01-02T00:00:00Z","file_key":"abc","client_meta":{},"reactions":[],"user":{"handle":"Linus","id":"2","img_url":""}}
+	]}`)
+
+	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=1-2#12345")
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, "Target")
+	assert.NotContains(t, result.Stdout, "Ignored")
+}
+
 func TestCommentsCommandRejectsInvalidStateBeforeLoadingClient(t *testing.T) {
 	loaded := false
 	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) {
