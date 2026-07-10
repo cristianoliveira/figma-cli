@@ -220,10 +220,12 @@ Comments use the stable `{scope, results}` envelope. Each result is a thread wit
 ```bash
 figma changes --from <version-id> --to <version-id> "abc123"
 figma changes --from <version-id> --to <version-id> "url?node-id=42-1"
-# → JSON: { "scope": {...}, "from": "...", "to": "...", "changes": [{ "id", "path", "type", "nodeType", "changes": [...] }] }
+figma changes --from <version-id> --to <version-id> --terse --limit 100 "abc123"
+figma changes --from <version-id> --to <version-id> --quiet "abc123"
+# → JSON: { "scope": {...}, "from": "...", "to": "...", "total": 42, "truncated": 0, "changes": [{ "id", "path", "type", "nodeType", "changes": [...] }] }
 ```
 
-Reports added/removed/renamed nodes, component swaps, auto-layout changes, style binding changes, bounds changes, and child reordering. Prefer a node-scoped URL for focused PR review and faster requests.
+Reports added/removed/renamed nodes, component swaps, auto-layout changes, style binding changes, bounds changes, and child reordering. `--terse` omits property details. `--limit` bounds emitted nodes while `total` and `truncated` preserve diff size. `--quiet` uses grep-style status: 0 means changes exist, 1 means none. Prefer a node-scoped URL for focused PR review and faster requests.
 
 ### `figma diff text` — Copy changes between versions
 

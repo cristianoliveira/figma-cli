@@ -11,10 +11,12 @@ import (
 )
 
 type changesOutput struct {
-	Scope   output.Scope               `json:"scope"`
-	From    string                     `json:"from"`
-	To      string                     `json:"to"`
-	Changes []extract.StructuralChange `json:"changes"`
+	Scope     output.Scope               `json:"scope"`
+	From      string                     `json:"from"`
+	To        string                     `json:"to"`
+	Total     int                        `json:"total"`
+	Truncated int                        `json:"truncated"`
+	Changes   []extract.StructuralChange `json:"changes"`
 }
 
 var changesCmd = newChangesCommand(cli.LoadClient)
@@ -28,8 +30,14 @@ func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 			fromVersion, _ := cmd.Flags().GetString("from")
 			toVersion, _ := cmd.Flags().GetString("to")
 			explicitNodeID, _ := cmd.Flags().GetString("id")
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			terse, _ := cmd.Flags().GetBool("terse")
+			limit, _ := cmd.Flags().GetInt("limit")
 			if fromVersion == "" || toVersion == "" {
 				return fmt.Errorf("--from and --to are required")
+			}
+			if limit <= 0 {
+				return fmt.Errorf("--limit must be greater than zero")
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
@@ -48,11 +56,21 @@ func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 			if err != nil {
 				return err
 			}
+			changes := extract.DiffDocuments(fromDocument, toDocument)
+			if quiet {
+				if len(changes) > 0 {
+					return nil
+				}
+				return &cli.ExitCodeError{Code: 1}
+			}
+			prepared, total, truncated := prepareStructuralChanges(changes, terse, limit)
 			result := changesOutput{
-				Scope:   output.Scope{FileKey: input.FileID, NodeIDs: append([]string{}, nodeIDs...)},
-				From:    fromVersion,
-				To:      toVersion,
-				Changes: extract.DiffDocuments(fromDocument, toDocument),
+				Scope:     output.Scope{FileKey: input.FileID, NodeIDs: append([]string{}, nodeIDs...)},
+				From:      fromVersion,
+				To:        toVersion,
+				Total:     total,
+				Truncated: truncated,
+				Changes:   prepared,
 			}
 			return cli.NewPrinter(cmd).JSON(result)
 		},
@@ -60,7 +78,23 @@ func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 	command.Flags().String("id", "", "node ID to compare; defaults to URL node-id")
 	command.Flags().String("from", "", "source Figma version ID")
 	command.Flags().String("to", "", "target Figma version ID")
+	command.Flags().Bool("quiet", false, "suppress output; exit 0 if changes exist, 1 if none")
+	command.Flags().Bool("terse", false, "omit property details and return changed nodes only")
+	command.Flags().Int("limit", 1000, "maximum number of changed nodes to emit")
 	return command
+}
+
+func prepareStructuralChanges(changes []extract.StructuralChange, terse bool, limit int) ([]extract.StructuralChange, int, int) {
+	total := len(changes)
+	count := min(total, limit)
+	prepared := make([]extract.StructuralChange, count)
+	copy(prepared, changes[:count])
+	if terse {
+		for index := range prepared {
+			prepared[index].Changes = nil
+		}
+	}
+	return prepared, total, total - count
 }
 
 func init() {
