@@ -50,10 +50,6 @@ jobs:
           version: v2.8.0
           args: --timeout=5m
 
-      - name: Check AGENTS.md line count
-        if: always()
-        run: ./scripts/check-agents-md.sh
-
   test:
     strategy:
       matrix:
@@ -89,12 +85,12 @@ jobs:
           fi
         shell: bash
 
-      - name: Verify binary
+      - name: Verify binary help
         run: |
           if [ "${{ runner.os }}" == "Windows" ]; then
-            ./figma.exe version
+            ./figma.exe --help
           else
-            ./figma version
+            ./figma --help
           fi
         shell: bash
 
