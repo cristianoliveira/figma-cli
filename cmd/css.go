@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
@@ -34,9 +33,9 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 		if err != nil {
 			return err
 		}
-		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
-		if len(nodeIDs) == 0 {
-			return fmt.Errorf("css requires --id or a Figma URL with node-id")
+		nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "css")
+		if err != nil {
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
@@ -68,7 +67,7 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 }
 
 func init() {
-	cssCmd.Flags().String("id", "", "node ID to inspect; accepts 20089:685897 or 20089-685897")
+	cssCmd.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
 	cssCmd.Flags().String("output", "", "write CSS to a file instead of stdout")
 	cssCmd.Flags().Bool("recursive", false, "include CSS rules from all descendant nodes")
 	rootCmd.AddCommand(cssCmd)

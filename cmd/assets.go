@@ -43,9 +43,9 @@ var assetsCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
-		if len(nodeIDs) == 0 {
-			return fmt.Errorf("assets requires --id or a Figma URL with node-id")
+		nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "assets")
+		if err != nil {
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
@@ -130,7 +130,7 @@ func assetFilename(asset extract.Asset) string {
 }
 
 func init() {
-	assetsCmd.Flags().String("id", "", "node ID to inspect; accepts 20089:685897 or 20089-685897")
+	assetsCmd.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
 	assetsCmd.Flags().StringP("output", "o", "assets", "output directory")
 	assetsCmd.Flags().String("format", assetFormatAuto, "export format: auto, png, or svg")
 	assetsCmd.Flags().String("kind", "all", "asset kind: all, image, instance, or vector")

@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -19,9 +17,9 @@ var colorsCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
-		if len(nodeIDs) == 0 {
-			return fmt.Errorf("colors requires --id or a Figma URL with node-id")
+		nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "colors")
+		if err != nil {
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
@@ -40,6 +38,6 @@ var colorsCmd = &cobra.Command{
 }
 
 func init() {
-	colorsCmd.Flags().String("id", "", "node ID to extract colors from; accepts 20089:685897 or 20089-685897")
+	colorsCmd.Flags().String("id", "", "node ID to extract colors from; defaults to URL node-id")
 	rootCmd.AddCommand(colorsCmd)
 }

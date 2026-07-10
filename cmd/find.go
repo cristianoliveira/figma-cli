@@ -48,6 +48,6 @@ var findCmd = &cobra.Command{
 func init() {
 	findCmd.Flags().String("name", "", "substring of layer name to find (case-insensitive)")
 	findCmd.Flags().String("type", "", "node type to find, e.g. FRAME, COMPONENT, INSTANCE, SECTION (case-insensitive)")
-	findCmd.Flags().String("id", "", "node ID to search within; accepts 20089:685897 or 20089-685897")
+	findCmd.Flags().String("id", "", "node ID to search within; defaults to URL node-id")
 	rootCmd.AddCommand(findCmd)
 }

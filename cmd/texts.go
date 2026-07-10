@@ -29,6 +29,11 @@ var textsCmd = &cobra.Command{
 		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		var doc any
 		if len(nodeIDs) > 0 {
+			resolvedNodeID, err := figma.ResolveSingleNodeID(input, nodeID, "texts")
+			if err != nil {
+				return err
+			}
+			nodeIDs = []string{resolvedNodeID}
 			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
 			if err != nil {
 				return err

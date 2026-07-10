@@ -44,14 +44,7 @@ var inspectCmd = &cobra.Command{
 }
 
 func inspectNodeID(input *figma.FileInput, explicitNodeID string) (string, error) {
-	nodeIDs := figma.ResolveNodeIDs(input, explicitNodeID)
-	if len(nodeIDs) == 0 {
-		return "", fmt.Errorf("inspect requires a Figma URL with node-id or --id")
-	}
-	if len(nodeIDs) != 1 {
-		return "", fmt.Errorf("inspect requires exactly one node ID")
-	}
-	return nodeIDs[0], nil
+	return figma.ResolveSingleNodeID(input, explicitNodeID, "inspect")
 }
 
 func init() {

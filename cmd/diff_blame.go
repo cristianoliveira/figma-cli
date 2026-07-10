@@ -81,8 +81,9 @@ Searches the file's version history backward from --to, binary-searching for
 the oldest version whose text matches --to at the given node. Prints the
 introducing version (id, author, date) and the before/after text change.
 
-The node is taken from the URL's node-id. --to is required; --from optionally
-caps how far back to search (oldest version ID, default: oldest available).
+The node is inferred from URL node-id or explicit --id. --to is required;
+--from optionally caps how far back to search (oldest version ID, default:
+oldest available).
 
 Fetching the full history may require several API calls. Use --json for a
 machine-readable result.
@@ -94,6 +95,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		toVersion, _ := cmd.Flags().GetString("to")
 		fromVersion, _ := cmd.Flags().GetString("from")
+		explicitNodeID, _ := cmd.Flags().GetString("id")
 		if toVersion == "" {
 			return fmt.Errorf("--to is required")
 		}
@@ -101,11 +103,15 @@ Examples:
 		if err != nil {
 			return err
 		}
+		nodeID, err := figma.ResolveSingleNodeID(input, explicitNodeID, "diff blame")
+		if err != nil {
+			return err
+		}
 		client, err := cli.LoadClient()
 		if err != nil {
 			return err
 		}
-		result, err := figma.FindTextChange(client, input.FileID, input.NodeIDs, toVersion, fromVersion)
+		result, err := figma.FindTextChange(client, input.FileID, []string{nodeID}, toVersion, fromVersion)
 		if err != nil {
 			return err
 		}
@@ -115,6 +121,7 @@ Examples:
 }
 
 func init() {
+	diffBlameCmd.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
 	diffBlameCmd.Flags().String("to", "", "target version ID whose text to explain (required)")
 	diffBlameCmd.Flags().String("from", "", "oldest version ID to search back to (default: oldest available)")
 	diffCmd.AddCommand(diffBlameCmd)

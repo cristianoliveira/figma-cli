@@ -247,6 +247,10 @@ figma find --type COMPONENT --name "button" "abc123"
 
 ---
 
+## Node Scope Convention
+
+Node-scoped commands infer `node-id` from a Figma URL. Use optional `--id` with a bare file key or to override URL scope. Single-node commands reject multiple IDs instead of silently choosing one; multi-node commands preserve selection order.
+
 ## Output Convention
 
 All commands produce structured JSON (except `css`, `tokens`, `export`, and

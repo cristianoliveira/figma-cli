@@ -36,6 +36,7 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 		if tokensTeamURL != "" {
 			return fmt.Errorf("--team is not supported yet; pass a file URL or file key")
 		}
+		explicitNodeID, _ := cmd.Flags().GetString("id")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
 			return err
@@ -45,7 +46,8 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 			return err
 		}
 
-		tokens, err := collectTokens(client, input.FileID, input.NodeIDs, tokensSource, tokensMode, tokensScanFallback)
+		nodeIDs := figma.ResolveNodeIDs(input, explicitNodeID)
+		tokens, err := collectTokens(client, input.FileID, nodeIDs, tokensSource, tokensMode, tokensScanFallback)
 		if err != nil {
 			return err
 		}
@@ -144,6 +146,7 @@ func tokensFromStyles(client *figma.Client, fileID string) ([]extract.Token, err
 }
 
 func init() {
+	tokensCmd.Flags().String("id", "", "node ID to scan; defaults to URL node-id")
 	tokensCmd.Flags().StringVar(&tokensFormat, "format", "css", "output format: css, tailwind, or json")
 	tokensCmd.Flags().StringVar(&tokensSource, "source", "auto", "token source: variables, styles, scan, or auto")
 	tokensCmd.Flags().BoolVar(&tokensScanFallback, "scan-fallback", true, "in auto mode, fall back to a document node scan when no Styles/Variables exist (tokens named by value); use --scan-fallback=false for named-only")

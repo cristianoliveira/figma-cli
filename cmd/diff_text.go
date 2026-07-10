@@ -23,6 +23,7 @@ var diffTextCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fromVersion, _ := cmd.Flags().GetString("from")
 		toVersion, _ := cmd.Flags().GetString("to")
+		explicitNodeID, _ := cmd.Flags().GetString("id")
 		if fromVersion == "" || toVersion == "" {
 			return fmt.Errorf("--from and --to are required")
 		}
@@ -31,16 +32,17 @@ var diffTextCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		nodeIDs := figma.ResolveNodeIDs(input, explicitNodeID)
 		client, err := cli.LoadClient()
 		if err != nil {
 			return err
 		}
 
-		fromDoc, err := figma.FetchDocument(client, input.FileID, input.NodeIDs, fromVersion, "")
+		fromDoc, err := figma.FetchDocument(client, input.FileID, nodeIDs, fromVersion, "")
 		if err != nil {
 			return err
 		}
-		toDoc, err := figma.FetchDocument(client, input.FileID, input.NodeIDs, toVersion, "")
+		toDoc, err := figma.FetchDocument(client, input.FileID, nodeIDs, toVersion, "")
 		if err != nil {
 			return err
 		}
@@ -64,6 +66,7 @@ var diffTextCmd = &cobra.Command{
 }
 
 func init() {
+	diffTextCmd.Flags().String("id", "", "node ID to compare; defaults to URL node-id")
 	diffTextCmd.Flags().String("from", "", "source Figma version ID")
 	diffTextCmd.Flags().String("to", "", "target Figma version ID")
 	diffTextCmd.Flags().Bool("quiet", false, "suppress output; exit 0 if changes exist, 1 if none (grep-style)")

@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -21,9 +19,9 @@ var componentsCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
-		if len(nodeIDs) == 0 {
-			return fmt.Errorf("components requires --id or a Figma URL with node-id")
+		nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "components")
+		if err != nil {
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
@@ -48,7 +46,7 @@ var componentsCmd = &cobra.Command{
 }
 
 func init() {
-	componentsCmd.Flags().String("id", "", "node ID to inspect; accepts 20089:685897 or 20089-685897")
+	componentsCmd.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
 	componentsCmd.Flags().String("name", "", "filter nodes by name (case-insensitive substring match)")
 	componentsCmd.Flags().Bool("raw", false, "output raw Figma node JSON for jq power users")
 	rootCmd.AddCommand(componentsCmd)

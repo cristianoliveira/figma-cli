@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -19,19 +17,16 @@ var layoutCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
-		if len(nodeIDs) == 0 {
-			return fmt.Errorf("layout requires a Figma URL with node-id or --id")
-		}
-		if len(nodeIDs) != 1 {
-			return fmt.Errorf("layout requires exactly one node ID")
+		resolvedNodeID, err := figma.ResolveSingleNodeID(input, nodeID, "layout")
+		if err != nil {
+			return err
 		}
 
 		client, err := cli.LoadClient()
 		if err != nil {
 			return err
 		}
-		documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
+		documents, err := figma.FetchNodeDocuments(client, input.FileID, []string{resolvedNodeID})
 		if err != nil {
 			return err
 		}
