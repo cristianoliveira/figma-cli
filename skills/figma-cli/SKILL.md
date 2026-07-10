@@ -137,13 +137,13 @@ Use this for copy/layout alignment when generated CSS is too implementation-orie
 ```bash
 figma texts "https://www.figma.com/design/abc/Name?node-id=42-1"
 figma texts --id 42:1 "abc123"
-# → ordered JSON: { "nodeId": "42:1", "texts": [{ "id", "name", "text", "depth", "order", "parentName" }] }
+# → ordered JSON: { "scope": {...}, "results": [{ "id", "name", "text", "nodeKind", "depth", "order", "parentName", "lines" }] }
 
 figma texts --layer "Hero Title" "abc123"
 figma texts --layer "Button Label" --recursive "abc123"
 ```
 
-A selected node recursively returns all descendant text in Figma tree order. Without a node ID, `--layer` is required; `--recursive` includes descendants of each named layer.
+A selected node recursively returns all descendant text in Figma tree order. `lines` appears only when Figma provides line/list metadata and includes stable indexes, list type, and indentation; glyphs such as `•` are never treated as inferred lists. Mixed text exposes style override IDs and their typography metadata. Without a node ID, `--layer` is required; `--recursive` includes descendants of each named layer.
 
 ### `figma find` — Search layers
 

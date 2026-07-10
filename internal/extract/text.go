@@ -1,6 +1,9 @@
 package extract
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 const textNodeType = "TEXT"
 
@@ -18,15 +21,26 @@ type TextNodeOutput struct {
 	Text string `json:"text"`
 }
 
+// TextLineOutput preserves Figma-provided line and list intent without inferring HTML semantics.
+type TextLineOutput struct {
+	Index       int     `json:"index"`
+	Text        string  `json:"text"`
+	ListType    string  `json:"listType,omitempty"`
+	Indentation float64 `json:"indentation,omitempty"`
+}
+
 // OrderedTextOutput is copy from a selected frame in Figma tree order.
 type OrderedTextOutput struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Text       string   `json:"text"`
-	Depth      int      `json:"depth"`
-	Order      int      `json:"order"`
-	ParentName string   `json:"parentName"`
-	LineTypes  []string `json:"lineTypes,omitempty"`
+	ID               string                      `json:"id"`
+	Name             string                      `json:"name"`
+	Text             string                      `json:"text"`
+	NodeKind         string                      `json:"nodeKind"`
+	Depth            int                         `json:"depth"`
+	Order            int                         `json:"order"`
+	ParentName       string                      `json:"parentName"`
+	Lines            []TextLineOutput            `json:"lines,omitempty"`
+	StyleOverrideIDs []int                       `json:"styleOverrideIds,omitempty"`
+	StyleOverrides   map[string]typographyOutput `json:"styleOverrides,omitempty"`
 }
 
 // ChangedTextOutput represents a changed text node in a diff.
@@ -82,13 +96,16 @@ func OrderedTextForFrame(value any) []OrderedTextOutput {
 func walkOrderedText(object map[string]any, depth int, parentName string, outputs *[]OrderedTextOutput) {
 	if object["type"] == textNodeType {
 		*outputs = append(*outputs, OrderedTextOutput{
-			ID:         StringValue(object["id"]),
-			Name:       StringValue(object["name"]),
-			Text:       StringValue(object["characters"]),
-			Depth:      depth,
-			Order:      len(*outputs),
-			ParentName: parentName,
-			LineTypes:  stringValues(object["lineTypes"]),
+			ID:               StringValue(object["id"]),
+			Name:             StringValue(object["name"]),
+			Text:             StringValue(object["characters"]),
+			NodeKind:         "textBlock",
+			Depth:            depth,
+			Order:            len(*outputs),
+			ParentName:       parentName,
+			Lines:            textLinesFromObject(object),
+			StyleOverrideIDs: styleOverrideIDs(object["characterStyleOverrides"]),
+			StyleOverrides:   textStyleOverrides(object["styleOverrideTable"]),
 		})
 	}
 
@@ -105,23 +122,79 @@ func walkOrderedText(object map[string]any, depth int, parentName string, output
 	}
 }
 
-func stringValues(value any) []string {
+func textLinesFromObject(object map[string]any) []TextLineOutput {
+	lineTypes, hasLineTypes := object["lineTypes"].([]any)
+	indentations, hasIndentations := object["lineIndentations"].([]any)
+	if !hasLineTypes && !hasIndentations {
+		return nil
+	}
+	hasListIntent := false
+	for _, lineType := range lineTypes {
+		if value := StringValue(lineType); value != "" && value != "NONE" {
+			hasListIntent = true
+			break
+		}
+	}
+	if !hasListIntent {
+		for _, indentation := range indentations {
+			if numberValue(indentation) != 0 {
+				hasListIntent = true
+				break
+			}
+		}
+	}
+	if !hasListIntent {
+		return nil
+	}
+	texts := strings.Split(StringValue(object["characters"]), "\n")
+	lines := make([]TextLineOutput, 0, len(texts))
+	for index, text := range texts {
+		line := TextLineOutput{Index: index, Text: text}
+		if index < len(lineTypes) {
+			line.ListType = StringValue(lineTypes[index])
+			if line.ListType == "NONE" {
+				line.ListType = ""
+			}
+		}
+		if index < len(indentations) {
+			line.Indentation = numberValue(indentations[index])
+		}
+		lines = append(lines, line)
+	}
+	return lines
+}
+
+func textStyleOverrides(value any) map[string]typographyOutput {
+	table, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	overrides := make(map[string]typographyOutput, len(table))
+	for id, style := range table {
+		overrides[id] = typographyFromValue(style)
+	}
+	return overrides
+}
+
+func styleOverrideIDs(value any) []int {
 	values, ok := value.([]any)
 	if !ok {
 		return nil
 	}
-	result := make([]string, 0, len(values))
+	seen := make(map[int]struct{})
+	ids := make([]int, 0)
 	for _, value := range values {
-		text, ok := value.(string)
-		if !ok || text == "NONE" {
+		id := int(numberValue(value))
+		if id == 0 {
 			continue
 		}
-		result = append(result, text)
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
 	}
-	if len(result) == 0 {
-		return nil
-	}
-	return result
+	return ids
 }
 
 // TextEqual reports whether two text-node sets carry identical text by node

@@ -6,60 +6,71 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
-var textsCmd = &cobra.Command{
-	Use:   "texts [file-id-or-url]",
-	Short: "Extract text from Figma layers",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		layerName, _ := cmd.Flags().GetString("layer")
-		recursive, _ := cmd.Flags().GetBool("recursive")
-		nodeID, _ := cmd.Flags().GetString("id")
-		input, err := figma.ParseInput(args[0])
-		if err != nil {
-			return err
-		}
-		client, err := cli.LoadClient()
-		if err != nil {
-			return err
-		}
+type textQuery struct {
+	Scope   output.Scope `json:"scope"`
+	Results any          `json:"results"`
+}
 
-		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
-		var doc any
-		if len(nodeIDs) > 0 {
-			resolvedNodeID, err := figma.ResolveSingleNodeID(input, nodeID, "texts")
-			if err != nil {
-				return err
-			}
-			nodeIDs = []string{resolvedNodeID}
-			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
-			if err != nil {
-				return err
-			}
-			doc = documents[0]
-		} else {
-			doc, err = figma.FetchDocument(client, input.FileID, nil, "", "")
-			if err != nil {
-				return err
-			}
-		}
-		input.NodeIDs = nodeIDs
+var textsCmd = newTextsCommand(cli.LoadClient)
 
-		result, err := textResult(doc, input, layerName, recursive)
-		if err != nil {
-			return err
-		}
-		output := map[string]any{"layer": layerName, "matches": result}
-		if layerName == "" {
-			output = map[string]any{"nodeId": nodeIDs[0], "texts": result}
-		}
-		if err := cli.NewPrinter(cmd).JSON(output); err != nil {
-			return err
-		}
-		return nil
-	},
+func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+	command := &cobra.Command{
+		Use:   "texts [file-id-or-url]",
+		Short: "Extract ordered text and Figma-provided list semantics",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			layerName, _ := cmd.Flags().GetString("layer")
+			recursive, _ := cmd.Flags().GetBool("recursive")
+			nodeID, _ := cmd.Flags().GetString("id")
+			input, err := figma.ParseInput(args[0])
+			if err != nil {
+				return err
+			}
+
+			nodeIDs := figma.ResolveNodeIDs(input, nodeID)
+			if layerName == "" {
+				resolvedNodeID, resolveErr := figma.ResolveSingleNodeID(input, nodeID, "texts")
+				if resolveErr != nil {
+					return fmt.Errorf("--layer or a node ID is required")
+				}
+				nodeIDs = []string{resolvedNodeID}
+			}
+
+			client, err := loadClient()
+			if err != nil {
+				return err
+			}
+			var document any
+			if len(nodeIDs) > 0 {
+				documents, fetchErr := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
+				if fetchErr != nil {
+					return fetchErr
+				}
+				document = documents[0]
+			} else {
+				document, err = figma.FetchDocument(client, input.FileID, nil, "", "")
+				if err != nil {
+					return err
+				}
+			}
+			input.NodeIDs = nodeIDs
+
+			results, err := textResult(document, input, layerName, recursive)
+			if err != nil {
+				return err
+			}
+			scope := output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}
+			return cli.NewPrinter(cmd).JSON(textQuery{Scope: scope, Results: results})
+		},
+	}
+	command.Flags().String("layer", "", "layer name to extract text from")
+	command.Flags().String("id", "", "node ID to extract descendant text from; defaults to URL node-id")
+	command.Flags().Bool("recursive", false, "include text from all descendant nodes")
+	return command
 }
 
 func textResult(doc any, input *figma.FileInput, layerName string, recursive bool) (any, error) {
@@ -73,8 +84,5 @@ func textResult(doc any, input *figma.FileInput, layerName string, recursive boo
 }
 
 func init() {
-	textsCmd.Flags().String("layer", "", "layer name to extract text from")
-	textsCmd.Flags().String("id", "", "node ID to extract descendant text from; defaults to URL node-id")
-	textsCmd.Flags().Bool("recursive", false, "include text from all descendant nodes")
 	rootCmd.AddCommand(textsCmd)
 }
