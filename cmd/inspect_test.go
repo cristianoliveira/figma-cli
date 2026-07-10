@@ -28,6 +28,17 @@ func TestInspectCommandEmitsStableScopedContract(t *testing.T) {
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{},"layout":{},"typography":{},"styleBindings":{"fill":"S:fill"},"resolvedStyles":{"fill":{"id":"S:fill","name":"Brand/Primary","type":"FILL"}}}}`, stdout.String())
 }
 
+func TestInspectCommandRecursivelyEmitsImplementationSpecs(t *testing.T) {
+	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","componentPropertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"children":[{"id":"42:2","name":"Label","type":"TEXT","characters":"Save"}]}}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}}
+	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive")
+
+	require.NoError(t, result.Err)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"results":[{"id":"42:1","name":"Button","type":"COMPONENT","propertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"bounds":{},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","text":"Save","bounds":{},"layout":{},"typography":{}}]}`, result.Stdout)
+}
+
 func TestInspectCommandKeepsRawVariablesWhenMetadataIsUnavailable(t *testing.T) {
 	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","boundVariables":{"fills":[{"type":"VARIABLE_ALIAS","id":"V:brand"}]}}}}}`

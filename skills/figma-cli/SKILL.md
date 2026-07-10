@@ -187,10 +187,12 @@ Default results contain only `COMPONENT`, `COMPONENT_SET`, and `INSTANCE` nodes.
 ```bash
 figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1"
 figma inspect --id 42:1 "abc123" # explicit scope for a bare file key
-# → JSON: { "scope": {...}, "result": { type, name, bounds, paints, layout, effects, styleBindings, resolvedStyles, variableBindings, resolvedVariables } }
+figma inspect --recursive "url?node-id=42-1" # implementation specs for selected tree
+# → default JSON: { "scope": {...}, "result": { type, name, bounds, paints, layout, effects, componentProperties, propertyDefinitions, styleBindings, resolvedStyles, variableBindings, resolvedVariables } }
+# → recursive JSON: { "scope": {...}, "results": [{...}, {...}] }
 ```
 
-Raw binding IDs are always preserved. `resolvedStyles` adds style name/type from node metadata. `resolvedVariables` adds variable and collection names when the Variables API is accessible; it is omitted without failing when metadata access is unavailable.
+Raw binding IDs are always preserved. `resolvedStyles` adds style name/type from node metadata. `resolvedVariables` adds variable and collection names when the Variables API is accessible; it is omitted without failing when metadata access is unavailable. Components and instances expose variants, property values, and property definitions. Mixed text exposes style override IDs and typography metadata. Prefer this over a separate handoff/spec command so implementation properties keep one source of truth.
 
 ### `figma comments` — Review feedback
 

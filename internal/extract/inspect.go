@@ -18,28 +18,33 @@ type VariableBinding struct {
 
 // InspectOutput is a curated single-node summary, used by `figma inspect`.
 type InspectOutput struct {
-	ID                string                       `json:"id"`
-	Name              string                       `json:"name"`
-	Type              string                       `json:"type"`
-	Text              string                       `json:"text,omitempty"`
-	ComponentID       string                       `json:"componentId,omitempty"`
-	ComponentSetID    string                       `json:"componentSetId,omitempty"`
-	Fills             []string                     `json:"fills,omitempty"`
-	Strokes           []string                     `json:"strokes,omitempty"`
-	Paints            *paintsOutput                `json:"paints,omitempty"`
-	StrokeWeight      float64                      `json:"strokeWeight,omitempty"`
-	StrokeAlign       string                       `json:"strokeAlign,omitempty"`
-	Opacity           *float64                     `json:"opacity,omitempty"`
-	CornerRadius      *float64                     `json:"cornerRadius,omitempty"`
-	Bounds            boundsOutput                 `json:"bounds"`
-	Layout            layoutOutput                 `json:"layout,omitempty"`
-	Typography        typographyOutput             `json:"typography,omitempty"`
-	Effects           []effectOutput               `json:"effects,omitempty"`
-	BackgroundColor   string                       `json:"backgroundColor,omitempty"`
-	StyleBindings     map[string]string            `json:"styleBindings,omitempty"`
-	ResolvedStyles    map[string]StyleBinding      `json:"resolvedStyles,omitempty"`
-	VariableBindings  map[string][]string          `json:"variableBindings,omitempty"`
-	ResolvedVariables map[string][]VariableBinding `json:"resolvedVariables,omitempty"`
+	ID                  string                       `json:"id"`
+	Name                string                       `json:"name"`
+	Type                string                       `json:"type"`
+	Text                string                       `json:"text,omitempty"`
+	ComponentID         string                       `json:"componentId,omitempty"`
+	ComponentSetID      string                       `json:"componentSetId,omitempty"`
+	VariantProperties   map[string]any               `json:"variantProperties,omitempty"`
+	ComponentProperties map[string]any               `json:"componentProperties,omitempty"`
+	PropertyDefinitions map[string]any               `json:"propertyDefinitions,omitempty"`
+	Fills               []string                     `json:"fills,omitempty"`
+	Strokes             []string                     `json:"strokes,omitempty"`
+	Paints              *paintsOutput                `json:"paints,omitempty"`
+	StrokeWeight        float64                      `json:"strokeWeight,omitempty"`
+	StrokeAlign         string                       `json:"strokeAlign,omitempty"`
+	Opacity             *float64                     `json:"opacity,omitempty"`
+	CornerRadius        *float64                     `json:"cornerRadius,omitempty"`
+	Bounds              boundsOutput                 `json:"bounds"`
+	Layout              layoutOutput                 `json:"layout,omitempty"`
+	Typography          typographyOutput             `json:"typography,omitempty"`
+	StyleOverrideIDs    []int                        `json:"styleOverrideIds,omitempty"`
+	StyleOverrides      map[string]typographyOutput  `json:"styleOverrides,omitempty"`
+	Effects             []effectOutput               `json:"effects,omitempty"`
+	BackgroundColor     string                       `json:"backgroundColor,omitempty"`
+	StyleBindings       map[string]string            `json:"styleBindings,omitempty"`
+	ResolvedStyles      map[string]StyleBinding      `json:"resolvedStyles,omitempty"`
+	VariableBindings    map[string][]string          `json:"variableBindings,omitempty"`
+	ResolvedVariables   map[string][]VariableBinding `json:"resolvedVariables,omitempty"`
 }
 
 // FindNodeByID searches a document tree for the node with targetID.
@@ -64,6 +69,20 @@ func FindNodeByID(value any, targetID string) map[string]any {
 	return nil
 }
 
+// InspectTree returns full implementation specs in Figma tree order.
+func InspectTree(value any) []InspectOutput {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	outputs := []InspectOutput{NodeToInspectOutput(object)}
+	children, _ := object["children"].([]any)
+	for _, child := range children {
+		outputs = append(outputs, InspectTree(child)...)
+	}
+	return outputs
+}
+
 // NodeToInspectOutput builds an InspectOutput from a raw node map.
 func NodeToInspectOutput(object map[string]any) InspectOutput {
 	bg, _ := object["backgroundColor"].(map[string]any)
@@ -72,26 +91,31 @@ func NodeToInspectOutput(object map[string]any) InspectOutput {
 		bgColor = colorHexFromPaint(bg)
 	}
 	return InspectOutput{
-		ID:               StringValue(object["id"]),
-		Name:             StringValue(object["name"]),
-		Type:             StringValue(object["type"]),
-		Text:             StringValue(object["characters"]),
-		ComponentID:      StringValue(object["componentId"]),
-		ComponentSetID:   StringValue(object["componentSetId"]),
-		Fills:            colorsFromPaints(object["fills"]),
-		Strokes:          colorsFromPaints(object["strokes"]),
-		Paints:           optionalPaintsFromObject(object),
-		StrokeWeight:     numberValue(object["strokeWeight"]),
-		StrokeAlign:      StringValue(object["strokeAlign"]),
-		Opacity:          optionalNumber(object["opacity"]),
-		CornerRadius:     optionalNumber(object["cornerRadius"]),
-		Bounds:           boundsFromValue(object["absoluteBoundingBox"]),
-		Layout:           layoutFromObject(object),
-		Typography:       typographyFromValue(object["style"]),
-		Effects:          effectsFromValue(object["effects"]),
-		BackgroundColor:  bgColor,
-		StyleBindings:    styleBindingsFromValue(object["styles"]),
-		VariableBindings: variableBindingsFromValue(object["boundVariables"]),
+		ID:                  StringValue(object["id"]),
+		Name:                StringValue(object["name"]),
+		Type:                StringValue(object["type"]),
+		Text:                StringValue(object["characters"]),
+		ComponentID:         StringValue(object["componentId"]),
+		ComponentSetID:      StringValue(object["componentSetId"]),
+		VariantProperties:   mapValue(object["variantProperties"]),
+		ComponentProperties: mapValue(object["componentProperties"]),
+		PropertyDefinitions: mapValue(object["componentPropertyDefinitions"]),
+		Fills:               colorsFromPaints(object["fills"]),
+		Strokes:             colorsFromPaints(object["strokes"]),
+		Paints:              optionalPaintsFromObject(object),
+		StrokeWeight:        numberValue(object["strokeWeight"]),
+		StrokeAlign:         StringValue(object["strokeAlign"]),
+		Opacity:             optionalNumber(object["opacity"]),
+		CornerRadius:        optionalNumber(object["cornerRadius"]),
+		Bounds:              boundsFromValue(object["absoluteBoundingBox"]),
+		Layout:              layoutFromObject(object),
+		Typography:          typographyFromValue(object["style"]),
+		StyleOverrideIDs:    styleOverrideIDs(object["characterStyleOverrides"]),
+		StyleOverrides:      textStyleOverrides(object["styleOverrideTable"]),
+		Effects:             effectsFromValue(object["effects"]),
+		BackgroundColor:     bgColor,
+		StyleBindings:       styleBindingsFromValue(object["styles"]),
+		VariableBindings:    variableBindingsFromValue(object["boundVariables"]),
 	}
 }
 

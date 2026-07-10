@@ -26,6 +26,7 @@ func newInspectCommandWithVariables(
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			explicitNodeID, _ := cmd.Flags().GetString("id")
+			recursive, _ := cmd.Flags().GetBool("recursive")
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
 				return err
@@ -46,14 +47,15 @@ func newInspectCommandWithVariables(
 			if !ok {
 				return fmt.Errorf("node %s has an invalid document", nodeID)
 			}
-			node := extract.NodeToInspectOutput(document)
-			extract.ResolveInspectStyleBindings(&node, details.Styles)
-			if len(node.VariableBindings) > 0 {
-				variables, fetchErr := fetchVariables(client, input.FileID)
-				if fetchErr == nil {
-					extract.ResolveInspectVariableBindings(&node, variables)
-				}
+			if recursive {
+				nodes := extract.InspectTree(document)
+				enrichInspectNodes(nodes, details.Styles, client, input.FileID, fetchVariables)
+				return cli.NewPrinter(cmd).JSON(output.NewQuery(
+					output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}}, nodes,
+				))
 			}
+			node := extract.NodeToInspectOutput(document)
+			node = enrichInspectNode(node, details.Styles, client, input.FileID, fetchVariables)
 			result := output.Detail[extract.InspectOutput]{
 				Scope:  output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}},
 				Result: node,
@@ -65,7 +67,44 @@ func newInspectCommandWithVariables(
 		},
 	}
 	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
+	command.Flags().Bool("recursive", false, "include implementation specs for all descendant nodes")
 	return command
+}
+
+func enrichInspectNode(
+	node extract.InspectOutput,
+	styles map[string]map[string]any,
+	client *figma.Client,
+	fileID string,
+	fetchVariables func(*figma.Client, string) (map[string]any, error),
+) extract.InspectOutput {
+	nodes := []extract.InspectOutput{node}
+	enrichInspectNodes(nodes, styles, client, fileID, fetchVariables)
+	return nodes[0]
+}
+
+func enrichInspectNodes(
+	nodes []extract.InspectOutput,
+	styles map[string]map[string]any,
+	client *figma.Client,
+	fileID string,
+	fetchVariables func(*figma.Client, string) (map[string]any, error),
+) {
+	needsVariables := false
+	for index := range nodes {
+		extract.ResolveInspectStyleBindings(&nodes[index], styles)
+		needsVariables = needsVariables || len(nodes[index].VariableBindings) > 0
+	}
+	if !needsVariables {
+		return
+	}
+	variables, err := fetchVariables(client, fileID)
+	if err != nil {
+		return
+	}
+	for index := range nodes {
+		extract.ResolveInspectVariableBindings(&nodes[index], variables)
+	}
 }
 
 func inspectNodeID(input *figma.FileInput, explicitNodeID string) (string, error) {

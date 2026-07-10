@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFindNodeByID(t *testing.T) {
@@ -45,6 +46,43 @@ func TestNodeToInspectOutput(t *testing.T) {
 	assert.Len(t, out.Fills, 1)
 	assert.Equal(t, "#FF0000", out.Fills[0])
 	assert.Equal(t, "#000000", out.BackgroundColor)
+}
+
+func TestInspectTreeReturnsImplementationSpecsInTreeOrder(t *testing.T) {
+	document := map[string]any{"id": "1", "name": "Card", "type": "COMPONENT", "children": []any{
+		map[string]any{"id": "2", "name": "Label", "type": "TEXT", "characters": "Save"},
+	}}
+
+	outputs := InspectTree(document)
+
+	require.Len(t, outputs, 2)
+	assert.Equal(t, "1", outputs[0].ID)
+	assert.Equal(t, "2", outputs[1].ID)
+	assert.Equal(t, "Save", outputs[1].Text)
+}
+
+func TestNodeToInspectOutputIncludesComponentAndMixedTextProperties(t *testing.T) {
+	node := map[string]any{
+		"variantProperties": map[string]any{"State": "Default"},
+		"componentProperties": map[string]any{
+			"Label#1:0": map[string]any{"type": "TEXT", "value": "Save"},
+		},
+		"componentPropertyDefinitions": map[string]any{
+			"Disabled#1:1": map[string]any{"type": "BOOLEAN", "defaultValue": false},
+		},
+		"characterStyleOverrides": []any{0.0, 1.0, 1.0},
+		"styleOverrideTable": map[string]any{
+			"1": map[string]any{"fontFamily": "Inter", "fontSize": 16.0, "fontWeight": 700.0},
+		},
+	}
+
+	out := NodeToInspectOutput(node)
+
+	assert.Equal(t, "Default", out.VariantProperties["State"])
+	assert.Equal(t, "Save", out.ComponentProperties["Label#1:0"].(map[string]any)["value"])
+	assert.Equal(t, false, out.PropertyDefinitions["Disabled#1:1"].(map[string]any)["defaultValue"])
+	assert.Equal(t, []int{1}, out.StyleOverrideIDs)
+	assert.Equal(t, typographyOutput{FontFamily: "Inter", FontSize: 16, FontWeight: 700}, out.StyleOverrides["1"])
 }
 
 func TestNodeToInspectOutputIncludesGradientAndImagePaints(t *testing.T) {
