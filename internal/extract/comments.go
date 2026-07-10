@@ -1,11 +1,8 @@
 package extract
 
 import (
-	"encoding/json"
 	"sort"
 	"strings"
-
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 )
 
 // CommentOutput is one comment, used by `figma comments`.
@@ -25,26 +22,6 @@ type CommentOutput struct {
 type CommentThreadOutput struct {
 	Root    CommentOutput   `json:"root"`
 	Replies []CommentOutput `json:"replies"`
-}
-
-// CommentOutputs maps Figma API comments into CLI output values.
-func CommentOutputs(comments []api.Comment) []CommentOutput {
-	outputs := make([]CommentOutput, 0, len(comments))
-	for _, comment := range comments {
-		output := CommentOutput{
-			ID:        comment.Id,
-			Message:   comment.Message,
-			CreatedAt: comment.CreatedAt.String(),
-			Resolved:  comment.ResolvedAt != nil,
-			User:      comment.User.Handle,
-		}
-		if comment.ParentId != nil {
-			output.ParentID = *comment.ParentId
-		}
-		output.NodeID = ExtractNodeIDFromClientMeta(comment.ClientMeta)
-		outputs = append(outputs, output)
-	}
-	return outputs
 }
 
 // GroupCommentThreads groups flat API comments and retains replies whose parents were deleted.
@@ -277,21 +254,4 @@ func findNodePath(value any, targetID string, path *[]string) bool {
 		*path = (*path)[:len(*path)-1]
 	}
 	return false
-}
-
-// ExtractNodeIDFromClientMeta extracts the node_id from a ClientMeta union.
-// ClientMeta is a discriminated union of Vector | FrameOffset | FrameOffsetRegion.
-// Vectors have no node_id; FrameOffsets and FrameOffsetRegions do.
-func ExtractNodeIDFromClientMeta(cm api.Comment_ClientMeta) string {
-	b, err := cm.MarshalJSON()
-	if err != nil {
-		return ""
-	}
-	var raw struct {
-		NodeID string `json:"node_id"`
-	}
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return ""
-	}
-	return raw.NodeID
 }

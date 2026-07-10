@@ -13,7 +13,7 @@ func Fetch(client *figma.Client, fileID string) ([]extract.CommentOutput, error)
 	if err := client.Fetch(figma.BuildCommentsURL(fileID, ""), &response); err != nil {
 		return nil, err
 	}
-	outputs := extract.CommentOutputs(response.Comments)
+	outputs := mapAPIComments(response.Comments)
 	for index := range outputs {
 		outputs[index].URL = figma.BuildCommentWebURL(fileID, outputs[index].NodeID, outputs[index].ID)
 	}

@@ -1,38 +1,10 @@
 package extract
 
 import (
-	"testing"
-	"time"
-
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
-
-func TestCommentOutputsMapsAPICommentsToStableOutput(t *testing.T) {
-	parentID := "root"
-	comments := CommentOutputs([]api.Comment{
-		{
-			Id:        "reply",
-			Message:   "Fixed",
-			CreatedAt: time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
-			ParentId:  &parentID,
-			User:      api.User{Handle: "Ada"},
-		},
-	})
-
-	require.Equal(t, []CommentOutput{{
-		ID: "reply", Message: "Fixed", CreatedAt: "2026-01-02 00:00:00 +0000 UTC",
-		User: "Ada", ParentID: "root",
-	}}, comments)
-}
-
-func TestExtractNodeIDFromClientMeta_FrameOffset(t *testing.T) {
-	var cm api.Comment_ClientMeta
-	require.NoError(t, cm.FromFrameOffset(api.FrameOffset{NodeId: "1:2", NodeOffset: api.Vector{}}))
-
-	assert.Equal(t, "1:2", ExtractNodeIDFromClientMeta(cm))
-}
 
 func TestCommentNodePathsIncludesReadableHierarchy(t *testing.T) {
 	document := map[string]any{"id": "1:1", "name": "Checkout", "children": []any{
@@ -146,12 +118,4 @@ func TestAncestorNodeIDsIncludesTargetAndParents(t *testing.T) {
 
 	assert.Equal(t, map[string]struct{}{"0:0": {}, "1:1": {}, "1:2": {}}, AncestorNodeIDs(document, "1:2"))
 	assert.Empty(t, AncestorNodeIDs(document, "missing"))
-}
-
-func TestExtractNodeIDFromClientMeta_VectorEmpty(t *testing.T) {
-	// A plain Vector carries no node_id.
-	var cm api.Comment_ClientMeta
-	require.NoError(t, cm.FromVector(api.Vector{}))
-
-	assert.Empty(t, ExtractNodeIDFromClientMeta(cm))
 }
