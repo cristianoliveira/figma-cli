@@ -2,8 +2,6 @@
 
 ## Start Here
 
-- Read this file before changing code.
-- For documentation search, read `docs/AGENTS.md` and use `qmd` when available.
 - Check nested guidance before editing: `cmd/AGENTS.md`, `internal/AGENTS.md`, and package-specific `AGENTS.md` files.
 
 ## Project Shape
@@ -54,13 +52,3 @@ This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, ass
 - Run `go test ./...` before finalizing code changes.
 - Run `goimports -w <changed-go-files>` when available; otherwise use `gofmt`. CI checks both formatting and imports.
 - Mock HTTP with test servers or injected clients; do not require real Figma tokens in tests.
-
-## Useful Commands
-
-```bash
-go test ./...
-go vet ./...
-golangci-lint run ./...
-go build -o bin/figma ./cmd/figma
-make test
-```
