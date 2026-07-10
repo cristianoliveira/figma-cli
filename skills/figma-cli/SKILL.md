@@ -125,9 +125,12 @@ Formats: `png`, `jpg`, `svg`, `pdf`.
 ```bash
 figma layout "https://www.figma.com/design/abc/Name?node-id=42-1"
 # → ordered tree with id, name, type, layoutMode, gap, padding, text, and children
+
+figma layout --measure-spacing "url?node-id=42-1"
+# → additionally reports measured spacing between adjacent layout children
 ```
 
-Use this for copy/layout alignment when generated CSS is too implementation-oriented. The URL node is inferred; use `--id` only with a bare file key or to override URL scope.
+Use this for copy/layout alignment when generated CSS is too implementation-oriented. Add `--measure-spacing` only when exact geometric sibling gaps are needed; default output stays compact. The URL node is inferred; use `--id` only with a bare file key or to override URL scope.
 
 ### `figma texts` — Extract text content
 

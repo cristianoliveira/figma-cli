@@ -40,6 +40,39 @@ func TestExtractLayoutPreservesTreeOrderAndCopy(t *testing.T) {
 	}, got)
 }
 
+func TestExtractLayoutMeasuresAdjacentVerticalSpacingWhenRequested(t *testing.T) {
+	document := map[string]any{
+		"id": "1:1", "name": "Content", "type": "FRAME", "layoutMode": "VERTICAL", "itemSpacing": float64(16),
+		"children": []any{
+			map[string]any{"id": "1:2", "name": "Title", "type": "TEXT", "characters": "Title", "absoluteBoundingBox": map[string]any{"x": float64(0), "y": float64(10), "width": float64(100), "height": float64(20)}},
+			map[string]any{"id": "1:3", "name": "Body", "type": "TEXT", "characters": "Body", "absoluteBoundingBox": map[string]any{"x": float64(0), "y": float64(46), "width": float64(100), "height": float64(20)}},
+		},
+	}
+
+	withoutMeasurement := ExtractLayout(document)
+	withMeasurement := ExtractLayout(document, LayoutOptions{MeasureSpacing: true})
+
+	assert.Nil(t, withoutMeasurement.Children[1].SpacingFromPrevious)
+	assert.Equal(t, &LayoutSpacing{
+		PreviousID: "1:2", Axis: "vertical", Measured: 16, Declared: numberPointer(16), MatchesDeclared: true,
+	}, withMeasurement.Children[1].SpacingFromPrevious)
+}
+
+func TestExtractLayoutOmitsSpacingForAbsoluteOrNonAdjacentMeaningfulChildren(t *testing.T) {
+	document := map[string]any{
+		"id": "1:1", "name": "Content", "type": "FRAME", "layoutMode": "VERTICAL",
+		"children": []any{
+			map[string]any{"id": "1:2", "name": "Title", "type": "TEXT", "characters": "Title", "absoluteBoundingBox": map[string]any{"x": float64(0), "y": float64(0), "width": float64(10), "height": float64(10)}},
+			map[string]any{"id": "1:9", "name": "Decoration", "type": "RECTANGLE"},
+			map[string]any{"id": "1:3", "name": "Body", "type": "TEXT", "characters": "Body", "layoutPositioning": "ABSOLUTE", "absoluteBoundingBox": map[string]any{"x": float64(0), "y": float64(20), "width": float64(10), "height": float64(10)}},
+		},
+	}
+
+	got := ExtractLayout(document, LayoutOptions{MeasureSpacing: true})
+
+	assert.Nil(t, got.Children[1].SpacingFromPrevious)
+}
+
 func TestExtractLayoutReturnsEmptyForInvalidDocument(t *testing.T) {
 	assert.Equal(t, LayoutNode{}, ExtractLayout(nil))
 }

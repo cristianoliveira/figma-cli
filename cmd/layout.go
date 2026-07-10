@@ -13,6 +13,7 @@ var layoutCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		nodeID, _ := cmd.Flags().GetString("id")
+		measureSpacing, _ := cmd.Flags().GetBool("measure-spacing")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
 			return err
@@ -30,11 +31,12 @@ var layoutCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return cli.NewPrinter(cmd).JSON(extract.ExtractLayout(documents[0]))
+		return cli.NewPrinter(cmd).JSON(extract.ExtractLayout(documents[0], extract.LayoutOptions{MeasureSpacing: measureSpacing}))
 	},
 }
 
 func init() {
 	layoutCmd.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
+	layoutCmd.Flags().Bool("measure-spacing", false, "measure geometric gaps between adjacent layout children")
 	rootCmd.AddCommand(layoutCmd)
 }
