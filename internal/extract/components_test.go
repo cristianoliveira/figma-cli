@@ -101,6 +101,26 @@ func TestExtractComponentsFindsNestedDomainNodes(t *testing.T) {
 	assert.Equal(t, []string{"Detached"}, components[1].Path)
 }
 
+func TestAggregateComponentUsageGroupsInstancesByExactComponentID(t *testing.T) {
+	components := []ComponentOutput{
+		{ID: "1:1", Name: "Button", Type: "INSTANCE", ComponentID: "component-a", Path: []string{"Screen", "Primary"}, VariantProperties: map[string]any{"Size": "Large"}},
+		{ID: "1:2", Name: "Renamed Button", Type: "INSTANCE", ComponentID: "component-a", Path: []string{"Screen", "Secondary"}, ComponentProperties: map[string]any{"Label": map[string]any{"value": "Cancel"}}},
+		{ID: "1:3", Name: "Button", Type: "INSTANCE", ComponentID: "component-b", Path: []string{"Modal", "Primary"}},
+		{ID: "1:4", Name: "Detached", Type: "INSTANCE", Path: []string{"Screen", "Detached"}},
+		{ID: "1:5", Name: "Master", Type: "COMPONENT", ComponentID: "component-a"},
+	}
+
+	usage := AggregateComponentUsage(components)
+
+	assert.Equal(t, []ComponentUsageOutput{
+		{ComponentID: "component-a", Name: "Button", Count: 2, Instances: []ComponentInstanceUsage{
+			{ID: "1:1", Name: "Button", Path: []string{"Screen", "Primary"}, VariantProperties: map[string]any{"Size": "Large"}},
+			{ID: "1:2", Name: "Renamed Button", Path: []string{"Screen", "Secondary"}, ComponentProperties: map[string]any{"Label": map[string]any{"value": "Cancel"}}},
+		}},
+		{ComponentID: "component-b", Name: "Button", Count: 1, Instances: []ComponentInstanceUsage{{ID: "1:3", Name: "Button", Path: []string{"Modal", "Primary"}}}},
+	}, usage)
+}
+
 func TestFilterComponentsByKind(t *testing.T) {
 	components := []ComponentOutput{{Type: "COMPONENT"}, {Type: "COMPONENT_SET"}, {Type: "INSTANCE"}}
 

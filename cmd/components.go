@@ -22,6 +22,13 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 			nameFilter, _ := cmd.Flags().GetString("name")
 			kind, _ := cmd.Flags().GetString("kind")
 			raw, _ := cmd.Flags().GetBool("raw")
+			usage, _ := cmd.Flags().GetBool("usage")
+			if usage && raw {
+				return fmt.Errorf("--usage and --raw cannot be used together")
+			}
+			if usage && kind != "" && kind != "instance" {
+				return fmt.Errorf("--usage only supports --kind instance")
+			}
 			if kind != "" && kind != "component" && kind != "set" && kind != "instance" {
 				return fmt.Errorf("invalid component kind %q: expected component, set, or instance", kind)
 			}
@@ -56,6 +63,9 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 			if nameFilter != "" {
 				results = extract.FilterByName(results, nameFilter).([]extract.ComponentOutput)
 			}
+			if usage {
+				return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, extract.AggregateComponentUsage(results)))
+			}
 			return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, results))
 		},
 	}
@@ -63,6 +73,7 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 	command.Flags().String("name", "", "filter components by name (case-insensitive substring match)")
 	command.Flags().String("kind", "", "filter by component, set, or instance")
 	command.Flags().Bool("raw", false, "output raw Figma node JSON for jq power users")
+	command.Flags().Bool("usage", false, "group component instances by exact component ID")
 	return command
 }
 

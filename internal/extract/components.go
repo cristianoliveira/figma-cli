@@ -11,6 +11,23 @@ const (
 )
 
 // ComponentOutput is a curated summary of a node, used by `figma components`.
+// ComponentInstanceUsage describes one occurrence of a component instance.
+type ComponentInstanceUsage struct {
+	ID                  string         `json:"id"`
+	Name                string         `json:"name"`
+	Path                []string       `json:"path,omitempty"`
+	VariantProperties   map[string]any `json:"variantProperties,omitempty"`
+	ComponentProperties map[string]any `json:"componentProperties,omitempty"`
+}
+
+// ComponentUsageOutput groups instances by exact Figma component ID.
+type ComponentUsageOutput struct {
+	ComponentID string                   `json:"componentId"`
+	Name        string                   `json:"name"`
+	Count       int                      `json:"count"`
+	Instances   []ComponentInstanceUsage `json:"instances"`
+}
+
 type ComponentOutput struct {
 	ID                  string           `json:"id"`
 	Name                string           `json:"name"`
@@ -109,6 +126,37 @@ func extractComponents(value any, parentPath []string) []ComponentOutput {
 
 func isComponentType(nodeType string) bool {
 	return nodeType == componentTypeComponent || nodeType == componentTypeComponentSet || nodeType == componentTypeInstance
+}
+
+// AggregateComponentUsage groups instances by exact component ID in first-seen order.
+// Detached instances without a component ID are omitted rather than guessed by name.
+func AggregateComponentUsage(components []ComponentOutput) []ComponentUsageOutput {
+	usage := make([]ComponentUsageOutput, 0)
+	indexes := make(map[string]int)
+	for _, component := range components {
+		if component.Type != componentTypeInstance || component.ComponentID == "" {
+			continue
+		}
+		index, exists := indexes[component.ComponentID]
+		if !exists {
+			index = len(usage)
+			indexes[component.ComponentID] = index
+			usage = append(usage, ComponentUsageOutput{
+				ComponentID: component.ComponentID,
+				Name:        component.Name,
+				Instances:   make([]ComponentInstanceUsage, 0),
+			})
+		}
+		usage[index].Count++
+		usage[index].Instances = append(usage[index].Instances, ComponentInstanceUsage{
+			ID:                  component.ID,
+			Name:                component.Name,
+			Path:                component.Path,
+			VariantProperties:   component.VariantProperties,
+			ComponentProperties: component.ComponentProperties,
+		})
+	}
+	return usage
 }
 
 // FilterComponentsByKind filters component-domain output using user-facing kind names.

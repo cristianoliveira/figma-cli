@@ -31,6 +31,7 @@ Every command answers one question. Use this as a lookup table:
 | What's all the copy in this frame? | `figma texts <url-with-node-id>` |
 | What's the text in layers with this name? | `figma texts --layer "Name" <url>` |
 | What components exist here? | `figma components --id <node-id> <url>` |
+| Which component instances does this screen use? | `figma components --usage <url-with-node-id>` |
 | What layers match this name/type? | `figma find --name "icon" --type INSTANCE <url>` |
 | What's this node? (details) | `figma inspect <url-with-node-id>` |
 | What should I implement from this node? | `figma inspect --handoff <url-with-node-id>` |
@@ -196,9 +197,10 @@ figma components --id 42:1 "abc123"
 figma components --id 42:1 --name "Button" "abc123"    # filter by name
 figma components --id 42:1 --kind instance "abc123"     # component | set | instance
 figma components --id 42:1 --raw "abc123"               # all raw descendant nodes
+figma components --usage "url?node-id=42-1"              # group instances by exact component ID
 ```
 
-Default results contain only `COMPONENT`, `COMPONENT_SET`, and `INSTANCE` nodes. Results include node path, variant properties, instance properties, property definitions, component ID, and component-set ID when available. `--raw` without `--kind` preserves full node traversal.
+Default results contain only `COMPONENT`, `COMPONENT_SET`, and `INSTANCE` nodes. Results include node path, variant properties, instance properties, property definitions, component ID, and component-set ID when available. `--usage` returns counts and occurrence details grouped strictly by `componentId`; detached instances without an ID are omitted rather than guessed by name. `--raw` without `--kind` preserves full node traversal.
 
 ### `figma inspect` — Node summary
 
