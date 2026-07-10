@@ -45,6 +45,11 @@ func BuildNodesURL(fileID string, nodeIDs []string) (string, error) {
 	return u.String(), nil
 }
 
+// BuildFileComponentsURL builds the API URL for published components in a Figma file.
+func BuildFileComponentsURL(fileID string) string {
+	return fmt.Sprintf("%s/files/%s/components", baseURL, fileID)
+}
+
 // BuildMeURL builds the API URL for the currently authenticated user (/v1/me).
 func BuildMeURL() string {
 	return baseURL + "/me"

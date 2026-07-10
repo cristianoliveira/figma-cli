@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	"github.com/cristianoliveira/figma-cli/internal/components"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/output"
@@ -11,6 +12,13 @@ import (
 )
 
 var componentsCmd = newComponentsCommand(cli.LoadClient)
+
+type componentsDiffOutput struct {
+	FileKey    string `json:"fileKey"`
+	FigmaCount int    `json:"figmaCount"`
+	CodeCount  int    `json:"codeCount"`
+	components.Comparison
+}
 
 func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command := &cobra.Command{
@@ -23,6 +31,17 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 			kind, _ := cmd.Flags().GetString("kind")
 			raw, _ := cmd.Flags().GetBool("raw")
 			usage, _ := cmd.Flags().GetBool("usage")
+			diff, _ := cmd.Flags().GetBool("diff")
+			codebase, _ := cmd.Flags().GetString("codebase")
+			if diff && codebase == "" {
+				return fmt.Errorf("--diff requires --codebase")
+			}
+			if !diff && codebase != "" {
+				return fmt.Errorf("--codebase requires --diff")
+			}
+			if diff && (nodeID != "" || nameFilter != "" || kind != "" || raw || usage) {
+				return fmt.Errorf("--diff cannot be used with --id, --name, --kind, --raw, or --usage")
+			}
 			if usage && raw {
 				return fmt.Errorf("--usage and --raw cannot be used together")
 			}
@@ -36,15 +55,39 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 			if err != nil {
 				return err
 			}
-			nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "components")
-			if err != nil {
-				return err
+			if diff && len(input.NodeIDs) > 0 {
+				return fmt.Errorf("--diff compares a whole Figma file; remove node-id from the URL")
+			}
+			var nodeIDs []string
+			var codeComponents []components.CodeComponent
+			if diff {
+				codeComponents, err = components.DiscoverCodeComponents(codebase)
+				if err != nil {
+					return err
+				}
+			} else {
+				nodeIDs, err = figma.ResolveRequiredNodeIDs(input, nodeID, "components")
+				if err != nil {
+					return err
+				}
 			}
 			client, err := loadClient()
 			if err != nil {
 				return err
 			}
 			client = client.WithContext(cmd.Context())
+			if diff {
+				figmaComponents, err := figma.FetchPublishedComponents(client, input.FileID)
+				if err != nil {
+					return err
+				}
+				published := make([]components.FigmaComponent, 0, len(figmaComponents))
+				for _, component := range figmaComponents {
+					published = append(published, components.FigmaComponent{Name: component.Name, NodeID: component.NodeID})
+				}
+				comparison := components.Compare(published, codeComponents)
+				return cli.NewPrinter(cmd).JSON(componentsDiffOutput{FileKey: input.FileID, FigmaCount: len(published), CodeCount: len(codeComponents), Comparison: comparison})
+			}
 			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
 			if err != nil {
 				return err
@@ -75,6 +118,8 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 	command.Flags().String("kind", "", "filter by component, set, or instance")
 	command.Flags().Bool("raw", false, "output raw Figma node JSON for jq power users")
 	command.Flags().Bool("usage", false, "group component instances by exact component ID")
+	command.Flags().Bool("diff", false, "compare published Figma components with a frontend codebase")
+	command.Flags().String("codebase", "", "frontend component source directory (required with --diff)")
 	return command
 }
 
