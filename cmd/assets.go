@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 
@@ -64,35 +63,24 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 				return err
 			}
 			client = client.WithContext(cmd.Context())
-			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
-			if err != nil {
-				return err
-			}
-			assets := filterAssets(extract.ExtractAssets(documents), kind, format, nameFilter)
-			if err := os.MkdirAll(outputDirectory, 0o755); err != nil {
-				return err
-			}
-
 			filename := assetFilename
 			if filenameMode == "name" {
 				filename = func(asset extract.Asset) string { return assetNameFilename(asset, trimNamePrefix) }
 			}
-			assetDownloadClient := downloadClient
-			if assetDownloadClient == nil {
-				assetDownloadClient = client.HTTP
+			manifest, err := cli.ExportAssets(cli.AssetExportRequest{
+				Client:          client,
+				FileID:          input.FileID,
+				NodeIDs:         nodeIDs,
+				OutputDirectory: outputDirectory,
+				Kind:            kind,
+				Format:          format,
+				NameFilter:      nameFilter,
+				DownloadClient:  downloadClient,
+				Filename:        filename,
+			})
+			if err != nil {
+				return err
 			}
-			exporter := cli.AssetExporter{
-				HTTPClient: assetDownloadClient,
-				Filename:   filename,
-				FetchURL: func(nodeID, assetFormat string) (string, error) {
-					apiURL, err := figma.BuildExportURL(input.FileID, []string{nodeID}, assetFormat)
-					if err != nil {
-						return "", err
-					}
-					return figma.FetchExportURL(client, apiURL, nodeID)
-				},
-			}
-			manifest := exporter.Export(outputDirectory, assets)
 
 			asJSON, _ := cmd.Flags().GetBool("json")
 			if asJSON {
@@ -121,26 +109,6 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 	command.Flags().String("trim-name-prefix", "", "prefix to remove in name filename mode")
 	command.Flags().Bool("allow-partial", false, "exit successfully when only some assets export")
 	return command
-}
-
-func filterAssets(assets []extract.Asset, kind, format, nameFilter string) []extract.Asset {
-	filtered := make([]extract.Asset, 0, len(assets))
-	for _, asset := range assets {
-		if kind == assetKindIcon && asset.Kind != assetKindInstance && asset.Kind != assetKindVector {
-			continue
-		}
-		if kind != assetKindAll && kind != assetKindIcon && asset.Kind != kind {
-			continue
-		}
-		if nameFilter != "" && !strings.Contains(strings.ToLower(asset.Name), strings.ToLower(nameFilter)) {
-			continue
-		}
-		if format != assetFormatAuto {
-			asset.Format = format
-		}
-		filtered = append(filtered, asset)
-	}
-	return filtered
 }
 
 func assetExportResult(manifest cli.AssetExportManifest, allowPartial bool) error {

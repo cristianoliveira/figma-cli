@@ -22,19 +22,6 @@ func TestAssetFilenameFallsBackForUnnamedAsset(t *testing.T) {
 	assert.Equal(t, "asset_1-2", assetFilename(asset))
 }
 
-func TestFilterAssetsSupportsIconNameDiscovery(t *testing.T) {
-	assets := []extract.Asset{
-		{ID: "1", Name: "icon/close", Kind: "instance", Format: "svg"},
-		{ID: "2", Name: "Icon/arrow", Kind: "vector", Format: "svg"},
-		{ID: "3", Name: "photo", Kind: "image", Format: "png"},
-		{ID: "4", Name: "logo", Kind: "vector", Format: "svg"},
-	}
-
-	filtered := filterAssets(assets, "icon", "svg", "icon/")
-
-	assert.Equal(t, []extract.Asset{assets[0], assets[1]}, filtered)
-}
-
 func TestAssetNameFilenameSupportsExplicitPrefixTrimming(t *testing.T) {
 	asset := extract.Asset{ID: "1:2", Name: "icon/24/arrow-left / dark"}
 
