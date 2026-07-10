@@ -1,34 +1,57 @@
 package figma
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
+
+// defaultHTTPTimeout allows large Figma documents and exports to complete while
+// still preventing a CLI request from waiting forever.
+const defaultHTTPTimeout = 2 * time.Minute
 
 // Client handles communication with the Figma API.
 type Client struct {
-	Token string
-	HTTP  *http.Client
+	Token   string
+	HTTP    *http.Client
+	context context.Context
 }
 
-// NewClient creates a Figma API client with the given token.
+// NewClient creates a Figma API client with an explicit request timeout.
 func NewClient(token string) *Client {
-	return &Client{Token: token}
+	return &Client{
+		Token: token,
+		HTTP:  &http.Client{Timeout: defaultHTTPTimeout},
+	}
 }
 
-// httpClient returns the configured HTTP client, defaulting to http.DefaultClient.
+// WithContext returns a client copy that binds requests to ctx.
+func (c *Client) WithContext(ctx context.Context) *Client {
+	copy := *c
+	copy.context = ctx
+	return &copy
+}
+
 func (c *Client) httpClient() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
-	return http.DefaultClient
+	return &http.Client{Timeout: defaultHTTPTimeout}
+}
+
+func (c *Client) requestContext() context.Context {
+	if c.context != nil {
+		return c.context
+	}
+	return context.Background()
 }
 
 // Fetch performs a GET request to a Figma API URL and decodes the JSON response into target.
 func (c *Client) Fetch(url string, target any) error {
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(c.requestContext(), "GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

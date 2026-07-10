@@ -57,6 +57,7 @@ environment default. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
 		if err != nil {
 			return err
 		}
+		client = client.WithContext(cmd.Context())
 		response, err := figma.FetchTeamProjects(client, figma.BuildTeamProjectsURL(teamID))
 		if err != nil {
 			return err

@@ -31,6 +31,7 @@ func newLayoutCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			documents, err := figma.FetchNodeDocuments(client, input.FileID, []string{resolvedNodeID})
 			if err != nil {
 				return err

@@ -49,6 +49,7 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 
 			nodeIDs := figma.ResolveNodeIDs(input, explicitNodeID)
 			tokens, err := collectTokens(client, input.FileID, nodeIDs, options.source, options.mode, options.scanFallback)

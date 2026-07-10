@@ -24,7 +24,7 @@ const (
 
 var assetFilenameCharacters = regexp.MustCompile(`[^a-z0-9]+`)
 
-var assetsCmd = newAssetsCommand(cli.LoadClient, http.DefaultClient)
+var assetsCmd = newAssetsCommand(cli.LoadClient, nil)
 
 func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *http.Client) *cobra.Command {
 	command := &cobra.Command{
@@ -63,6 +63,7 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
 			if err != nil {
 				return err
@@ -76,8 +77,12 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if filenameMode == "name" {
 				filename = func(asset extract.Asset) string { return assetNameFilename(asset, trimNamePrefix) }
 			}
+			assetDownloadClient := downloadClient
+			if assetDownloadClient == nil {
+				assetDownloadClient = client.HTTP
+			}
 			exporter := cli.AssetExporter{
-				HTTPClient: downloadClient,
+				HTTPClient: assetDownloadClient,
 				Filename:   filename,
 				FetchURL: func(nodeID, assetFormat string) (string, error) {
 					apiURL, err := figma.BuildExportURL(input.FileID, []string{nodeID}, assetFormat)

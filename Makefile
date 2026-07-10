@@ -30,9 +30,12 @@ run: ## Run application with go run
 	go run ./cmd/figma
 
 # Testing
-.PHONY: test test-short test-race
+.PHONY: test test-short test-race test-cover
 test: ## Run all tests
 	go test ./...
+
+test-cover: ## Run coverage for packages that contain tests
+	@go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' ./... | xargs -r go test -cover
 
 test-short: ## Run short tests only
 	go test ./... -short

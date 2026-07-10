@@ -28,6 +28,7 @@ Examples:
 		if err != nil {
 			return err
 		}
+		client = client.WithContext(cmd.Context())
 
 		apiURL, err := figma.BuildFileURL(input.FileID, input.NodeIDs, "", "1")
 		if err != nil {

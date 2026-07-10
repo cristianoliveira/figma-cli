@@ -54,6 +54,7 @@ func newLayoutCompareCommand(loadClient func() (*figma.Client, error)) *cobra.Co
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			var documents []any
 			if len(requestedNames) > 0 {
 				sectionDocuments, fetchErr := figma.FetchNodeDocuments(client, input.FileID, []string{sectionNodeID})

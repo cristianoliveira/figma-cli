@@ -48,6 +48,7 @@ func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			fromDocument, err := figma.FetchDocument(client, input.FileID, nodeIDs, fromVersion, "")
 			if err != nil {
 				return err

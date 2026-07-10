@@ -48,6 +48,7 @@ func newInspectCommandWithVariables(
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			details, err := figma.FetchNodeDetails(client, input.FileID, []string{nodeID})
 			if err != nil {
 				return err

@@ -1,6 +1,7 @@
 package figma
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -24,6 +25,29 @@ func TestClientFetch(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "value", got["key"])
+}
+
+func TestNewClientConfiguresHTTPClient(t *testing.T) {
+	client := NewClient("test-token")
+
+	require.NotNil(t, client.HTTP)
+	assert.Equal(t, defaultHTTPTimeout, client.HTTP.Timeout)
+}
+
+func TestClientFetchHonorsContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+
+	client := NewClient("test-token")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	var got map[string]any
+	err := client.WithContext(ctx).Fetch(server.URL, &got)
+
+	require.ErrorIs(t, err, context.Canceled)
 }
 
 func TestClientFetchNilHTTPDefaults(t *testing.T) {

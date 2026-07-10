@@ -29,6 +29,7 @@ func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 			if err != nil {
 				return err

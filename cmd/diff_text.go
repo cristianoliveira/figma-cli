@@ -37,6 +37,7 @@ var diffTextCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		client = client.WithContext(cmd.Context())
 
 		fromDoc, err := figma.FetchDocument(client, input.FileID, nodeIDs, fromVersion, "")
 		if err != nil {

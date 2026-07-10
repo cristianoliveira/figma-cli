@@ -44,6 +44,7 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
 			if err != nil {
 				return err

@@ -37,6 +37,7 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			apiURL, err := figma.BuildExportURL(input.FileID, []string{resolvedNodeID}, format)
 			if err != nil {
 				return err

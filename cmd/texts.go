@@ -44,6 +44,7 @@ func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			var document any
 			if len(nodeIDs) > 0 {
 				documents, fetchErr := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)

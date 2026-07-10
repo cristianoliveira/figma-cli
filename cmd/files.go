@@ -53,6 +53,7 @@ branch data from Figma. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
 		if err != nil {
 			return err
 		}
+		client = client.WithContext(cmd.Context())
 		response, err := figma.FetchProjectFiles(client, figma.BuildProjectFilesURL(projectID, branches))
 		if err != nil {
 			return err

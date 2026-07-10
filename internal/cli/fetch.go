@@ -20,6 +20,7 @@ func RunSimpleFetch(cmd *cobra.Command, args []string, buildURL func(fileID stri
 	if err != nil {
 		return err
 	}
+	client = client.WithContext(cmd.Context())
 
 	apiURL, err := buildURL(input.FileID)
 	if err != nil {

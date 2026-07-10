@@ -118,6 +118,7 @@ Examples:
 		if err != nil {
 			return err
 		}
+		client = client.WithContext(cmd.Context())
 		result, err := figma.FindTextChange(client, input.FileID, []string{nodeID}, toVersion, fromVersion)
 		if err != nil {
 			return err

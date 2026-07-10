@@ -163,6 +163,7 @@ Examples:
 		if err != nil {
 			return err
 		}
+		client = client.WithContext(cmd.Context())
 		response, err := figma.FetchVersions(client, apiURL)
 		if err != nil {
 			return err

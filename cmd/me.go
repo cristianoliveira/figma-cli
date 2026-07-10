@@ -31,6 +31,7 @@ Requires FIGMA_ACCESS_TOKEN environment variable.`,
 		if err != nil {
 			return err
 		}
+		client = client.WithContext(cmd.Context())
 		me, err := figma.FetchMe(client, figma.BuildMeURL())
 		if err != nil {
 			return err

@@ -55,6 +55,7 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			apiURL := figma.BuildCommentsURL(input.FileID, "")

@@ -44,6 +44,7 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
 			if err != nil {
 				return err

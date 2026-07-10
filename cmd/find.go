@@ -32,6 +32,7 @@ func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			client = client.WithContext(cmd.Context())
 			nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 			doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 			if err != nil {
