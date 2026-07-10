@@ -9,8 +9,9 @@ import (
 
 // FileInput contains parsed information from a file ID or Figma URL.
 type FileInput struct {
-	FileID  string
-	NodeIDs []string // node IDs extracted from node-id query parameter(s)
+	FileID    string
+	NodeIDs   []string // node IDs extracted from node-id query parameter(s)
+	CommentID string   // numeric comment ID extracted from URL fragment
 }
 
 // ParseInput extracts file ID and node IDs from either a file ID or a Figma URL.
@@ -69,7 +70,14 @@ func ParseInput(input string) (*FileInput, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FileInput{FileID: fileID, NodeIDs: extractNodeIDsFromQuery(u)}, nil
+	return &FileInput{FileID: fileID, NodeIDs: extractNodeIDsFromQuery(u), CommentID: extractCommentID(u)}, nil
+}
+
+func extractCommentID(u *url.URL) string {
+	if numericID.MatchString(u.Fragment) {
+		return u.Fragment
+	}
+	return ""
 }
 
 // extractFileIDFromURL extracts the file key from a Figma URL path.

@@ -29,6 +29,8 @@ Every command answers one question. Use this as a lookup table:
 | What components exist here? | `figma components --id <node-id> <url>` |
 | What layers match this name/type? | `figma find --name "icon" --type INSTANCE <url>` |
 | What's this node? (details) | `figma inspect <url-with-node-id>` |
+| What's this copied Figma comment? | `figma comments <url-with-comment-hash>` |
+| What unresolved feedback affects this node? | `figma comments --include-ancestors --unresolved-only <url>` |
 | What changed in the copy? | `figma diff text --from v1 --to v2 <url>` |
 | What files are in this project? | `figma files <project-id-or-url>` |
 | What projects exist? | `figma projects` |
@@ -175,6 +177,18 @@ figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1"
 figma inspect --id 42:1 "abc123" # explicit scope for a bare file key
 # → JSON: type, name, bounds, fills, strokes, text, children summary
 ```
+
+### `figma comments` — Review feedback
+
+```bash
+# A copied comment URL returns that exact comment, regardless of node scope
+figma comments "https://www.figma.com/design/abc?node-id=42-1&m=dev#1838610593"
+
+# Include unresolved feedback attached to parent frames
+figma comments --include-ancestors --unresolved-only "url?node-id=42-2"
+```
+
+Each comment includes a direct Figma `url`. `--recursive=false` limits normal node lookup to the selected node; hash lookup by comment ID takes precedence over node filtering.
 
 ### `figma diff text` — Copy changes between versions
 

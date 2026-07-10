@@ -15,6 +15,7 @@ type CommentOutput struct {
 	NodeID    string `json:"node_id,omitempty"`
 	User      string `json:"user"`
 	ParentID  string `json:"parent_id,omitempty"`
+	URL       string `json:"url,omitempty"`
 }
 
 // CommentNodeIDs returns IDs eligible for node-scoped comments.
@@ -73,6 +74,64 @@ func FilterCommentsByNodeIDs(comments []CommentOutput, nodeIDs map[string]struct
 		}
 	}
 	return filtered
+}
+
+// FilterCommentsByID returns the exact comment matching id.
+func FilterCommentsByID(comments []CommentOutput, id string) []CommentOutput {
+	for _, comment := range comments {
+		if comment.ID == id {
+			return []CommentOutput{comment}
+		}
+	}
+	return nil
+}
+
+// FilterUnresolvedComments removes resolved comments while preserving order.
+func FilterUnresolvedComments(comments []CommentOutput) []CommentOutput {
+	filtered := make([]CommentOutput, 0, len(comments))
+	for _, comment := range comments {
+		if !comment.Resolved {
+			filtered = append(filtered, comment)
+		}
+	}
+	return filtered
+}
+
+// AncestorNodeIDs returns target and its ancestor path from a full document.
+func AncestorNodeIDs(document any, targetID string) map[string]struct{} {
+	var path []string
+	if !findNodePath(document, targetID, &path) {
+		return nil
+	}
+	ids := make(map[string]struct{}, len(path))
+	for _, id := range path {
+		ids[id] = struct{}{}
+	}
+	return ids
+}
+
+func findNodePath(value any, targetID string, path *[]string) bool {
+	node, ok := value.(map[string]any)
+	if !ok {
+		return false
+	}
+	id := StringValue(node["id"])
+	if id != "" {
+		*path = append(*path, id)
+	}
+	if id == targetID {
+		return true
+	}
+	children, _ := node["children"].([]any)
+	for _, child := range children {
+		if findNodePath(child, targetID, path) {
+			return true
+		}
+	}
+	if id != "" {
+		*path = (*path)[:len(*path)-1]
+	}
+	return false
 }
 
 // ExtractNodeIDFromClientMeta extracts the node_id from a ClientMeta union.

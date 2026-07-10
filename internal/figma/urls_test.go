@@ -99,6 +99,12 @@ func TestBuildExportURLRequiresFormat(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestBuildCommentWebURL(t *testing.T) {
+	got := BuildCommentWebURL("QAhpkgySSOJ6gwJUTB0glb", "4707:15501", "1838610593")
+
+	assert.Equal(t, "https://www.figma.com/design/QAhpkgySSOJ6gwJUTB0glb?m=dev&node-id=4707-15501#1838610593", got)
+}
+
 func TestBuildStylesURL(t *testing.T) {
 	got := BuildStylesURL("file123")
 

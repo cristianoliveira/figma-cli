@@ -118,6 +118,16 @@ func BuildVariablesURL(fileID string) string {
 	return fmt.Sprintf("%s/files/%s/variables/local", baseURL, fileID)
 }
 
+// BuildCommentWebURL builds a direct Figma URL for a comment.
+func BuildCommentWebURL(fileID, nodeID, commentID string) string {
+	u := &url.URL{Scheme: "https", Host: "www.figma.com", Path: "/design/" + fileID, Fragment: commentID}
+	query := u.Query()
+	query.Set("m", "dev")
+	query.Set("node-id", strings.ReplaceAll(nodeID, ":", "-"))
+	u.RawQuery = query.Encode()
+	return u.String()
+}
+
 // BuildCommentsURL builds the API URL for fetching comments of a Figma file.
 // If nodeID is non-empty, filters comments to that node.
 func BuildCommentsURL(fileID string, nodeID string) string {

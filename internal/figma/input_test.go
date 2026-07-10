@@ -9,14 +9,16 @@ import (
 
 func TestParseInput(t *testing.T) {
 	tests := []struct {
-		name        string
-		input       string
-		expectedID  string
-		expectedIDs []string
-		wantErr     bool
+		name              string
+		input             string
+		expectedID        string
+		expectedIDs       []string
+		expectedCommentID string
+		wantErr           bool
 	}{
 		{name: "plain file ID", input: "grnVU2vAihHXwYgHryu2xE", expectedID: "grnVU2vAihHXwYgHryu2xE"},
 		{name: "design URL with node-id", input: "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=339-27545&p=f&m=dev", expectedID: "grnVU2vAihHXwYgHryu2xE", expectedIDs: []string{"339:27545"}},
+		{name: "comment URL", input: "https://www.figma.com/design/QAhpkgySSOJ6gwJUTB0glb?node-id=4707-15501&m=dev#1838610593", expectedID: "QAhpkgySSOJ6gwJUTB0glb", expectedIDs: []string{"4707:15501"}, expectedCommentID: "1838610593"},
 		{name: "design URL without node-id", input: "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-", expectedID: "grnVU2vAihHXwYgHryu2xE"},
 		{name: "file URL", input: "https://www.figma.com/file/abc123/My-Design", expectedID: "abc123"},
 		{name: "URL without design or file", input: "https://www.figma.com/community/abc", wantErr: true},
@@ -34,6 +36,7 @@ func TestParseInput(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedID, got.FileID)
 			assert.Equal(t, tt.expectedIDs, got.NodeIDs)
+			assert.Equal(t, tt.expectedCommentID, got.CommentID)
 		})
 	}
 }

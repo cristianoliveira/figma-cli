@@ -46,6 +46,29 @@ func TestFilterCommentsByNodeIDs_NoMatches(t *testing.T) {
 	assert.Empty(t, filtered)
 }
 
+func TestFilterCommentsByID(t *testing.T) {
+	comments := []CommentOutput{{ID: "other"}, {ID: "1838610593", Message: "target"}}
+
+	assert.Equal(t, []CommentOutput{{ID: "1838610593", Message: "target"}}, FilterCommentsByID(comments, "1838610593"))
+}
+
+func TestFilterUnresolvedComments(t *testing.T) {
+	comments := []CommentOutput{{ID: "open"}, {ID: "done", Resolved: true}}
+
+	assert.Equal(t, []CommentOutput{{ID: "open"}}, FilterUnresolvedComments(comments))
+}
+
+func TestAncestorNodeIDsIncludesTargetAndParents(t *testing.T) {
+	document := map[string]any{"id": "0:0", "children": []any{
+		map[string]any{"id": "1:1", "children": []any{
+			map[string]any{"id": "1:2"},
+		}},
+	}}
+
+	assert.Equal(t, map[string]struct{}{"0:0": {}, "1:1": {}, "1:2": {}}, AncestorNodeIDs(document, "1:2"))
+	assert.Empty(t, AncestorNodeIDs(document, "missing"))
+}
+
 func TestExtractNodeIDFromClientMeta_VectorEmpty(t *testing.T) {
 	// A plain Vector carries no node_id.
 	var cm api.Comment_ClientMeta
