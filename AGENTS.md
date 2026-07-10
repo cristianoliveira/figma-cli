@@ -20,7 +20,7 @@ This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, ass
 
 ## Feature Map
 
-- Workspace/API discovery: `me`, `projects`, `files`, `fetch-meta`, `versions`, `comments`.
+- Workspace/API discovery: `me`, `projects`, `files`, `meta`, `versions`, `comments`.
 - Design exploration: `find`, `inspect`, `layout`, `components`, `texts`, `colors`.
 - Generation and export: `assets`, `export`, `css`, `tokens`.
 - Change analysis: `diff text` compares copy across file versions.
