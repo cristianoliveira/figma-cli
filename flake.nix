@@ -35,6 +35,7 @@
              go
 
              golangci-lint
+             gotools
 
              # Test runner with good output
              # USAGE: gotestsum --watch
