@@ -82,9 +82,9 @@ func cssPropsFor(node map[string]any) []CSSProp {
 func layoutProps(node map[string]any) []CSSProp {
 	var props []CSSProp
 	switch StringValue(node["layoutMode"]) {
-	case "VERTICAL":
+	case layoutModeVertical:
 		props = append(props, CSSProp{"display", "flex"}, CSSProp{"flex-direction", "column"})
-	case "HORIZONTAL":
+	case layoutModeHorizontal:
 		props = append(props, CSSProp{"display", "flex"})
 	}
 	if gap := numberValue(node["itemSpacing"]); gap > 0 {

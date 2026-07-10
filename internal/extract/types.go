@@ -5,6 +5,11 @@ package extract
 
 // Shared output shapes embedded by the command-specific output structs.
 
+const (
+	layoutModeHorizontal = "HORIZONTAL"
+	layoutModeVertical   = "VERTICAL"
+)
+
 type gradientStopOutput struct {
 	Position float64 `json:"position"`
 	Color    string  `json:"color"`

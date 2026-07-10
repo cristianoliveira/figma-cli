@@ -106,10 +106,10 @@ func measureSiblingSpacing(parent, previous, current map[string]any) *LayoutSpac
 	var axis string
 	var measured float64
 	switch StringValue(parent["layoutMode"]) {
-	case "VERTICAL":
+	case layoutModeVertical:
 		axis = "vertical"
 		measured = currentBounds.y - (previousBounds.y + previousBounds.height)
-	case "HORIZONTAL":
+	case layoutModeHorizontal:
 		axis = "horizontal"
 		measured = currentBounds.x - (previousBounds.x + previousBounds.width)
 	default:

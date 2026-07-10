@@ -134,9 +134,16 @@ figma layout "https://www.figma.com/design/abc/Name?node-id=42-1"
 
 figma layout --measure-spacing "url?node-id=42-1"
 # → additionally reports measured spacing between adjacent layout children
+
+# Compare explicit responsive frames in supplied order
+figma layout compare "abc123" --id 100:1 --id 200:1 --id 300:1
+
+# Resolve exact, unique sibling/descendant names under a selected section
+figma layout compare "section-url?node-id=50-1" --name Desktop --name Tablet --name Mobile
+# → { "scope": {...}, "variants": [...], "transitions": [{ "fromId", "toId", "changes" }] }
 ```
 
-Use this for copy/layout alignment when generated CSS is too implementation-oriented. Add `--measure-spacing` only when exact geometric sibling gaps are needed; default output stays compact. The URL node is inferred; use `--id` only with a bare file key or to override URL scope.
+Use this for copy/layout alignment when generated CSS is too implementation-oriented. Add `--measure-spacing` only when exact geometric sibling gaps are needed; default output stays compact. Compare never guesses breakpoints: caller order is authoritative, names must match uniquely, and reported frame widths are design evidence rather than declared CSS breakpoints. The URL node is inferred; use `--id` only with a bare file key or to override URL scope.
 
 ### `figma texts` — Extract text content
 

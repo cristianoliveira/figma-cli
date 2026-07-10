@@ -45,6 +45,7 @@ func newLayoutCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	}
 	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
 	command.Flags().Bool("measure-spacing", false, "measure geometric gaps between adjacent layout children")
+	command.AddCommand(newLayoutCompareCommand(loadClient))
 	return command
 }
 
