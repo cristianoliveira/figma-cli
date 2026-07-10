@@ -37,9 +37,6 @@ func (e AssetExporter) Export(outputDirectory string, assets []extract.Asset) As
 	manifest := AssetExportManifest{Items: make([]AssetExportItem, 0, len(assets))}
 	usedPaths := make(map[string]int)
 	client := e.HTTPClient
-	if client == nil {
-		client = http.DefaultClient
-	}
 	filename := e.Filename
 	if filename == nil {
 		filename = defaultAssetFilename
@@ -50,6 +47,12 @@ func (e AssetExporter) Export(outputDirectory string, assets []extract.Asset) As
 		assetURL, err := e.FetchURL(asset.ID, asset.Format)
 		if err != nil {
 			item.Error = err.Error()
+			manifest.Failed++
+			manifest.Items = append(manifest.Items, item)
+			continue
+		}
+		if client == nil {
+			item.Error = "HTTP client is required"
 			manifest.Failed++
 			manifest.Items = append(manifest.Items, item)
 			continue

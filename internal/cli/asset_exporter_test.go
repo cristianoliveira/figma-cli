@@ -47,6 +47,16 @@ func TestAssetExporterRecordsSuccessAndFailureInRequestOrder(t *testing.T) {
 	assert.Equal(t, 1, manifest.Failed)
 }
 
+func TestAssetExporterRequiresConfiguredHTTPClient(t *testing.T) {
+	exporter := AssetExporter{FetchURL: func(_, _ string) (string, error) { return "https://cdn.example/asset", nil }}
+
+	manifest := exporter.Export(t.TempDir(), []extract.Asset{{ID: "1:2", Name: "Icon", Kind: "vector", Format: "svg"}})
+
+	require.Len(t, manifest.Items, 1)
+	assert.Equal(t, "HTTP client is required", manifest.Items[0].Error)
+	assert.Equal(t, 1, manifest.Failed)
+}
+
 func TestAssetExporterRecordsExportURLFailure(t *testing.T) {
 	exporter := AssetExporter{FetchURL: func(_, _ string) (string, error) {
 		return "", errors.New("not exportable")
