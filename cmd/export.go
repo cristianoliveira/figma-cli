@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var exportCmd = newExportCommand(cli.LoadClient, http.DefaultClient)
+var exportCmd = newExportCommand(cli.LoadClient, nil)
 
 func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *http.Client) *cobra.Command {
 	command := &cobra.Command{
@@ -46,7 +46,11 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if err != nil {
 				return err
 			}
-			if err := cli.DownloadFile(downloadClient, outputPath, assetURL); err != nil {
+			exportDownloadClient := downloadClient
+			if exportDownloadClient == nil {
+				exportDownloadClient = client.HTTP
+			}
+			if err := cli.DownloadFile(exportDownloadClient, outputPath, assetURL); err != nil {
 				return err
 			}
 			if err := cli.NewPrinter(cmd).File(outputPath, map[string]any{"format": format, "node": resolvedNodeID}); err != nil {

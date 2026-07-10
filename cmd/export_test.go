@@ -26,7 +26,7 @@ func TestExportCommandWritesFileAndJSONContract(t *testing.T) {
 	outputPath := t.TempDir() + "/button.svg"
 
 	result := executeCommand(
-		newExportCommand(func() (*figma.Client, error) { return client, nil }, httpClient),
+		newExportCommand(func() (*figma.Client, error) { return client, nil }, nil),
 		"https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "svg", "--output", outputPath, "--json",
 	)
 
