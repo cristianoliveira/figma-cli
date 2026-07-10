@@ -58,6 +58,35 @@ func TestAssetsCommandExportsFilteredAssets(t *testing.T) {
 	assert.Contains(t, result.Stderr, "exported 1 asset(s), 0 failed")
 }
 
+func TestAssetsCommandFailsOnPartialDownloadWithoutAllowPartial(t *testing.T) {
+	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		status := http.StatusOK
+		body := "svg"
+		switch request.URL.Path {
+		case "/v1/files/FILE/nodes":
+			body = `{"nodes":{"1:2":{"document":{"id":"1:2","name":"Screen","type":"FRAME","children":[{"id":"2:3","name":"Close","type":"VECTOR"},{"id":"4:5","name":"Photo","fills":[{"type":"IMAGE"}]}]}}}}`
+		case "/v1/images/FILE":
+			body = `{"images":{"2:3":"https://cdn.example/close.svg","4:5":"https://cdn.example/photo.png"}}`
+		case "/photo.png":
+			status = http.StatusBadGateway
+			body = "unavailable"
+		}
+		return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})
+	client := &figma.Client{HTTP: &http.Client{Transport: transport}}
+
+	result := executeCommand(
+		newAssetsCommand(func() (*figma.Client, error) { return client, nil }, nil),
+		"https://www.figma.com/design/FILE/Screen?node-id=1-2", "--output", t.TempDir(),
+	)
+
+	var exitErr *cli.ExitCodeError
+	assert.ErrorAs(t, result.Err, &exitErr)
+	assert.Equal(t, 1, exitErr.Code)
+	assert.Contains(t, result.Stderr, "warning: node 4:5")
+	assert.Contains(t, result.Stderr, "exported 1 asset(s), 1 failed")
+}
+
 func TestAssetsCommandRejectsFilenameModeBeforeLoadingClient(t *testing.T) {
 	loaded := false
 	result := executeCommand(newAssetsCommand(func() (*figma.Client, error) {
