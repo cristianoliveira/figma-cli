@@ -12,6 +12,9 @@ Convert parsed Figma document trees into command output structs and JSON-ready v
 - Preserve all matches when names are ambiguous; include node IDs where users need disambiguation.
 - Keep output structs close to extractor behavior and use JSON tags intentionally.
 - Reuse shared value helpers from `values.go` instead of duplicating map conversion logic.
+- Preserve Figma child order for copy/layout output; tree order is user-visible contract.
+- Prefer Figma-provided semantics such as text line types over inference from names or glyphs.
+- For comment scope, derive descendant/ancestor IDs from document traversal; never infer parentage from node ID syntax.
 
 ## Testing
 

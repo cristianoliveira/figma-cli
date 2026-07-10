@@ -22,7 +22,7 @@ This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, ass
 ## Feature Map
 
 - Workspace/API discovery: `me`, `projects`, `files`, `fetch-meta`, `versions`, `comments`.
-- Design exploration: `find`, `inspect`, `components`, `texts`, `colors`.
+- Design exploration: `find`, `inspect`, `layout`, `components`, `texts`, `colors`.
 - Generation and export: `assets`, `export`, `css`, `tokens`.
 - Change analysis: `diff text` compares copy across file versions.
 - Treat live Cobra help and command tests as command-contract truth when README examples differ.
@@ -39,7 +39,9 @@ This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, ass
 
 - Prefer noun commands with flags over positional filter subcommands.
 - Accept either a Figma file key or full Figma URL when possible.
+- For node-scoped commands, infer `node-id` from URL and keep optional `--id` as explicit override for bare-key exploration. Never silently discard extra node IDs; reject unsupported multi-node input.
 - Normalize Figma node IDs at boundaries: user-facing `1-2`, API-facing `1:2`.
+- Treat numeric Figma URL fragments as comment IDs. Exact comment lookup takes precedence over broader node filtering.
 - Keep machine-readable output stable. Use structured JSON for query results and deterministic text/files for CSS, tokens, and downloaded exports; preserve global `--json` envelope behavior.
 - Layer names may not be unique; return all matches with node IDs and extracted text.
 - For named layer text extraction, preserve this shape:
@@ -50,14 +52,15 @@ This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, ass
 - Use TDD for behavior changes: add/adjust tests before implementation.
 - Prefer package-level tests near changed logic.
 - Run `go test ./...` before finalizing code changes.
-- Run `go fmt ./...` for Go edits; use `make fmt` only when `goimports` is available.
+- Run `goimports -w <changed-go-files>` when available; otherwise use `gofmt`. CI checks both formatting and imports.
 - Mock HTTP with test servers or injected clients; do not require real Figma tokens in tests.
 
 ## Useful Commands
 
 ```bash
 go test ./...
-go fmt ./...
+go vet ./...
+golangci-lint run ./...
 go build -o bin/figma ./cmd/figma
 make test
 ```

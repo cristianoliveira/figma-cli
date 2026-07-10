@@ -9,9 +9,13 @@
 - Keep command files thin: flags/args, input parsing, client loading, package calls, JSON printing.
 - Do not put document traversal or extraction logic here; move it to `internal/extract`.
 - Do not put HTTP or Figma URL construction details here unless command-specific glue is unavoidable; prefer `internal/figma`.
-- Use `cli.Die(err)` for command failures so error formatting stays consistent.
+- Return errors from Cobra `RunE`; root execution owns consistent stderr formatting and exit behavior.
 - Register commands in `init()` with `rootCmd.AddCommand(...)`.
 - Keep command output JSON and stable for scripts/agents.
+- Parse file URLs once with `figma.ParseInput`; resolve URL node scope and optional `--id` through shared `figma` helpers.
+- Use `figma.FetchNodeDocuments` when traversal must be restricted to requested subtrees; do not fetch whole file and manually guess selected node.
+- State whether command accepts one or many node IDs. Reject unsupported multiple IDs instead of using first silently.
+- Render through `cli.NewPrinter(cmd)` so global `--json` behavior remains consistent.
 
 ## Testing
 
