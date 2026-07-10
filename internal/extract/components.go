@@ -142,10 +142,38 @@ func paintOutputsFromValue(value any) []paintOutput {
 			continue
 		}
 		outputs = append(outputs, paintOutput{
-			Type:    StringValue(paintObject["type"]),
-			Color:   colorHexFromPaint(paintObject),
-			Opacity: numberValue(paintObject["opacity"]),
-			Visible: paintObject["visible"] != false,
+			Type:          StringValue(paintObject["type"]),
+			Color:         colorHexFromPaint(paintObject),
+			Opacity:       numberValue(paintObject["opacity"]),
+			Visible:       paintObject["visible"] != false,
+			ImageRef:      StringValue(paintObject["imageRef"]),
+			ScaleMode:     StringValue(paintObject["scaleMode"]),
+			GradientStops: gradientStopsFromValue(paintObject["gradientStops"]),
+		})
+	}
+	return outputs
+}
+
+func gradientStopsFromValue(value any) []gradientStopOutput {
+	stops, _ := value.([]any)
+	outputs := make([]gradientStopOutput, 0, len(stops))
+	for _, stop := range stops {
+		stopObject, ok := stop.(map[string]any)
+		if !ok {
+			continue
+		}
+		color, ok := stopObject["color"].(map[string]any)
+		if !ok {
+			continue
+		}
+		opacity := 1.0
+		if alpha, exists := color["a"]; exists {
+			opacity = numberValue(alpha)
+		}
+		outputs = append(outputs, gradientStopOutput{
+			Position: numberValue(stopObject["position"]),
+			Color:    colorHexFromPaint(stopObject),
+			Opacity:  opacity,
 		})
 	}
 	return outputs

@@ -47,6 +47,23 @@ func TestNodeToInspectOutput(t *testing.T) {
 	assert.Equal(t, "#000000", out.BackgroundColor)
 }
 
+func TestNodeToInspectOutputIncludesGradientAndImagePaints(t *testing.T) {
+	node := map[string]any{"fills": []any{
+		map[string]any{"type": "GRADIENT_LINEAR", "gradientStops": []any{
+			map[string]any{"position": 0.0, "color": map[string]any{"r": 1.0, "g": 0.0, "b": 0.0, "a": 1.0}},
+		}},
+		map[string]any{"type": "IMAGE", "imageRef": "image-1", "scaleMode": "FIT"},
+	}}
+
+	out := NodeToInspectOutput(node)
+
+	if assert.NotNil(t, out.Paints) {
+		assert.Equal(t, "#FF0000", out.Paints.Fills[0].GradientStops[0].Color)
+		assert.Equal(t, "image-1", out.Paints.Fills[1].ImageRef)
+		assert.Equal(t, "FIT", out.Paints.Fills[1].ScaleMode)
+	}
+}
+
 func TestNodeToInspectOutputIncludesResponsiveLayoutAndEffects(t *testing.T) {
 	node := map[string]any{
 		"layoutMode":         "HORIZONTAL",

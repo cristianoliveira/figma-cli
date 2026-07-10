@@ -5,11 +5,20 @@ package extract
 
 // Shared output shapes embedded by the command-specific output structs.
 
+type gradientStopOutput struct {
+	Position float64 `json:"position"`
+	Color    string  `json:"color"`
+	Opacity  float64 `json:"opacity"`
+}
+
 type paintOutput struct {
-	Type    string  `json:"type,omitempty"`
-	Color   string  `json:"color,omitempty"`
-	Opacity float64 `json:"opacity,omitempty"`
-	Visible bool    `json:"visible"`
+	Type          string               `json:"type,omitempty"`
+	Color         string               `json:"color,omitempty"`
+	Opacity       float64              `json:"opacity,omitempty"`
+	Visible       bool                 `json:"visible"`
+	ImageRef      string               `json:"imageRef,omitempty"`
+	ScaleMode     string               `json:"scaleMode,omitempty"`
+	GradientStops []gradientStopOutput `json:"gradientStops,omitempty"`
 }
 
 type paintsOutput struct {

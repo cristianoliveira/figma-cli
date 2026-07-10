@@ -82,6 +82,35 @@ func TestExtractComponents(t *testing.T) {
 	})
 }
 
+func TestPaintOutputsIncludeGradientAndImageIntent(t *testing.T) {
+	paints := paintOutputsFromValue([]any{
+		map[string]any{
+			"type": "GRADIENT_LINEAR",
+			"gradientStops": []any{
+				map[string]any{"position": 0.0, "color": map[string]any{"r": 1.0, "g": 0.0, "b": 0.0, "a": 1.0}},
+				map[string]any{"position": 1.0, "color": map[string]any{"r": 0.0, "g": 0.0, "b": 1.0, "a": 0.5}},
+			},
+		},
+		map[string]any{"type": "IMAGE", "imageRef": "image-1", "scaleMode": "FILL"},
+	})
+
+	assert.Equal(t, "GRADIENT_LINEAR", paints[0].Type)
+	assert.Equal(t, []gradientStopOutput{
+		{Position: 0, Color: "#FF0000", Opacity: 1},
+		{Position: 1, Color: "#0000FF", Opacity: 0.5},
+	}, paints[0].GradientStops)
+	assert.Equal(t, "image-1", paints[1].ImageRef)
+	assert.Equal(t, "FILL", paints[1].ScaleMode)
+}
+
+func TestPaintOutputsIgnoreMalformedGradientStops(t *testing.T) {
+	paints := paintOutputsFromValue([]any{map[string]any{
+		"type": "GRADIENT_LINEAR", "gradientStops": []any{"invalid"},
+	}})
+
+	assert.Empty(t, paints[0].GradientStops)
+}
+
 func TestExtractComponentsFromDocuments(t *testing.T) {
 	documents := []any{
 		map[string]any{"id": "1:1", "name": "First", "type": "FRAME"},

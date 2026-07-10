@@ -10,6 +10,7 @@ type InspectOutput struct {
 	ComponentSetID   string              `json:"componentSetId,omitempty"`
 	Fills            []string            `json:"fills,omitempty"`
 	Strokes          []string            `json:"strokes,omitempty"`
+	Paints           *paintsOutput       `json:"paints,omitempty"`
 	StrokeWeight     float64             `json:"strokeWeight,omitempty"`
 	StrokeAlign      string              `json:"strokeAlign,omitempty"`
 	Opacity          *float64            `json:"opacity,omitempty"`
@@ -61,6 +62,7 @@ func NodeToInspectOutput(object map[string]any) InspectOutput {
 		ComponentSetID:   StringValue(object["componentSetId"]),
 		Fills:            colorsFromPaints(object["fills"]),
 		Strokes:          colorsFromPaints(object["strokes"]),
+		Paints:           optionalPaintsFromObject(object),
 		StrokeWeight:     numberValue(object["strokeWeight"]),
 		StrokeAlign:      StringValue(object["strokeAlign"]),
 		Opacity:          optionalNumber(object["opacity"]),
@@ -73,6 +75,14 @@ func NodeToInspectOutput(object map[string]any) InspectOutput {
 		StyleBindings:    styleBindingsFromValue(object["styles"]),
 		VariableBindings: variableBindingsFromValue(object["boundVariables"]),
 	}
+}
+
+func optionalPaintsFromObject(object map[string]any) *paintsOutput {
+	paints := paintsFromObject(object)
+	if len(paints.Fills) == 0 && len(paints.Strokes) == 0 {
+		return nil
+	}
+	return &paints
 }
 
 func styleBindingsFromValue(value any) map[string]string {
