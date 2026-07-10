@@ -4,8 +4,6 @@
 package cli
 
 import (
-	"os"
-
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/output"
@@ -17,7 +15,7 @@ import (
 // and stops every command from re-reading the same persistent flag.
 func NewPrinter(cmd *cobra.Command) *output.Printer {
 	asJSON, _ := cmd.Flags().GetBool("json")
-	return output.New(os.Stdout, asJSON)
+	return output.New(cmd.OutOrStdout(), asJSON)
 }
 
 // ExitCodeError carries a process exit code without a diagnostic message.

@@ -87,7 +87,7 @@ tokens (named by hex value). Pass `--scan-fallback=false` for named-only.
 
 ```bash
 figma colors --id 42:1 "url"
-# → JSON: [{ "hex": "#FF0000", "opacity": 1.0, "name": "Red bg", "nodeId": "42:5" }]
+# → JSON: { "scope": {...}, "results": [{ "hex": "#FF0000", "opacity": 1.0, "name": "Red bg", "nodeId": "42:5" }] }
 ```
 
 ### `figma assets` — Download images, vectors, instances
@@ -124,7 +124,7 @@ Formats: `png`, `jpg`, `svg`, `pdf`.
 
 ```bash
 figma layout "https://www.figma.com/design/abc/Name?node-id=42-1"
-# → ordered tree with id, name, type, layoutMode, gap, padding, text, and children
+# → { "scope": {...}, "result": <ordered tree with id, name, type, layoutMode, gap, padding, text, and children> }
 
 figma layout --measure-spacing "url?node-id=42-1"
 # → additionally reports measured spacing between adjacent layout children
@@ -156,7 +156,7 @@ figma find --type "COMPONENT" "abc123"
 
 # Text matches include both layer name and actual copy
 figma find --type "TEXT" "url?node-id=42-1"
-# → { "matches": [{ "id": "42:2", "name": "Stale layer name", "type": "TEXT", "text": "Actual copy" }] }
+# → { "scope": {...}, "results": [{ "id": "42:2", "name": "Stale layer name", "type": "TEXT", "text": "Actual copy" }] }
 
 # Both, scoped to a node
 figma find --id 42:1 --name "icon" --type "INSTANCE" "abc123"
@@ -170,7 +170,7 @@ At least one of `--name` or `--type` is required. Types: `FRAME`, `COMPONENT`,
 ```bash
 figma components --id 42:1 "abc123"
 figma components --id 42:1 --name "Button" "abc123"    # filter
-figma components --id 42:1 --raw "abc123"               # raw Figma API JSON
+figma components --id 42:1 --raw "abc123"               # raw nodes in the same {scope, results} envelope
 ```
 
 ### `figma inspect` — Node summary
@@ -178,7 +178,7 @@ figma components --id 42:1 --raw "abc123"               # raw Figma API JSON
 ```bash
 figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1"
 figma inspect --id 42:1 "abc123" # explicit scope for a bare file key
-# → JSON: type, name, bounds, fills, strokes, text, children summary
+# → JSON: { "scope": {...}, "result": { type, name, bounds, fills, strokes, text, children summary } }
 ```
 
 ### `figma comments` — Review feedback
@@ -260,6 +260,6 @@ All commands produce structured JSON (except `css`, `tokens`, `export`, and
 non-`--json` `assets` which produce text). Pipe into `jq` for filtering:
 
 ```bash
-figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1" | jq '.fills'
+figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1" | jq '.result.fills'
 figma find --name "hero" "abc123" | jq '.matches[].id'
 ```

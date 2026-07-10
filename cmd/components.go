@@ -4,50 +4,59 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
-var componentsCmd = &cobra.Command{
-	Use:   "components [figma-url-or-file-id]",
-	Short: "List descendant nodes within a Figma element as JSON",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		nodeID, _ := cmd.Flags().GetString("id")
-		nameFilter, _ := cmd.Flags().GetString("name")
-		raw, _ := cmd.Flags().GetBool("raw")
-		input, err := figma.ParseInput(args[0])
-		if err != nil {
-			return err
-		}
-		nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "components")
-		if err != nil {
-			return err
-		}
-		client, err := cli.LoadClient()
-		if err != nil {
-			return err
-		}
-		documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
-		if err != nil {
-			return err
-		}
-		var outputValue any = extract.ExtractComponentsFromDocuments(documents)
-		if raw {
-			outputValue = extract.ExtractRawComponentsFromDocuments(documents)
-		}
-		if nameFilter != "" {
-			outputValue = extract.FilterByName(outputValue, nameFilter)
-		}
-		if err := cli.NewPrinter(cmd).JSON(outputValue); err != nil {
-			return err
-		}
-		return nil
-	},
+var componentsCmd = newComponentsCommand(cli.LoadClient)
+
+func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+	command := &cobra.Command{
+		Use:   "components [figma-url-or-file-id]",
+		Short: "List descendant nodes within a Figma element as JSON",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, _ := cmd.Flags().GetString("id")
+			nameFilter, _ := cmd.Flags().GetString("name")
+			raw, _ := cmd.Flags().GetBool("raw")
+			input, err := figma.ParseInput(args[0])
+			if err != nil {
+				return err
+			}
+			nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "components")
+			if err != nil {
+				return err
+			}
+			client, err := loadClient()
+			if err != nil {
+				return err
+			}
+			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
+			if err != nil {
+				return err
+			}
+			scope := output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}
+			if raw {
+				results := extract.ExtractRawComponentsFromDocuments(documents)
+				if nameFilter != "" {
+					results = extract.FilterByName(results, nameFilter).([]map[string]any)
+				}
+				return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, results))
+			}
+
+			results := extract.ExtractComponentsFromDocuments(documents)
+			if nameFilter != "" {
+				results = extract.FilterByName(results, nameFilter).([]extract.ComponentOutput)
+			}
+			return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, results))
+		},
+	}
+	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
+	command.Flags().String("name", "", "filter nodes by name (case-insensitive substring match)")
+	command.Flags().Bool("raw", false, "output raw Figma node JSON for jq power users")
+	return command
 }
 
 func init() {
-	componentsCmd.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
-	componentsCmd.Flags().String("name", "", "filter nodes by name (case-insensitive substring match)")
-	componentsCmd.Flags().Bool("raw", false, "output raw Figma node JSON for jq power users")
 	rootCmd.AddCommand(componentsCmd)
 }

@@ -9,10 +9,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cssCmd = &cobra.Command{
-	Use:   "css [figma-url-or-file-id]",
-	Short: "Generate CSS rules from a Figma element's layout and styles",
-	Long: `Generate CSS from a Figma node tree.
+var cssCmd = newCSSCommand(cli.LoadClient)
+
+func newCSSCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+	command := &cobra.Command{
+		Use:   "css [figma-url-or-file-id]",
+		Short: "Generate CSS rules from a Figma element's layout and styles",
+		Long: `Generate CSS from a Figma node tree.
 
 Emits CSS for the selected node. With --recursive, walks its subtree and emits
 one rule per node that contributes a meaningful property (autolayout, fills,
@@ -24,51 +27,53 @@ This is the public-API equivalent of Figma Dev Mode's CSS panel — scriptable,
 batchable, and CI-safe. Semantic token names (--Base-Primary) are only available
 via Variables (Enterprise); use 'figma tokens' for the color palette.
 `,
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		nodeID, _ := cmd.Flags().GetString("id")
-		outputPath, _ := cmd.Flags().GetString("output")
-		recursive, _ := cmd.Flags().GetBool("recursive")
-		input, err := figma.ParseInput(args[0])
-		if err != nil {
-			return err
-		}
-		nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "css")
-		if err != nil {
-			return err
-		}
-		client, err := cli.LoadClient()
-		if err != nil {
-			return err
-		}
-		documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
-		if err != nil {
-			return err
-		}
-		var rules []extract.CSSRule
-		for _, document := range documents {
-			rules = append(rules, extract.ExtractCSSRules(document, recursive)...)
-		}
-		out := extract.FormatCSSRules(rules)
-		if outputPath != "" {
-			if err := os.WriteFile(outputPath, []byte(out), 0o644); err != nil {
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, _ := cmd.Flags().GetString("id")
+			outputPath, _ := cmd.Flags().GetString("output")
+			recursive, _ := cmd.Flags().GetBool("recursive")
+			input, err := figma.ParseInput(args[0])
+			if err != nil {
 				return err
 			}
-			if err := cli.NewPrinter(cmd).File(outputPath, map[string]any{"format": "css", "bytes": len(out)}); err != nil {
+			nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "css")
+			if err != nil {
+				return err
+			}
+			client, err := loadClient()
+			if err != nil {
+				return err
+			}
+			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
+			if err != nil {
+				return err
+			}
+			var rules []extract.CSSRule
+			for _, document := range documents {
+				rules = append(rules, extract.ExtractCSSRules(document, recursive)...)
+			}
+			out := extract.FormatCSSRules(rules)
+			if outputPath != "" {
+				if err := os.WriteFile(outputPath, []byte(out), 0o644); err != nil {
+					return err
+				}
+				if err := cli.NewPrinter(cmd).File(outputPath, map[string]any{"format": "css", "bytes": len(out)}); err != nil {
+					return err
+				}
+				return nil
+			}
+			if err := cli.NewPrinter(cmd).Text("css", out); err != nil {
 				return err
 			}
 			return nil
-		}
-		if err := cli.NewPrinter(cmd).Text("css", out); err != nil {
-			return err
-		}
-		return nil
-	},
+		},
+	}
+	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
+	command.Flags().String("output", "", "write CSS to a file instead of stdout")
+	command.Flags().Bool("recursive", false, "include CSS rules from all descendant nodes")
+	return command
 }
 
 func init() {
-	cssCmd.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
-	cssCmd.Flags().String("output", "", "write CSS to a file instead of stdout")
-	cssCmd.Flags().Bool("recursive", false, "include CSS rules from all descendant nodes")
 	rootCmd.AddCommand(cssCmd)
 }
