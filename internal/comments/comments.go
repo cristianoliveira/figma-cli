@@ -1,4 +1,5 @@
-package cli
+// Package comments contains comment retrieval and node-scoping workflows.
+package comments
 
 import (
 	"github.com/cristianoliveira/figma-cli/internal/extract"
@@ -6,8 +7,8 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 )
 
-// FetchComments retrieves a file's comments and converts them to CLI output.
-func FetchComments(client *figma.Client, fileID string) ([]extract.CommentOutput, error) {
+// Fetch retrieves a file's comments and converts them to command output.
+func Fetch(client *figma.Client, fileID string) ([]extract.CommentOutput, error) {
 	var response api.GetCommentsResponse
 	if err := client.Fetch(figma.BuildCommentsURL(fileID, ""), &response); err != nil {
 		return nil, err
@@ -19,9 +20,9 @@ func FetchComments(client *figma.Client, fileID string) ([]extract.CommentOutput
 	return outputs, nil
 }
 
-// ScopeComments keeps comments attached to selected nodes and, optionally,
-// their descendants and ancestors. It also enriches comments with node paths.
-func ScopeComments(client *figma.Client, fileID string, nodeIDs []string, comments []extract.CommentOutput, recursive, includeAncestors bool) ([]extract.CommentOutput, error) {
+// Scope keeps comments attached to selected nodes and, optionally, their
+// descendants and ancestors. It enriches the returned comments with node paths.
+func Scope(client *figma.Client, fileID string, nodeIDs []string, comments []extract.CommentOutput, recursive, includeAncestors bool) ([]extract.CommentOutput, error) {
 	documents, err := figma.FetchNodeDocuments(client, fileID, nodeIDs)
 	if err != nil {
 		return nil, err

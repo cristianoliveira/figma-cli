@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	"github.com/cristianoliveira/figma-cli/internal/comments"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/output"
@@ -57,7 +58,7 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 			client = client.WithContext(cmd.Context())
 			nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 			recursive, _ := cmd.Flags().GetBool("recursive")
-			outputs, err := cli.FetchComments(client, input.FileID)
+			outputs, err := comments.Fetch(client, input.FileID)
 			if err != nil {
 				return err
 			}
@@ -67,7 +68,7 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 					return fmt.Errorf("comment %s not found", input.CommentID)
 				}
 			} else if len(nodeIDs) > 0 {
-				outputs, err = cli.ScopeComments(client, input.FileID, nodeIDs, outputs, recursive, includeAncestors)
+				outputs, err = comments.Scope(client, input.FileID, nodeIDs, outputs, recursive, includeAncestors)
 				if err != nil {
 					return err
 				}
