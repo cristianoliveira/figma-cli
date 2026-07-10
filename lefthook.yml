@@ -57,5 +57,5 @@ pre-commit:
       run: |
         if git diff --cached -G "(TODO|FIXME|XXX)" --diff-filter=ACMR | grep -q "^+"; then
           echo "Warning: TODO/FIXME/XXX comments found in staged changes"
-          echo "Consider filing an issue with 'bd create' before committing."
+          echo "Consider creating a tracked follow-up before committing."
         fi

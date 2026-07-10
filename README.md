@@ -44,11 +44,19 @@ go install github.com/cristianoliveira/figma-cli/cmd/figma@latest
 
 ### Using Nix (Development)
 
-If you have Nix installed, you can enter a development shell with all dependencies:
+If you have Nix and direnv installed, enable the reproducible development shell once:
+
+```bash
+direnv allow
+```
+
+Otherwise enter it manually:
 
 ```bash
 nix develop
 ```
+
+The shell provides the project Go toolchain, `golangci-lint`, and `goimports`.
 
 ## Configuration
 
@@ -75,14 +83,14 @@ figma [command] [options] <figma-url>
 ### Examples
 
 ```bash
-# Parse a Figma URL and extract file metadata
-figma parse "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/-Cells--Drive?node-id=2270-190221"
+# Fetch file metadata
+figma meta "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/-Cells--Drive?node-id=2270-190221"
 
-# Fetch node hierarchy for a specific node
-figma nodes --hierarchy "https://www.figma.com/file/abc123/My-Design"
+# List components within a specific node tree
+figma components --id 123:456 "https://www.figma.com/file/abc123/My-Design"
 
-# Extract all text layers from a design
-figma text "https://www.figma.com/design/xyz456/Another-Design"
+# Extract ordered text layers from a design
+figma texts "https://www.figma.com/design/xyz456/Another-Design?node-id=123-456"
 
 # Export one frame as PNG
 figma export --format png "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
@@ -128,10 +136,13 @@ figma-cli/
 ├── cmd/                    # Cobra command implementations (root, texts, export, ...)
 │   └── figma/              # Main CLI entry point (main.go)
 ├── internal/               # Private application code
-│   ├── cli/                # CLI runtime and shared command helpers
+│   ├── assets/             # Asset discovery, export, and downloads
+│   ├── cli/                # CLI runtime wiring
+│   ├── comments/           # Comment retrieval and node scoping
+│   ├── diff/               # Pure design-diff use cases
 │   ├── env/                # Environment configuration (token loading)
-│   ├── extract/            # Extraction logic (colors, comments, components, find, inspect)
-│   └── figma/              # Figma domain layer (client, document, types, URL parsing, export)
+│   ├── extract/            # Pure document-tree transformations
+│   └── figma/              # Figma API boundary (client, document, URLs, export)
 │       └── api/            # Generated Figma REST API types (from openapi/, DO NOT EDIT)
 ├── openapi/                # OpenAPI spec and oapi-codegen config (source of truth for api.gen.go)
 ├── scripts/                # Codegen helpers (regenerate API types)
@@ -146,25 +157,17 @@ figma-cli/
 
 ## Development
 
-### Issue Tracking
-
-This project uses [bd (beads)](https://github.com/beads) for issue tracking. To get started:
+Run quality checks from the flake shell:
 
 ```bash
-bd onboard
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
+golangci-lint run ./...
+go test ./...
+go vet ./...
 ```
 
 ### Multi-Agent Workflow
 
 Refer to [AGENTS.md](AGENTS.md) for guidelines on ordering agents and completing work sessions.
-
-### Design Documentation
-
-See [doc-cli-design.md](doc-cli-design.md) for detailed CLI design and use cases.
 
 ## Contributing
 
