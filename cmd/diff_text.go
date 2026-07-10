@@ -9,6 +9,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// hasTextChanges reports whether a text diff contains any added, removed,
+// or changed text nodes. Figma renders empty diff slices as JSON null, so a
+// length check is the reliable signal.
+func hasTextChanges(d extract.TextOutput) bool {
+	return len(d.Added) > 0 || len(d.Removed) > 0 || len(d.Changed) > 0
+}
+
 var diffTextCmd = &cobra.Command{
 	Use:   "text [file-id-or-url] --from version-id --to version-id",
 	Short: "Diff text nodes between two Figma file versions",
@@ -42,6 +49,13 @@ var diffTextCmd = &cobra.Command{
 			extract.ExtractTextNodes(fromDoc),
 			extract.ExtractTextNodes(toDoc),
 		)
+		quiet, _ := cmd.Flags().GetBool("quiet")
+		if quiet {
+			if hasTextChanges(textDiff) {
+				return nil
+			}
+			return &cli.ExitCodeError{Code: 1}
+		}
 		if err := cli.NewPrinter(cmd).JSON(textDiff); err != nil {
 			return err
 		}
@@ -52,6 +66,7 @@ var diffTextCmd = &cobra.Command{
 func init() {
 	diffTextCmd.Flags().String("from", "", "source Figma version ID")
 	diffTextCmd.Flags().String("to", "", "target Figma version ID")
+	diffTextCmd.Flags().Bool("quiet", false, "suppress output; exit 0 if changes exist, 1 if none (grep-style)")
 	diffCmd.AddCommand(diffTextCmd)
 	rootCmd.AddCommand(diffCmd)
 }

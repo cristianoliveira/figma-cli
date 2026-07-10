@@ -3,6 +3,7 @@ package figma
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -63,9 +64,47 @@ func BuildProjectFilesURL(projectID string, branchData bool) string {
 	return raw + "?branch_data=true"
 }
 
-// BuildVersionsURL builds the API URL for fetching version history of a Figma file.
-func BuildVersionsURL(fileID string) string {
-	return fmt.Sprintf("%s/files/%s/versions", baseURL, fileID)
+// VersionsQuery carries the Figma versions endpoint pagination params.
+// See GET /v1/files/{file_key}/versions in openapi/openapi.yaml.
+type VersionsQuery struct {
+	// PageSize caps the number of versions returned (1..50). Zero means
+	// unset, leaving the API default of 30.
+	PageSize int
+	// Before is a version ID: fetch versions newer than this one.
+	Before string
+	// After is a version ID: fetch versions older than this one.
+	After string
+}
+
+// BuildVersionsURL builds the API URL for fetching version history of a Figma
+// file, applying optional pagination params. Before and After are mutually
+// exclusive since the endpoint paginates one direction at a time.
+func BuildVersionsURL(fileID string, query VersionsQuery) (string, error) {
+	if fileID == "" {
+		return "", fmt.Errorf("file ID is required")
+	}
+	u, err := url.Parse(fmt.Sprintf("%s/files/%s/versions", baseURL, fileID))
+	if err != nil {
+		return "", err
+	}
+	if query.Before != "" && query.After != "" {
+		return "", fmt.Errorf("--before and --after are mutually exclusive")
+	}
+	q := u.Query()
+	if query.PageSize != 0 {
+		if query.PageSize < 1 || query.PageSize > 50 {
+			return "", fmt.Errorf("page-size must be between 1 and 50, got %d", query.PageSize)
+		}
+		q.Set("page_size", strconv.Itoa(query.PageSize))
+	}
+	if query.Before != "" {
+		q.Set("before", query.Before)
+	}
+	if query.After != "" {
+		q.Set("after", query.After)
+	}
+	u.RawQuery = q.Encode()
+	return u.String(), nil
 }
 
 // BuildStylesURL builds the API URL for listing the published styles of a file.

@@ -28,9 +28,47 @@ func TestBuildMeURL(t *testing.T) {
 }
 
 func TestBuildVersionsURL(t *testing.T) {
-	got := BuildVersionsURL("grnVU2vAihHXwYgHryu2xE")
+	got, err := BuildVersionsURL("grnVU2vAihHXwYgHryu2xE", VersionsQuery{})
 
+	require.NoError(t, err)
 	assert.Equal(t, "https://api.figma.com/v1/files/grnVU2vAihHXwYgHryu2xE/versions", got)
+}
+
+func TestBuildVersionsURLWithPageSize(t *testing.T) {
+	got, err := BuildVersionsURL("file123", VersionsQuery{PageSize: 50})
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.figma.com/v1/files/file123/versions?page_size=50", got)
+}
+
+func TestBuildVersionsURLWithAfter(t *testing.T) {
+	got, err := BuildVersionsURL("file123", VersionsQuery{After: "2365705636334282437"})
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.figma.com/v1/files/file123/versions?after=2365705636334282437", got)
+}
+
+func TestBuildVersionsURLWithBefore(t *testing.T) {
+	got, err := BuildVersionsURL("file123", VersionsQuery{Before: "2365705636334282437"})
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.figma.com/v1/files/file123/versions?before=2365705636334282437", got)
+}
+
+func TestBuildVersionsURLRejectsPageSizeOutOfRange(t *testing.T) {
+	_, err := BuildVersionsURL("file123", VersionsQuery{PageSize: 51})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "page-size")
+
+	_, err = BuildVersionsURL("file123", VersionsQuery{PageSize: 0})
+	require.NoError(t, err) // 0 means unset
+}
+
+func TestBuildVersionsURLRejectsBeforeAndAfterTogether(t *testing.T) {
+	_, err := BuildVersionsURL("file123", VersionsQuery{Before: "1", After: "2"})
+
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "mutually exclusive")
 }
 
 func TestBuildTeamProjectsURL(t *testing.T) {

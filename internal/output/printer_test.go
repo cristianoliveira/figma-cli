@@ -61,3 +61,26 @@ func TestFile_JSONMergesExtra(t *testing.T) {
 	assert.Equal(t, "svg", got["format"])
 	assert.Equal(t, "1:2", got["node"])
 }
+
+func TestRender_TextByDefault(t *testing.T) {
+	var buf bytes.Buffer
+	require.NoError(t, New(&buf, false).Render(map[string]int{"a": 1}, "hello"))
+
+	assert.Equal(t, "hello\n", buf.String(), "text form emitted verbatim with trailing newline")
+}
+
+func TestRender_JSONUnderJSONFlag(t *testing.T) {
+	var buf bytes.Buffer
+	require.NoError(t, New(&buf, true).Render(map[string]int{"a": 1}, "hello"))
+
+	var got map[string]int
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &got), "asJSON did not emit v as JSON: %s", buf.String())
+	assert.Equal(t, 1, got["a"])
+}
+
+func TestRender_PreservesExistingTrailingNewline(t *testing.T) {
+	var buf bytes.Buffer
+	require.NoError(t, New(&buf, false).Render(nil, "hello\n"))
+
+	assert.Equal(t, "hello\n", buf.String(), "no double newline")
+}

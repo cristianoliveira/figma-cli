@@ -56,6 +56,14 @@ func FindTextByLayerName(value any, layerName string, recursive bool) []LayerTex
 	return matches
 }
 
+// TextEqual reports whether two text-node sets carry identical text by node
+// ID. It is the equality predicate used by blame's binary search: a version
+// "has the new text" when its text set equals the target version's.
+func TextEqual(a, b []TextNode) bool {
+	d := DiffText(a, b)
+	return len(d.Added) == 0 && len(d.Removed) == 0 && len(d.Changed) == 0
+}
+
 // DiffText computes added, removed, and changed text nodes between two sets.
 func DiffText(from, to []TextNode) TextOutput {
 	fromByID := map[string]TextNode{}

@@ -4,9 +4,11 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -58,6 +60,10 @@ func Execute() {
 	rootCmd.SilenceUsage = true
 	err := rootCmd.Execute()
 	if err != nil {
+		var exitErr *cli.ExitCodeError
+		if errors.As(err, &exitErr) {
+			os.Exit(exitErr.Code)
+		}
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}

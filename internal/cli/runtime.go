@@ -20,6 +20,16 @@ func NewPrinter(cmd *cobra.Command) *output.Printer {
 	return output.New(os.Stdout, asJSON)
 }
 
+// ExitCodeError carries a process exit code without a diagnostic message.
+// Commands return it to request a silent non-zero exit (for example
+// `diff text --quiet` exits 1 when no changes match). Returning it instead of
+// calling os.Exit keeps the behaviour testable in-process.
+type ExitCodeError struct {
+	Code int
+}
+
+func (e *ExitCodeError) Error() string { return "" }
+
 // LoadClient builds a Figma API client from the configured access token.
 // Centralizing construction means HTTP config (timeouts, base URL, retries)
 // has exactly one place to change.

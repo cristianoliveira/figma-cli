@@ -18,6 +18,7 @@ package output
 import (
 	"encoding/json"
 	"io"
+	"strings"
 )
 
 // Printer renders command results to a writer. The asJSON flag (the global
@@ -69,5 +70,21 @@ func (p *Printer) File(path string, extra map[string]any) error {
 		return p.JSON(obj)
 	}
 	_, err := io.WriteString(p.w, path+"\n")
+	return err
+}
+
+// Render emits a result that has both a machine-readable JSON form (v) and a
+// human-readable text form (text). Under --json it emits v as indented JSON;
+// otherwise it emits text verbatim (ensuring a single trailing newline). Use
+// for structured results that can render a human view, so the --json switch
+// stays in the printer instead of each command.
+func (p *Printer) Render(v any, text string) error {
+	if p.asJSON {
+		return p.JSON(v)
+	}
+	if !strings.HasSuffix(text, "\n") {
+		text += "\n"
+	}
+	_, err := io.WriteString(p.w, text)
 	return err
 }
