@@ -162,11 +162,16 @@ func effectsFromValue(value any) []effectOutput {
 		if !ok {
 			continue
 		}
+		offset, _ := effectObject["offset"].(map[string]any)
 		outputs = append(outputs, effectOutput{
-			Type:    StringValue(effectObject["type"]),
-			Color:   colorHexFromPaint(effectObject),
-			Radius:  numberValue(effectObject["radius"]),
-			Visible: effectObject["visible"] != false,
+			Type:      StringValue(effectObject["type"]),
+			Color:     colorHexFromPaint(effectObject),
+			Radius:    numberValue(effectObject["radius"]),
+			Spread:    numberValue(effectObject["spread"]),
+			OffsetX:   numberValue(offset["x"]),
+			OffsetY:   numberValue(offset["y"]),
+			BlendMode: StringValue(effectObject["blendMode"]),
+			Visible:   effectObject["visible"] != false,
 		})
 	}
 	return outputs
@@ -196,7 +201,25 @@ func layoutFromObject(object map[string]any) layoutOutput {
 		CounterAxisSizingMode:  StringValue(object["counterAxisSizingMode"]),
 		PrimaryAxisAlignItems:  StringValue(object["primaryAxisAlignItems"]),
 		CounterAxisAlignItems:  StringValue(object["counterAxisAlignItems"]),
+		Wrap:                   StringValue(object["layoutWrap"]),
+		CounterAxisSpacing:     numberValue(object["counterAxisSpacing"]),
+		Positioning:            StringValue(object["layoutPositioning"]),
+		MinWidth:               numberValue(object["minWidth"]),
+		MaxWidth:               numberValue(object["maxWidth"]),
+		MinHeight:              numberValue(object["minHeight"]),
+		MaxHeight:              numberValue(object["maxHeight"]),
+		Constraints:            constraintsFromValue(object["constraints"]),
 	}
+}
+
+func constraintsFromValue(value any) *constraintsOutput {
+	constraints, _ := value.(map[string]any)
+	horizontal := StringValue(constraints["horizontal"])
+	vertical := StringValue(constraints["vertical"])
+	if horizontal == "" && vertical == "" {
+		return nil
+	}
+	return &constraintsOutput{Horizontal: horizontal, Vertical: vertical}
 }
 
 func typographyFromValue(value any) typographyOutput {

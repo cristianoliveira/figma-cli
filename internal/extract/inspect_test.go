@@ -47,6 +47,37 @@ func TestNodeToInspectOutput(t *testing.T) {
 	assert.Equal(t, "#000000", out.BackgroundColor)
 }
 
+func TestNodeToInspectOutputIncludesResponsiveLayoutAndEffects(t *testing.T) {
+	node := map[string]any{
+		"layoutMode":         "HORIZONTAL",
+		"layoutWrap":         "WRAP",
+		"counterAxisSpacing": 24.0,
+		"layoutPositioning":  "ABSOLUTE",
+		"minWidth":           120.0,
+		"maxWidth":           480.0,
+		"minHeight":          40.0,
+		"maxHeight":          200.0,
+		"constraints":        map[string]any{"horizontal": "STRETCH", "vertical": "TOP"},
+		"effects": []any{map[string]any{
+			"type": "DROP_SHADOW", "visible": true, "radius": 8.0, "spread": 2.0,
+			"blendMode": "MULTIPLY", "offset": map[string]any{"x": 0.0, "y": 4.0},
+		}},
+	}
+
+	out := NodeToInspectOutput(node)
+
+	assert.Equal(t, "WRAP", out.Layout.Wrap)
+	assert.Equal(t, 24.0, out.Layout.CounterAxisSpacing)
+	assert.Equal(t, "ABSOLUTE", out.Layout.Positioning)
+	assert.Equal(t, 120.0, out.Layout.MinWidth)
+	assert.Equal(t, 480.0, out.Layout.MaxWidth)
+	assert.Equal(t, "STRETCH", out.Layout.Constraints.Horizontal)
+	assert.Equal(t, "TOP", out.Layout.Constraints.Vertical)
+	assert.Equal(t, 4.0, out.Effects[0].OffsetY)
+	assert.Equal(t, 2.0, out.Effects[0].Spread)
+	assert.Equal(t, "MULTIPLY", out.Effects[0].BlendMode)
+}
+
 func TestNodeToInspectOutputIncludesStyleAndVariableBindings(t *testing.T) {
 	node := map[string]any{
 		"id": "1:1", "name": "Button", "type": "FRAME",

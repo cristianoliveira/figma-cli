@@ -18,10 +18,14 @@ type paintsOutput struct {
 }
 
 type effectOutput struct {
-	Type    string  `json:"type,omitempty"`
-	Color   string  `json:"color,omitempty"`
-	Radius  float64 `json:"radius,omitempty"`
-	Visible bool    `json:"visible"`
+	Type      string  `json:"type,omitempty"`
+	Color     string  `json:"color,omitempty"`
+	Radius    float64 `json:"radius,omitempty"`
+	Spread    float64 `json:"spread,omitempty"`
+	OffsetX   float64 `json:"offsetX,omitempty"`
+	OffsetY   float64 `json:"offsetY,omitempty"`
+	BlendMode string  `json:"blendMode,omitempty"`
+	Visible   bool    `json:"visible"`
 }
 
 type boundsOutput struct {
@@ -31,21 +35,34 @@ type boundsOutput struct {
 	Height float64 `json:"height,omitempty"`
 }
 
+type constraintsOutput struct {
+	Horizontal string `json:"horizontal,omitempty"`
+	Vertical   string `json:"vertical,omitempty"`
+}
+
 type layoutOutput struct {
-	Mode                   string  `json:"mode,omitempty"`
-	Gap                    float64 `json:"gap,omitempty"`
-	PaddingTop             float64 `json:"paddingTop,omitempty"`
-	PaddingRight           float64 `json:"paddingRight,omitempty"`
-	PaddingBottom          float64 `json:"paddingBottom,omitempty"`
-	PaddingLeft            float64 `json:"paddingLeft,omitempty"`
-	LayoutAlign            string  `json:"layoutAlign,omitempty"`
-	LayoutGrow             float64 `json:"layoutGrow,omitempty"`
-	LayoutSizingHorizontal string  `json:"layoutSizingHorizontal,omitempty"`
-	LayoutSizingVertical   string  `json:"layoutSizingVertical,omitempty"`
-	PrimaryAxisSizingMode  string  `json:"primaryAxisSizingMode,omitempty"`
-	CounterAxisSizingMode  string  `json:"counterAxisSizingMode,omitempty"`
-	PrimaryAxisAlignItems  string  `json:"primaryAxisAlignItems,omitempty"`
-	CounterAxisAlignItems  string  `json:"counterAxisAlignItems,omitempty"`
+	Mode                   string             `json:"mode,omitempty"`
+	Gap                    float64            `json:"gap,omitempty"`
+	PaddingTop             float64            `json:"paddingTop,omitempty"`
+	PaddingRight           float64            `json:"paddingRight,omitempty"`
+	PaddingBottom          float64            `json:"paddingBottom,omitempty"`
+	PaddingLeft            float64            `json:"paddingLeft,omitempty"`
+	LayoutAlign            string             `json:"layoutAlign,omitempty"`
+	LayoutGrow             float64            `json:"layoutGrow,omitempty"`
+	LayoutSizingHorizontal string             `json:"layoutSizingHorizontal,omitempty"`
+	LayoutSizingVertical   string             `json:"layoutSizingVertical,omitempty"`
+	PrimaryAxisSizingMode  string             `json:"primaryAxisSizingMode,omitempty"`
+	CounterAxisSizingMode  string             `json:"counterAxisSizingMode,omitempty"`
+	PrimaryAxisAlignItems  string             `json:"primaryAxisAlignItems,omitempty"`
+	CounterAxisAlignItems  string             `json:"counterAxisAlignItems,omitempty"`
+	Wrap                   string             `json:"wrap,omitempty"`
+	CounterAxisSpacing     float64            `json:"counterAxisSpacing,omitempty"`
+	Positioning            string             `json:"positioning,omitempty"`
+	MinWidth               float64            `json:"minWidth,omitempty"`
+	MaxWidth               float64            `json:"maxWidth,omitempty"`
+	MinHeight              float64            `json:"minHeight,omitempty"`
+	MaxHeight              float64            `json:"maxHeight,omitempty"`
+	Constraints            *constraintsOutput `json:"constraints,omitempty"`
 }
 
 type typographyOutput struct {
