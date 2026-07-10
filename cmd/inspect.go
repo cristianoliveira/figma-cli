@@ -14,31 +14,28 @@ var inspectCmd = &cobra.Command{
 	Short: "Show a curated summary of a specific Figma node",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		nodeID, _ := cmd.Flags().GetString("id")
-		if nodeID == "" {
-			return fmt.Errorf("--id is required")
-		}
+		explicitNodeID, _ := cmd.Flags().GetString("id")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
 			return err
 		}
-		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
-		if len(nodeIDs) == 0 {
-			return fmt.Errorf("could not resolve node ID")
+		nodeID, err := inspectNodeID(input, explicitNodeID)
+		if err != nil {
+			return err
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
 			return err
 		}
-		doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
+		documents, err := figma.FetchNodeDocuments(client, input.FileID, []string{nodeID})
 		if err != nil {
 			return err
 		}
-		found := extract.FindNodeByID(doc, nodeIDs[0])
-		if found == nil {
-			return fmt.Errorf("node %s not found", nodeIDs[0])
+		document, ok := documents[0].(map[string]any)
+		if !ok {
+			return fmt.Errorf("node %s has an invalid document", nodeID)
 		}
-		node := extract.NodeToInspectOutput(found)
+		node := extract.NodeToInspectOutput(document)
 		if err := cli.NewPrinter(cmd).JSON(node); err != nil {
 			return err
 		}
@@ -46,7 +43,18 @@ var inspectCmd = &cobra.Command{
 	},
 }
 
+func inspectNodeID(input *figma.FileInput, explicitNodeID string) (string, error) {
+	nodeIDs := figma.ResolveNodeIDs(input, explicitNodeID)
+	if len(nodeIDs) == 0 {
+		return "", fmt.Errorf("inspect requires a Figma URL with node-id or --id")
+	}
+	if len(nodeIDs) != 1 {
+		return "", fmt.Errorf("inspect requires exactly one node ID")
+	}
+	return nodeIDs[0], nil
+}
+
 func init() {
-	inspectCmd.Flags().String("id", "", "node ID to inspect; accepts 20089:685897 or 20089-685897")
+	inspectCmd.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
 	rootCmd.AddCommand(inspectCmd)
 }

@@ -29,7 +29,7 @@ and produces structured JSON — designed for humans and AI agents alike.
     figma find --name "Button" --id <node-id> <url>
 
   Show me the details of that button.
-    figma inspect --id <node-id> <url>
+    figma inspect "<url>?node-id=42-1"
 
   How is this frame laid out?
     figma layout "<url>?node-id=42-1"

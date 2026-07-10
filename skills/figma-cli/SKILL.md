@@ -28,7 +28,7 @@ Every command answers one question. Use this as a lookup table:
 | What's the text in layers with this name? | `figma texts --layer "Name" <url>` |
 | What components exist here? | `figma components --id <node-id> <url>` |
 | What layers match this name/type? | `figma find --name "icon" --type INSTANCE <url>` |
-| What's this node? (details) | `figma inspect --id <node-id> <url>` |
+| What's this node? (details) | `figma inspect <url-with-node-id>` |
 | What changed in the copy? | `figma diff text --from v1 --to v2 <url>` |
 | What files are in this project? | `figma files <project-id-or-url>` |
 | What projects exist? | `figma projects` |
@@ -171,7 +171,8 @@ figma components --id 42:1 --raw "abc123"               # raw Figma API JSON
 ### `figma inspect` — Node summary
 
 ```bash
-figma inspect --id 42:1 "abc123"
+figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1"
+figma inspect --id 42:1 "abc123" # explicit scope for a bare file key
 # → JSON: type, name, bounds, fills, strokes, text, children summary
 ```
 
@@ -238,6 +239,6 @@ All commands produce structured JSON (except `css`, `tokens`, `export`, and
 non-`--json` `assets` which produce text). Pipe into `jq` for filtering:
 
 ```bash
-figma inspect --id 42:1 "abc123" | jq '.fills'
+figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1" | jq '.fills'
 figma find --name "hero" "abc123" | jq '.matches[].id'
 ```
