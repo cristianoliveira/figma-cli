@@ -3,7 +3,21 @@ package cli
 import (
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 )
+
+// FetchComments retrieves a file's comments and converts them to CLI output.
+func FetchComments(client *figma.Client, fileID string) ([]extract.CommentOutput, error) {
+	var response api.GetCommentsResponse
+	if err := client.Fetch(figma.BuildCommentsURL(fileID, ""), &response); err != nil {
+		return nil, err
+	}
+	outputs := extract.CommentOutputs(response.Comments)
+	for index := range outputs {
+		outputs[index].URL = figma.BuildCommentWebURL(fileID, outputs[index].NodeID, outputs[index].ID)
+	}
+	return outputs, nil
+}
 
 // ScopeComments keeps comments attached to selected nodes and, optionally,
 // their descendants and ancestors. It also enriches comments with node paths.

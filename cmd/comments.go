@@ -7,7 +7,6 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -58,14 +57,9 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 			client = client.WithContext(cmd.Context())
 			nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 			recursive, _ := cmd.Flags().GetBool("recursive")
-			apiURL := figma.BuildCommentsURL(input.FileID, "")
-			var response api.GetCommentsResponse
-			if err := client.Fetch(apiURL, &response); err != nil {
+			outputs, err := cli.FetchComments(client, input.FileID)
+			if err != nil {
 				return err
-			}
-			outputs := extract.CommentOutputs(response.Comments)
-			for index := range outputs {
-				outputs[index].URL = figma.BuildCommentWebURL(input.FileID, outputs[index].NodeID, outputs[index].ID)
 			}
 			if input.CommentID != "" {
 				outputs = extract.FilterCommentsByID(outputs, input.CommentID)
