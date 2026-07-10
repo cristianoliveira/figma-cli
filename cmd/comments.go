@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
@@ -11,11 +12,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	commentStateAll      = "all"
+	commentStateOpen     = "open"
+	commentStateResolved = "resolved"
+)
+
 var commentsCmd = newCommentsCommand(cli.LoadClient)
 
 func newCommentsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	var nodeID string
-	var unresolvedOnly bool
+	var state string
+	var author string
+	var after string
+	var before string
 	var includeAncestors bool
 
 	command := &cobra.Command{
@@ -34,6 +44,9 @@ Use --recursive=false to include comments attached only to the selected node.
 A numeric URL fragment selects that exact comment regardless of node scope.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateCommentFilters(state, after, before); err != nil {
+				return err
+			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
 				return err
@@ -75,12 +88,14 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 				if err != nil {
 					return err
 				}
+				extract.AttachCommentNodePaths(outputs, extract.CommentNodePaths(documents))
 				scopeIDs := extract.CommentNodeIDs(documents, recursive)
 				if includeAncestors {
 					fileDocument, err := figma.FetchDocument(client, input.FileID, nil, "", "")
 					if err != nil {
 						return err
 					}
+					extract.AttachCommentNodePaths(outputs, extract.CommentNodePaths([]any{fileDocument}))
 					for _, nodeID := range nodeIDs {
 						for ancestorID := range extract.AncestorNodeIDs(fileDocument, nodeID) {
 							scopeIDs[ancestorID] = struct{}{}
@@ -89,10 +104,9 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 				}
 				outputs = extract.FilterCommentsByNodeIDs(outputs, scopeIDs)
 			}
-			if unresolvedOnly {
-				outputs = extract.FilterUnresolvedComments(outputs)
-			}
-			result := output.NewQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, outputs)
+			threads := extract.GroupCommentThreads(outputs)
+			threads = extract.FilterCommentThreads(threads, state, author, after, before)
+			result := output.NewQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, threads)
 			if err := cli.NewPrinter(cmd).JSON(result); err != nil {
 				return err
 			}
@@ -101,9 +115,31 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 	}
 	command.Flags().StringVar(&nodeID, "id", "", "filter comments to a specific node ID; overrides URL node-id")
 	command.Flags().Bool("recursive", true, "include comments from all descendant nodes")
-	command.Flags().BoolVar(&unresolvedOnly, "unresolved-only", false, "include only unresolved comments")
+	command.Flags().StringVar(&state, "state", commentStateAll, "filter threads by all, open, or resolved")
+	command.Flags().StringVar(&author, "author", "", "filter threads by root or reply author")
+	command.Flags().StringVar(&after, "after", "", "include threads created at or after RFC3339 timestamp")
+	command.Flags().StringVar(&before, "before", "", "include threads created at or before RFC3339 timestamp")
 	command.Flags().BoolVar(&includeAncestors, "include-ancestors", false, "include comments attached to ancestor nodes")
 	return command
+}
+
+func validateCommentFilters(state, after, before string) error {
+	if state != commentStateAll && state != commentStateOpen && state != commentStateResolved {
+		return fmt.Errorf("invalid comment state %q: expected all, open, or resolved", state)
+	}
+	timestamps := []struct{ flag, value string }{{"after", after}, {"before", before}}
+	for _, timestamp := range timestamps {
+		if timestamp.value == "" {
+			continue
+		}
+		if _, err := time.Parse(time.RFC3339, timestamp.value); err != nil {
+			return fmt.Errorf("invalid --%s timestamp %q: expected RFC3339", timestamp.flag, timestamp.value)
+		}
+	}
+	if after != "" && before != "" && after > before {
+		return fmt.Errorf("--after must not be later than --before")
+	}
+	return nil
 }
 
 func init() {

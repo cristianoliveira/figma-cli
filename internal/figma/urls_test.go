@@ -99,6 +99,12 @@ func TestBuildExportURLRequiresFormat(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestBuildCommentWebURLWithoutNodeOmitsEmptyNodeQuery(t *testing.T) {
+	got := BuildCommentWebURL("file123", "", "comment123")
+
+	assert.Equal(t, "https://www.figma.com/design/file123?m=dev#comment123", got)
+}
+
 func TestBuildCommentWebURL(t *testing.T) {
 	got := BuildCommentWebURL("QAhpkgySSOJ6gwJUTB0glb", "4707:15501", "1838610593")
 

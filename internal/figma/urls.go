@@ -123,7 +123,9 @@ func BuildCommentWebURL(fileID, nodeID, commentID string) string {
 	u := &url.URL{Scheme: "https", Host: "www.figma.com", Path: "/design/" + fileID, Fragment: commentID}
 	query := u.Query()
 	query.Set("m", "dev")
-	query.Set("node-id", strings.ReplaceAll(nodeID, ":", "-"))
+	if nodeID != "" {
+		query.Set("node-id", strings.ReplaceAll(nodeID, ":", "-"))
+	}
 	u.RawQuery = query.Encode()
 	return u.String()
 }

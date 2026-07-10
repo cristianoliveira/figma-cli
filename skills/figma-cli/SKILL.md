@@ -193,10 +193,12 @@ Raw binding IDs are always preserved. `resolvedStyles` adds style name/type from
 figma comments "https://www.figma.com/design/abc?node-id=42-1&m=dev#1838610593"
 
 # Include unresolved feedback attached to parent frames
-figma comments --include-ancestors --unresolved-only "url?node-id=42-2"
+figma comments --include-ancestors --state open "url?node-id=42-2"
+figma comments --state resolved --author "Ada" <file-url>
+figma comments --after 2026-01-01T00:00:00Z <file-url>
 ```
 
-Comments use the stable `{scope, results}` envelope. Each result includes a direct Figma `url`. `--recursive=false` limits normal node lookup to the selected node; hash lookup by comment ID takes precedence over node filtering.
+Comments use the stable `{scope, results}` envelope. Each result is a thread with `root` and chronologically ordered `replies`; anchored roots include `node_path` when node scope is available. Each comment includes a direct Figma `url`. `--recursive=false` limits normal node lookup to the selected node; hash lookup by comment ID takes precedence over node filtering.
 
 ### `figma diff text` — Copy changes between versions
 

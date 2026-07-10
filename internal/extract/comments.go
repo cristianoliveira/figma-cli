@@ -2,20 +2,145 @@ package extract
 
 import (
 	"encoding/json"
+	"sort"
+	"strings"
 
 	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 )
 
 // CommentOutput is one comment, used by `figma comments`.
 type CommentOutput struct {
-	ID        string `json:"id"`
-	Message   string `json:"message"`
-	CreatedAt string `json:"created_at"`
-	Resolved  bool   `json:"resolved"`
-	NodeID    string `json:"node_id,omitempty"`
-	User      string `json:"user"`
-	ParentID  string `json:"parent_id,omitempty"`
-	URL       string `json:"url,omitempty"`
+	ID        string   `json:"id"`
+	Message   string   `json:"message"`
+	CreatedAt string   `json:"created_at"`
+	Resolved  bool     `json:"resolved"`
+	NodeID    string   `json:"node_id,omitempty"`
+	NodePath  []string `json:"node_path,omitempty"`
+	User      string   `json:"user"`
+	ParentID  string   `json:"parent_id,omitempty"`
+	URL       string   `json:"url,omitempty"`
+}
+
+// CommentThreadOutput groups one review thread with replies in creation order.
+type CommentThreadOutput struct {
+	Root    CommentOutput   `json:"root"`
+	Replies []CommentOutput `json:"replies"`
+}
+
+// GroupCommentThreads groups flat API comments and retains replies whose parents were deleted.
+func GroupCommentThreads(comments []CommentOutput) []CommentThreadOutput {
+	byID := make(map[string]CommentOutput, len(comments))
+	for _, comment := range comments {
+		byID[comment.ID] = comment
+	}
+	threadsByRoot := make(map[string]*CommentThreadOutput)
+	for _, comment := range comments {
+		rootID := commentRootID(comment, byID)
+		thread := threadsByRoot[rootID]
+		if thread == nil {
+			root := byID[rootID]
+			thread = &CommentThreadOutput{Root: root, Replies: make([]CommentOutput, 0)}
+			threadsByRoot[rootID] = thread
+		}
+		if comment.ID != rootID {
+			thread.Replies = append(thread.Replies, comment)
+		}
+	}
+	threads := make([]CommentThreadOutput, 0, len(threadsByRoot))
+	for _, thread := range threadsByRoot {
+		sort.SliceStable(thread.Replies, func(i, j int) bool {
+			return thread.Replies[i].CreatedAt < thread.Replies[j].CreatedAt
+		})
+		threads = append(threads, *thread)
+	}
+	sort.SliceStable(threads, func(i, j int) bool {
+		return threads[i].Root.CreatedAt < threads[j].Root.CreatedAt
+	})
+	return threads
+}
+
+func commentRootID(comment CommentOutput, byID map[string]CommentOutput) string {
+	current := comment
+	visited := map[string]struct{}{current.ID: {}}
+	for current.ParentID != "" {
+		parent, ok := byID[current.ParentID]
+		if !ok {
+			return comment.ID
+		}
+		if _, seen := visited[parent.ID]; seen {
+			return comment.ID
+		}
+		visited[parent.ID] = struct{}{}
+		current = parent
+	}
+	return current.ID
+}
+
+// FilterCommentThreads applies review filters while retaining complete matching threads.
+func FilterCommentThreads(threads []CommentThreadOutput, state, author, after, before string) []CommentThreadOutput {
+	filtered := make([]CommentThreadOutput, 0, len(threads))
+	for _, thread := range threads {
+		if state == "open" && thread.Root.Resolved || state == "resolved" && !thread.Root.Resolved {
+			continue
+		}
+		if author != "" && !threadHasAuthor(thread, author) {
+			continue
+		}
+		if after != "" && thread.Root.CreatedAt < after || before != "" && thread.Root.CreatedAt > before {
+			continue
+		}
+		filtered = append(filtered, thread)
+	}
+	return filtered
+}
+
+func threadHasAuthor(thread CommentThreadOutput, author string) bool {
+	wanted := strings.ToLower(author)
+	if strings.Contains(strings.ToLower(thread.Root.User), wanted) {
+		return true
+	}
+	for _, reply := range thread.Replies {
+		if strings.Contains(strings.ToLower(reply.User), wanted) {
+			return true
+		}
+	}
+	return false
+}
+
+// CommentNodePaths maps node IDs to readable name paths within selected subtrees.
+func CommentNodePaths(documents []any) map[string][]string {
+	paths := make(map[string][]string)
+	for _, document := range documents {
+		collectCommentNodePaths(document, nil, paths)
+	}
+	return paths
+}
+
+func collectCommentNodePaths(value any, parentPath []string, paths map[string][]string) {
+	node, ok := value.(map[string]any)
+	if !ok {
+		return
+	}
+	path := append([]string(nil), parentPath...)
+	if name := StringValue(node["name"]); name != "" {
+		path = append(path, name)
+	}
+	if id := StringValue(node["id"]); id != "" {
+		paths[id] = path
+	}
+	children, _ := node["children"].([]any)
+	for _, child := range children {
+		collectCommentNodePaths(child, path, paths)
+	}
+}
+
+// AttachCommentNodePaths enriches anchored comments with selected-tree context.
+func AttachCommentNodePaths(comments []CommentOutput, paths map[string][]string) {
+	for index := range comments {
+		if path := paths[comments[index].NodeID]; len(path) > 0 {
+			comments[index].NodePath = append([]string(nil), path...)
+		}
+	}
 }
 
 // CommentNodeIDs returns IDs eligible for node-scoped comments.

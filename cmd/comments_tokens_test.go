@@ -17,6 +17,29 @@ func TestCommentsCommandEmitsScopedEmptyResults(t *testing.T) {
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"results":[]}`, result.Stdout)
 }
 
+func TestCommentsCommandGroupsReviewThreads(t *testing.T) {
+	client := fixtureClient(t, `{"comments":[
+		{"id":"reply","message":"Fixed","created_at":"2026-01-02T00:00:00Z","file_key":"abc","parent_id":"root","client_meta":{},"reactions":[],"user":{"handle":"Cristian","id":"2","img_url":""}},
+		{"id":"root","message":"Adjust spacing","created_at":"2026-01-01T00:00:00Z","file_key":"abc","client_meta":{},"reactions":[],"user":{"handle":"Ada","id":"1","img_url":""}}
+	]}`)
+
+	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--state", "open", "--author", "cristian")
+
+	require.NoError(t, result.Err)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"results":[{"root":{"id":"root","message":"Adjust spacing","created_at":"2026-01-01 00:00:00 +0000 UTC","resolved":false,"user":"Ada","url":"https://www.figma.com/design/abc?m=dev#root"},"replies":[{"id":"reply","message":"Fixed","created_at":"2026-01-02 00:00:00 +0000 UTC","resolved":false,"user":"Cristian","parent_id":"root","url":"https://www.figma.com/design/abc?m=dev#reply"}]}]}`, result.Stdout)
+}
+
+func TestCommentsCommandRejectsInvalidStateBeforeLoadingClient(t *testing.T) {
+	loaded := false
+	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) {
+		loaded = true
+		return nil, nil
+	}), "abc", "--state", "pending")
+
+	assert.EqualError(t, result.Err, `invalid comment state "pending": expected all, open, or resolved`)
+	assert.False(t, loaded)
+}
+
 func TestCommentsCommandReturnsAPIErrors(t *testing.T) {
 	client := fixtureClientWithStatus(t, 403, `{"message":"forbidden"}`)
 
