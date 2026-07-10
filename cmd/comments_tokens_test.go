@@ -56,6 +56,28 @@ func TestCommentsCommandRejectsInvalidStateBeforeLoadingClient(t *testing.T) {
 	assert.False(t, loaded)
 }
 
+func TestCommentsCommandNonRecursiveScopeExcludesDescendantComments(t *testing.T) {
+	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		var body string
+		switch {
+		case strings.HasSuffix(request.URL.Path, "/comments"):
+			body = `{"comments":[
+				{"id":"target","message":"Target","created_at":"2026-01-01T00:00:00Z","file_key":"abc","client_meta":{"node_id":"1:2","node_offset":{"x":0,"y":0}},"reactions":[],"user":{"handle":"Ada","id":"1","img_url":""}},
+				{"id":"child","message":"Child","created_at":"2026-01-02T00:00:00Z","file_key":"abc","client_meta":{"node_id":"1:3","node_offset":{"x":0,"y":0}},"reactions":[],"user":{"handle":"Ada","id":"1","img_url":""}}
+			]}`
+		case strings.HasSuffix(request.URL.Path, "/nodes"):
+			body = `{"nodes":{"1:2":{"document":{"id":"1:2","name":"Button","type":"FRAME","children":[{"id":"1:3","name":"Label","type":"TEXT"}]}}}}`
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}}
+
+	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=1-2", "--recursive=false")
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, "Target")
+	assert.NotContains(t, result.Stdout, "Child")
+}
+
 func TestCommentsCommandIncludesAncestorsWithScopedFileRequest(t *testing.T) {
 	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
 		var body string
