@@ -10,7 +10,26 @@
     utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
+
+        figma = pkgs.buildGoModule {
+          pname = "figma";
+          version = "0.1.0";
+          src = ./.;
+          vendorHash = "sha256-Y+fyGkDugE4WmjvhInJ4tp+7BtBxXZi+Pdhas90NaF0=";
+
+          subPackages = [ "cmd/figma" ];
+        };
       in {
+        packages = {
+          inherit figma;
+          default = figma;
+        };
+
+        apps = {
+          figma = utils.lib.mkApp { drv = figma; };
+          default = utils.lib.mkApp { drv = figma; };
+        };
+
         devShells.default = pkgs.mkShell {
            packages = with pkgs; [
              go
