@@ -169,9 +169,12 @@ At least one of `--name` or `--type` is required. Types: `FRAME`, `COMPONENT`,
 
 ```bash
 figma components --id 42:1 "abc123"
-figma components --id 42:1 --name "Button" "abc123"    # filter
-figma components --id 42:1 --raw "abc123"               # raw nodes in the same {scope, results} envelope
+figma components --id 42:1 --name "Button" "abc123"    # filter by name
+figma components --id 42:1 --kind instance "abc123"     # component | set | instance
+figma components --id 42:1 --raw "abc123"               # all raw descendant nodes
 ```
+
+Default results contain only `COMPONENT`, `COMPONENT_SET`, and `INSTANCE` nodes. Results include node path, variant properties, instance properties, property definitions, component ID, and component-set ID when available. `--raw` without `--kind` preserves full node traversal.
 
 ### `figma inspect` — Node summary
 

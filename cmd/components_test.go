@@ -20,13 +20,29 @@ func TestComponentsCommandEmitsStableScopedResults(t *testing.T) {
 	command := newComponentsCommand(func() (*figma.Client, error) { return client, nil })
 	var stdout bytes.Buffer
 	command.SetOut(&stdout)
-	command.SetArgs([]string{"https://www.figma.com/design/abc/Name?node-id=42-1", "--name", "button"})
+	command.SetArgs([]string{"https://www.figma.com/design/abc/Name?node-id=42-1", "--name", "button", "--kind", "instance"})
 
 	require.NoError(t, command.Execute())
 	assert.JSONEq(t, `{
 		"scope":{"fileKey":"abc","nodeIds":["42:1"]},
-		"results":[{"id":"42:2","name":"Button","type":"INSTANCE","componentId":"1:1","paints":{},"bounds":{},"layout":{},"typography":{}}]
+		"results":[{"id":"42:2","name":"Button","type":"INSTANCE","componentId":"1:1","path":["Screen","Button"],"paints":{},"bounds":{},"layout":{},"typography":{}}]
 	}`, stdout.String())
+}
+
+func TestComponentsCommandRejectsInvalidKindWithoutLoadingClient(t *testing.T) {
+	loaded := false
+	command := newComponentsCommand(func() (*figma.Client, error) {
+		loaded = true
+		return nil, nil
+	})
+	command.SilenceErrors = true
+	command.SilenceUsage = true
+	command.SetArgs([]string{"--kind", "frame", "https://www.figma.com/design/abc/Name?node-id=42-1"})
+
+	err := command.Execute()
+
+	assert.EqualError(t, err, `invalid component kind "frame": expected component, set, or instance`)
+	assert.False(t, loaded)
 }
 
 func TestComponentsCommandRejectsMissingScopeWithoutLoadingClient(t *testing.T) {

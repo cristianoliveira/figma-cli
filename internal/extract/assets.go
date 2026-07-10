@@ -26,7 +26,7 @@ func walkAssets(value any, insideInstance bool, seen map[string]struct{}, assets
 	}
 	id := StringValue(node["id"])
 	typeName := StringValue(node["type"])
-	isInstance := typeName == "INSTANCE" || typeName == "COMPONENT"
+	isInstance := typeName == componentTypeInstance || typeName == componentTypeComponent
 	asset, exportable := assetForNode(node, insideInstance)
 	if exportable && id != "" {
 		if _, exists := seen[id]; !exists {

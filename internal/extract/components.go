@@ -4,27 +4,36 @@ import (
 	"strings"
 )
 
+const (
+	componentTypeComponent    = "COMPONENT"
+	componentTypeComponentSet = "COMPONENT_SET"
+	componentTypeInstance     = "INSTANCE"
+)
+
 // ComponentOutput is a curated summary of a node, used by `figma components`.
 type ComponentOutput struct {
-	ID                string           `json:"id"`
-	Name              string           `json:"name"`
-	Type              string           `json:"type"`
-	Text              string           `json:"text,omitempty"`
-	ComponentID       string           `json:"componentId,omitempty"`
-	ComponentSetID    string           `json:"componentSetId,omitempty"`
-	VariantProperties map[string]any   `json:"variantProperties,omitempty"`
-	Fills             []string         `json:"fills,omitempty"`
-	Strokes           []string         `json:"strokes,omitempty"`
-	Paints            paintsOutput     `json:"paints,omitempty"`
-	StrokeWeight      float64          `json:"strokeWeight,omitempty"`
-	StrokeAlign       string           `json:"strokeAlign,omitempty"`
-	StrokeDashes      []float64        `json:"strokeDashes,omitempty"`
-	Effects           []effectOutput   `json:"effects,omitempty"`
-	Opacity           *float64         `json:"opacity,omitempty"`
-	Bounds            boundsOutput     `json:"bounds,omitempty"`
-	CornerRadius      *float64         `json:"cornerRadius,omitempty"`
-	Layout            layoutOutput     `json:"layout,omitempty"`
-	Typography        typographyOutput `json:"typography,omitempty"`
+	ID                  string           `json:"id"`
+	Name                string           `json:"name"`
+	Type                string           `json:"type"`
+	Text                string           `json:"text,omitempty"`
+	ComponentID         string           `json:"componentId,omitempty"`
+	ComponentSetID      string           `json:"componentSetId,omitempty"`
+	VariantProperties   map[string]any   `json:"variantProperties,omitempty"`
+	ComponentProperties map[string]any   `json:"componentProperties,omitempty"`
+	PropertyDefinitions map[string]any   `json:"propertyDefinitions,omitempty"`
+	Path                []string         `json:"path,omitempty"`
+	Fills               []string         `json:"fills,omitempty"`
+	Strokes             []string         `json:"strokes,omitempty"`
+	Paints              paintsOutput     `json:"paints,omitempty"`
+	StrokeWeight        float64          `json:"strokeWeight,omitempty"`
+	StrokeAlign         string           `json:"strokeAlign,omitempty"`
+	StrokeDashes        []float64        `json:"strokeDashes,omitempty"`
+	Effects             []effectOutput   `json:"effects,omitempty"`
+	Opacity             *float64         `json:"opacity,omitempty"`
+	Bounds              boundsOutput     `json:"bounds,omitempty"`
+	CornerRadius        *float64         `json:"cornerRadius,omitempty"`
+	Layout              layoutOutput     `json:"layout,omitempty"`
+	Typography          typographyOutput `json:"typography,omitempty"`
 }
 
 // ExtractComponentsFromDocuments extracts and combines multiple node subtrees.
@@ -45,42 +54,91 @@ func ExtractRawComponentsFromDocuments(documents []any) []map[string]any {
 	return components
 }
 
-// ExtractComponents walks a document and returns a ComponentOutput per node.
+// ExtractComponents walks a document and returns component-domain nodes only.
 func ExtractComponents(value any) []ComponentOutput {
+	return extractComponents(value, nil)
+}
+
+func extractComponents(value any, parentPath []string) []ComponentOutput {
 	object, ok := value.(map[string]any)
 	if !ok {
 		return nil
 	}
-	component := ComponentOutput{
-		ID:                StringValue(object["id"]),
-		Name:              StringValue(object["name"]),
-		Type:              StringValue(object["type"]),
-		Text:              StringValue(object["characters"]),
-		ComponentID:       StringValue(object["componentId"]),
-		ComponentSetID:    StringValue(object["componentSetId"]),
-		VariantProperties: mapValue(object["variantProperties"]),
-		Fills:             colorsFromPaints(object["fills"]),
-		Strokes:           colorsFromPaints(object["strokes"]),
-		Paints:            paintsFromObject(object),
-		StrokeWeight:      numberValue(object["strokeWeight"]),
-		StrokeAlign:       StringValue(object["strokeAlign"]),
-		StrokeDashes:      numberSlice(object["strokeDashes"]),
-		Effects:           effectsFromValue(object["effects"]),
-		Opacity:           optionalNumber(object["opacity"]),
-		Bounds:            boundsFromValue(object["absoluteBoundingBox"]),
-		CornerRadius:      optionalNumber(object["cornerRadius"]),
-		Layout:            layoutFromObject(object),
-		Typography:        typographyFromValue(object["style"]),
+	name := StringValue(object["name"])
+	path := append([]string(nil), parentPath...)
+	if name != "" {
+		path = append(path, name)
 	}
-	components := []ComponentOutput{component}
+	component := ComponentOutput{
+		ID:                  StringValue(object["id"]),
+		Name:                name,
+		Type:                StringValue(object["type"]),
+		Text:                StringValue(object["characters"]),
+		ComponentID:         StringValue(object["componentId"]),
+		ComponentSetID:      StringValue(object["componentSetId"]),
+		VariantProperties:   mapValue(object["variantProperties"]),
+		ComponentProperties: mapValue(object["componentProperties"]),
+		PropertyDefinitions: mapValue(object["componentPropertyDefinitions"]),
+		Path:                path,
+		Fills:               colorsFromPaints(object["fills"]),
+		Strokes:             colorsFromPaints(object["strokes"]),
+		Paints:              paintsFromObject(object),
+		StrokeWeight:        numberValue(object["strokeWeight"]),
+		StrokeAlign:         StringValue(object["strokeAlign"]),
+		StrokeDashes:        numberSlice(object["strokeDashes"]),
+		Effects:             effectsFromValue(object["effects"]),
+		Opacity:             optionalNumber(object["opacity"]),
+		Bounds:              boundsFromValue(object["absoluteBoundingBox"]),
+		CornerRadius:        optionalNumber(object["cornerRadius"]),
+		Layout:              layoutFromObject(object),
+		Typography:          typographyFromValue(object["style"]),
+	}
+	components := make([]ComponentOutput, 0)
+	if isComponentType(component.Type) {
+		components = append(components, component)
+	}
 	children, ok := object["children"].([]any)
 	if !ok {
 		return components
 	}
 	for _, child := range children {
-		components = append(components, ExtractComponents(child)...)
+		components = append(components, extractComponents(child, path)...)
 	}
 	return components
+}
+
+func isComponentType(nodeType string) bool {
+	return nodeType == componentTypeComponent || nodeType == componentTypeComponentSet || nodeType == componentTypeInstance
+}
+
+// FilterComponentsByKind filters component-domain output using user-facing kind names.
+func FilterComponentsByKind(components []ComponentOutput, kind string) []ComponentOutput {
+	if kind == "" {
+		return components
+	}
+	wantedType := map[string]string{"component": componentTypeComponent, "set": componentTypeComponentSet, "instance": componentTypeInstance}[kind]
+	filtered := make([]ComponentOutput, 0)
+	for _, component := range components {
+		if component.Type == wantedType {
+			filtered = append(filtered, component)
+		}
+	}
+	return filtered
+}
+
+// FilterRawComponentsByKind filters raw output when an explicit kind is requested.
+func FilterRawComponentsByKind(nodes []map[string]any, kind string) []map[string]any {
+	if kind == "" {
+		return nodes
+	}
+	wantedType := map[string]string{"component": componentTypeComponent, "set": componentTypeComponentSet, "instance": componentTypeInstance}[kind]
+	filtered := make([]map[string]any, 0)
+	for _, node := range nodes {
+		if StringValue(node["type"]) == wantedType {
+			filtered = append(filtered, node)
+		}
+	}
+	return filtered
 }
 
 // ExtractRawComponents returns each node as its raw map, for `--raw` output.

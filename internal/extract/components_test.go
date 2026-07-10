@@ -11,7 +11,7 @@ func TestExtractComponents(t *testing.T) {
 	document := map[string]any{
 		"id":                  "root",
 		"name":                "Root",
-		"type":                "FRAME",
+		"type":                "COMPONENT",
 		"opacity":             0.5,
 		"cornerRadius":        8.0,
 		"absoluteBoundingBox": map[string]any{"x": 1.0, "y": 2.0, "width": 100.0, "height": 50.0},
@@ -21,9 +21,13 @@ func TestExtractComponents(t *testing.T) {
 		"componentId":         "component-1",
 		"componentSetId":      "set-1",
 		"variantProperties":   map[string]any{"State": "Default"},
-		"strokes":             []any{map[string]any{"type": "SOLID", "color": map[string]any{"r": 1.0, "g": 0.0, "b": 0.0, "a": 1.0}}},
-		"strokeWeight":        2.0,
-		"strokeAlign":         "INSIDE",
+		"componentProperties": map[string]any{"Label#1:0": map[string]any{"type": "TEXT", "value": "Save"}},
+		"componentPropertyDefinitions": map[string]any{
+			"Label#1:0": map[string]any{"type": "TEXT", "defaultValue": "Button"},
+		},
+		"strokes":      []any{map[string]any{"type": "SOLID", "color": map[string]any{"r": 1.0, "g": 0.0, "b": 0.0, "a": 1.0}}},
+		"strokeWeight": 2.0,
+		"strokeAlign":  "INSIDE",
 		"children": []any{
 			map[string]any{"id": buttonID, "name": "Button", "type": "INSTANCE"},
 			map[string]any{"id": "1:2", "name": "Title", "type": "TEXT", "characters": "Hello", "style": map[string]any{"fontFamily": "Inter", "fontSize": 14.0, "fontWeight": 700.0, "letterSpacing": 0.2, "textAlignHorizontal": "CENTER"}},
@@ -33,7 +37,7 @@ func TestExtractComponents(t *testing.T) {
 	components := ExtractComponents(document)
 
 	t.Run("count", func(t *testing.T) {
-		assert.Len(t, components, 3)
+		assert.Len(t, components, 2)
 	})
 
 	root := components[0]
@@ -56,6 +60,9 @@ func TestExtractComponents(t *testing.T) {
 		{"strokeWeight", root.StrokeWeight, 2.0},
 		{"strokeAlign", root.StrokeAlign, "INSIDE"},
 		{"variantProperties.State", root.VariantProperties["State"], "Default"},
+		{"componentProperties.Label", root.ComponentProperties["Label#1:0"].(map[string]any)["value"], "Save"},
+		{"propertyDefinitions.Label", root.PropertyDefinitions["Label#1:0"].(map[string]any)["defaultValue"], "Button"},
+		{"path", root.Path, []string{"Root"}},
 		{"paints.strokes[0].color", root.Paints.Strokes[0].Color, "#FF0000"},
 	}
 
@@ -72,14 +79,33 @@ func TestExtractComponents(t *testing.T) {
 		assert.Equal(t, "INSTANCE", child.Type, "Type")
 	})
 
-	t.Run("text child", func(t *testing.T) {
-		text := components[2]
-		assert.Equal(t, "Hello", text.Text, "Text")
-		assert.Equal(t, "Inter", text.Typography.FontFamily, "FontFamily")
-		assert.Equal(t, float64(700), text.Typography.FontWeight, "FontWeight")
-		assert.Equal(t, 0.2, text.Typography.LetterSpacing, "LetterSpacing")
-		assert.Equal(t, "CENTER", text.Typography.TextAlignHorizontal, "TextAlignHorizontal")
+	t.Run("generic text child is omitted", func(t *testing.T) {
+		for _, component := range components {
+			assert.NotEqual(t, "TEXT", component.Type)
+		}
 	})
+}
+
+func TestExtractComponentsFindsNestedDomainNodes(t *testing.T) {
+	document := map[string]any{"id": "root", "type": "FRAME", "children": []any{
+		map[string]any{"id": "frame", "type": "FRAME", "children": []any{
+			map[string]any{"id": "set", "name": "Button", "type": "COMPONENT_SET"},
+			map[string]any{"id": "detached", "name": "Detached", "type": "INSTANCE"},
+		}},
+	}}
+
+	components := ExtractComponents(document)
+
+	assert.Equal(t, []string{"set", "detached"}, []string{components[0].ID, components[1].ID})
+	assert.Equal(t, []string{"Button"}, components[0].Path)
+	assert.Equal(t, []string{"Detached"}, components[1].Path)
+}
+
+func TestFilterComponentsByKind(t *testing.T) {
+	components := []ComponentOutput{{Type: "COMPONENT"}, {Type: "COMPONENT_SET"}, {Type: "INSTANCE"}}
+
+	assert.Equal(t, []ComponentOutput{{Type: "INSTANCE"}}, FilterComponentsByKind(components, "instance"))
+	assert.Equal(t, components, FilterComponentsByKind(components, ""))
 }
 
 func TestPaintOutputsIncludeGradientAndImageIntent(t *testing.T) {
@@ -113,8 +139,8 @@ func TestPaintOutputsIgnoreMalformedGradientStops(t *testing.T) {
 
 func TestExtractComponentsFromDocuments(t *testing.T) {
 	documents := []any{
-		map[string]any{"id": "1:1", "name": "First", "type": "FRAME"},
-		map[string]any{"id": "2:2", "name": "Second", "type": "FRAME"},
+		map[string]any{"id": "1:1", "name": "First", "type": "COMPONENT"},
+		map[string]any{"id": "2:2", "name": "Second", "type": "INSTANCE"},
 	}
 
 	got := ExtractComponentsFromDocuments(documents)
