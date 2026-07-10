@@ -73,6 +73,8 @@ func cssPropsFor(node map[string]any) []CSSProp {
 	props = append(props, backgroundProp(node)...)
 	props = append(props, borderProps(node)...)
 	props = append(props, radiusProp(node)...)
+	props = append(props, opacityProp(node)...)
+	props = append(props, clippingProp(node)...)
 	if StringValue(node["type"]) == "TEXT" {
 		props = append(props, textProps(node)...)
 	}
@@ -179,6 +181,21 @@ func radiusProp(node map[string]any) []CSSProp {
 	return nil
 }
 
+func opacityProp(node map[string]any) []CSSProp {
+	opacity := optionalNumber(node["opacity"])
+	if opacity == nil || *opacity == 1 {
+		return nil
+	}
+	return []CSSProp{{"opacity", strconv.FormatFloat(*opacity, 'f', -1, 64)}}
+}
+
+func clippingProp(node map[string]any) []CSSProp {
+	if clips, _ := node["clipsContent"].(bool); clips {
+		return []CSSProp{{"overflow", "hidden"}}
+	}
+	return nil
+}
+
 func textProps(node map[string]any) []CSSProp {
 	style := mapValue(node["style"])
 	var props []CSSProp
@@ -203,8 +220,15 @@ func textProps(node map[string]any) []CSSProp {
 	if v := textAlign(StringValue(node["textAlignHorizontal"])); v != "" {
 		props = append(props, CSSProp{"text-align", v})
 	}
-	if v := textTransform(StringValue(node["textCase"])); v != "" {
+	textCase := StringValue(style["textCase"])
+	if textCase == "" {
+		textCase = StringValue(node["textCase"])
+	}
+	if v := textTransform(textCase); v != "" {
 		props = append(props, CSSProp{"text-transform", v})
+	}
+	if v := textDecoration(StringValue(style["textDecoration"])); v != "" {
+		props = append(props, CSSProp{"text-decoration", v})
 	}
 	return props
 }
@@ -234,6 +258,16 @@ func textAlign(figma string) string {
 		return "right"
 	case "JUSTIFIED":
 		return "justify"
+	}
+	return ""
+}
+
+func textDecoration(figma string) string {
+	switch figma {
+	case "UNDERLINE":
+		return "underline"
+	case "STRIKETHROUGH":
+		return "line-through"
 	}
 	return ""
 }

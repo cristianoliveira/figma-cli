@@ -64,8 +64,9 @@ figma css --output styles.css --id 42:1 "url"
 ```
 
 Layout maps to flexbox: `layoutMode → display:flex`, `itemSpacing → gap`,
-`padding → padding`, fills → `background-color`. Text nodes emit
-`font-family`, `font-size`, `font-weight`, `line-height`, `color`.
+`padding → padding`, fills → `background-color`, node opacity → `opacity`, and
+clipped content → `overflow:hidden`. Text nodes emit `font-family`, `font-size`,
+`font-weight`, `line-height`, `color`, and `text-decoration`.
 Properties are sorted deterministically.
 
 ### `figma tokens` — Design tokens

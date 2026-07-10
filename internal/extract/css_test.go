@@ -143,6 +143,36 @@ func TestExtractCSSRules_HiddenFillSkipped(t *testing.T) {
 	assert.Empty(t, rules, "expected no rules for hidden-only fill")
 }
 
+func TestExtractCSSRules_NodeOpacityAndClipping(t *testing.T) {
+	doc := map[string]any{
+		"name": "Clipped overlay", "opacity": float64(0), "clipsContent": true,
+	}
+
+	props := propsMap(mustFindRule(t, ExtractCSSRules(doc), ".clipped-overlay"))
+
+	assert.Equal(t, "0", props["opacity"])
+	assert.Equal(t, "hidden", props["overflow"])
+}
+
+func TestExtractCSSRules_TextDecoration(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		decoration string
+		want       string
+	}{
+		{name: "underline", decoration: "UNDERLINE", want: "underline"},
+		{name: "strikethrough", decoration: "STRIKETHROUGH", want: "line-through"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			doc := map[string]any{"name": "Label", "type": "TEXT", "style": map[string]any{"textDecoration": test.decoration}}
+
+			props := propsMap(mustFindRule(t, ExtractCSSRules(doc), ".label"))
+
+			assert.Equal(t, test.want, props["text-decoration"])
+		})
+	}
+}
+
 func TestExtractCSSRules_TextNode(t *testing.T) {
 	doc := map[string]any{
 		"name": "Title",
