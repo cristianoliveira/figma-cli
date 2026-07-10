@@ -63,21 +63,9 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 			if err := client.Fetch(apiURL, &response); err != nil {
 				return err
 			}
-			outputs := make([]extract.CommentOutput, 0, len(response.Comments))
-			for _, c := range response.Comments {
-				out := extract.CommentOutput{
-					ID:        c.Id,
-					Message:   c.Message,
-					CreatedAt: c.CreatedAt.String(),
-					Resolved:  c.ResolvedAt != nil,
-					User:      c.User.Handle,
-				}
-				if c.ParentId != nil {
-					out.ParentID = *c.ParentId
-				}
-				out.NodeID = extract.ExtractNodeIDFromClientMeta(c.ClientMeta)
-				out.URL = figma.BuildCommentWebURL(input.FileID, out.NodeID, out.ID)
-				outputs = append(outputs, out)
+			outputs := extract.CommentOutputs(response.Comments)
+			for index := range outputs {
+				outputs[index].URL = figma.BuildCommentWebURL(input.FileID, outputs[index].NodeID, outputs[index].ID)
 			}
 			if input.CommentID != "" {
 				outputs = extract.FilterCommentsByID(outputs, input.CommentID)

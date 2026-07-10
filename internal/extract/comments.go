@@ -27,6 +27,26 @@ type CommentThreadOutput struct {
 	Replies []CommentOutput `json:"replies"`
 }
 
+// CommentOutputs maps Figma API comments into CLI output values.
+func CommentOutputs(comments []api.Comment) []CommentOutput {
+	outputs := make([]CommentOutput, 0, len(comments))
+	for _, comment := range comments {
+		output := CommentOutput{
+			ID:        comment.Id,
+			Message:   comment.Message,
+			CreatedAt: comment.CreatedAt.String(),
+			Resolved:  comment.ResolvedAt != nil,
+			User:      comment.User.Handle,
+		}
+		if comment.ParentId != nil {
+			output.ParentID = *comment.ParentId
+		}
+		output.NodeID = ExtractNodeIDFromClientMeta(comment.ClientMeta)
+		outputs = append(outputs, output)
+	}
+	return outputs
+}
+
 // GroupCommentThreads groups flat API comments and retains replies whose parents were deleted.
 func GroupCommentThreads(comments []CommentOutput) []CommentThreadOutput {
 	byID := make(map[string]CommentOutput, len(comments))
