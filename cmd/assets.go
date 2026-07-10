@@ -13,7 +13,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const assetFormatAuto = "auto"
+const (
+	assetFormatAuto   = "auto"
+	assetKindAll      = "all"
+	assetKindIcon     = "icon"
+	assetKindImage    = "image"
+	assetKindInstance = "instance"
+	assetKindVector   = "vector"
+)
 
 var assetFilenameCharacters = regexp.MustCompile(`[^a-z0-9]+`)
 
@@ -29,14 +36,20 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 			outputDirectory, _ := cmd.Flags().GetString("output")
 			format, _ := cmd.Flags().GetString("format")
 			kind, _ := cmd.Flags().GetString("kind")
+			nameFilter, _ := cmd.Flags().GetString("name")
+			filenameMode, _ := cmd.Flags().GetString("filename")
+			trimNamePrefix, _ := cmd.Flags().GetString("trim-name-prefix")
 			allowPartial, _ := cmd.Flags().GetBool("allow-partial")
 			if format != assetFormatAuto {
 				if err := figma.ValidateExportFormat(format); err != nil {
 					return err
 				}
 			}
-			if kind != "all" && kind != "image" && kind != "instance" && kind != "vector" {
-				return fmt.Errorf("invalid kind %q: expected all, image, instance, or vector", kind)
+			if kind != assetKindAll && kind != assetKindIcon && kind != assetKindImage && kind != assetKindInstance && kind != assetKindVector {
+				return fmt.Errorf("invalid kind %q: expected all, icon, image, instance, or vector", kind)
+			}
+			if filenameMode != "name" && filenameMode != "name-id" {
+				return fmt.Errorf("invalid filename mode %q: expected name or name-id", filenameMode)
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
@@ -54,14 +67,18 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if err != nil {
 				return err
 			}
-			assets := filterAssets(extract.ExtractAssets(documents), kind, format)
+			assets := filterAssets(extract.ExtractAssets(documents), kind, format, nameFilter)
 			if err := os.MkdirAll(outputDirectory, 0o755); err != nil {
 				return err
 			}
 
+			filename := assetFilename
+			if filenameMode == "name" {
+				filename = func(asset extract.Asset) string { return assetNameFilename(asset, trimNamePrefix) }
+			}
 			exporter := cli.AssetExporter{
 				HTTPClient: downloadClient,
-				Filename:   assetFilename,
+				Filename:   filename,
 				FetchURL: func(nodeID, assetFormat string) (string, error) {
 					apiURL, err := figma.BuildExportURL(input.FileID, []string{nodeID}, assetFormat)
 					if err != nil {
@@ -93,15 +110,24 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
 	command.Flags().StringP("output", "o", "assets", "output directory")
 	command.Flags().String("format", assetFormatAuto, "export format: auto, png, jpg, svg, or pdf")
-	command.Flags().String("kind", "all", "asset kind: all, image, instance, or vector")
+	command.Flags().String("kind", assetKindAll, "asset kind: all, icon, image, instance, or vector")
+	command.Flags().String("name", "", "filter layers by case-insensitive name substring")
+	command.Flags().String("filename", "name-id", "filename mode: name or name-id")
+	command.Flags().String("trim-name-prefix", "", "prefix to remove in name filename mode")
 	command.Flags().Bool("allow-partial", false, "exit successfully when only some assets export")
 	return command
 }
 
-func filterAssets(assets []extract.Asset, kind, format string) []extract.Asset {
+func filterAssets(assets []extract.Asset, kind, format, nameFilter string) []extract.Asset {
 	filtered := make([]extract.Asset, 0, len(assets))
 	for _, asset := range assets {
-		if kind != "all" && asset.Kind != kind {
+		if kind == assetKindIcon && asset.Kind != assetKindInstance && asset.Kind != assetKindVector {
+			continue
+		}
+		if kind != assetKindAll && kind != assetKindIcon && asset.Kind != kind {
+			continue
+		}
+		if nameFilter != "" && !strings.Contains(strings.ToLower(asset.Name), strings.ToLower(nameFilter)) {
 			continue
 		}
 		if format != assetFormatAuto {
@@ -120,12 +146,24 @@ func assetExportResult(manifest cli.AssetExportManifest, allowPartial bool) erro
 }
 
 func assetFilename(asset extract.Asset) string {
-	name := strings.Trim(assetFilenameCharacters.ReplaceAllString(strings.ToLower(asset.Name), "-"), "-")
-	if name == "" {
-		name = "asset"
-	}
 	id := strings.NewReplacer(":", "-", ";", "-").Replace(asset.ID)
-	return name + "_" + id
+	return normalizedAssetName(asset.Name) + "_" + id
+}
+
+func assetNameFilename(asset extract.Asset, trimPrefix string) string {
+	name := asset.Name
+	if len(name) >= len(trimPrefix) && strings.EqualFold(name[:len(trimPrefix)], trimPrefix) {
+		name = name[len(trimPrefix):]
+	}
+	return normalizedAssetName(name)
+}
+
+func normalizedAssetName(name string) string {
+	normalized := strings.Trim(assetFilenameCharacters.ReplaceAllString(strings.ToLower(name), "-"), "-")
+	if normalized == "" {
+		return "asset"
+	}
+	return normalized
 }
 
 func init() {

@@ -97,7 +97,11 @@ figma colors --id 42:1 "url"
 # Everything
 figma assets --output ./assets "url?node-id=42:1"
 
-# Only vectors (icons)
+# Discover and export icon instances/vectors with clean names
+figma assets --kind icon --name "icon" --format svg --filename name \
+  --trim-name-prefix "Iconography / " --output ./icons "url?node-id=42:1"
+
+# Only standalone vectors
 figma assets --kind vector --format svg --output ./icons "url?node-id=42:1"
 
 # Only images
@@ -107,10 +111,11 @@ figma assets --kind image --format png --output ./img "url?node-id=42:1"
 figma assets --json --output ./assets "url?node-id=42:1"
 ```
 
-`--kind`: `all`, `image`, `instance`, `vector`.
-`--format`: `auto` (default), `png`, `svg`.
+`--kind`: `all`, `icon` (instances + vectors), `image`, `instance`, `vector`.
+`--format`: `auto` (default), `png`, `jpg`, `svg`, `pdf`.
+`--name` filters layer names case-insensitively. `--filename name` removes node IDs; collisions receive deterministic `-2`, `-3` suffixes. Use explicit `--trim-name-prefix` rather than relying on guessed naming conventions.
 
-Filenames: `lowercase-name_nodeid.png`.
+Default filenames remain `lowercase-name_nodeid.ext`.
 
 ### `figma export` — Export one node
 

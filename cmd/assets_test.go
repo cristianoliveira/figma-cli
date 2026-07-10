@@ -22,6 +22,36 @@ func TestAssetFilenameFallsBackForUnnamedAsset(t *testing.T) {
 	assert.Equal(t, "asset_1-2", assetFilename(asset))
 }
 
+func TestFilterAssetsSupportsIconNameDiscovery(t *testing.T) {
+	assets := []extract.Asset{
+		{ID: "1", Name: "icon/close", Kind: "instance", Format: "svg"},
+		{ID: "2", Name: "Icon/arrow", Kind: "vector", Format: "svg"},
+		{ID: "3", Name: "photo", Kind: "image", Format: "png"},
+		{ID: "4", Name: "logo", Kind: "vector", Format: "svg"},
+	}
+
+	filtered := filterAssets(assets, "icon", "svg", "icon/")
+
+	assert.Equal(t, []extract.Asset{assets[0], assets[1]}, filtered)
+}
+
+func TestAssetNameFilenameSupportsExplicitPrefixTrimming(t *testing.T) {
+	asset := extract.Asset{ID: "1:2", Name: "icon/24/arrow-left / dark"}
+
+	assert.Equal(t, "arrow-left-dark", assetNameFilename(asset, "icon/24/"))
+}
+
+func TestAssetsCommandRejectsFilenameModeBeforeLoadingClient(t *testing.T) {
+	loaded := false
+	result := executeCommand(newAssetsCommand(func() (*figma.Client, error) {
+		loaded = true
+		return nil, nil
+	}, http.DefaultClient), "abc", "--id", "1:2", "--filename", "random")
+
+	assert.EqualError(t, result.Err, `invalid filename mode "random": expected name or name-id`)
+	assert.False(t, loaded)
+}
+
 func TestAssetsCommandRejectsFormatBeforeLoadingClient(t *testing.T) {
 	loaded := false
 	result := executeCommand(newAssetsCommand(func() (*figma.Client, error) {
