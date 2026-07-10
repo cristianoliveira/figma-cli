@@ -6,7 +6,6 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -17,10 +16,7 @@ var textsCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		layerName, _ := cmd.Flags().GetString("layer")
 		recursive, _ := cmd.Flags().GetBool("recursive")
-		if layerName == "" {
-			return fmt.Errorf("--layer is required")
-		}
-
+		nodeID, _ := cmd.Flags().GetString("id")
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
 			return err
@@ -30,43 +26,50 @@ var textsCmd = &cobra.Command{
 			return err
 		}
 
+		nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 		var doc any
-		if len(input.NodeIDs) > 0 {
-			// Specific nodes use the /nodes endpoint, which returns one document per node.
-			nodesURL, err := figma.BuildNodesURL(input.FileID, input.NodeIDs)
+		if len(nodeIDs) > 0 {
+			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
 			if err != nil {
 				return err
 			}
-			var resp api.GetFileNodesResponse
-			if err := client.Fetch(nodesURL, &resp); err != nil {
-				return err
-			}
-			for _, node := range resp.Nodes {
-				d, err := figma.UnmarshalDocument(node.Document)
-				if err != nil {
-					return err
-				}
-				doc = d
-				break
-			}
+			doc = documents[0]
 		} else {
-			var err error
 			doc, err = figma.FetchDocument(client, input.FileID, nil, "", "")
 			if err != nil {
 				return err
 			}
 		}
+		input.NodeIDs = nodeIDs
 
-		matches := extract.FindTextByLayerName(doc, layerName, recursive)
-		if err := cli.NewPrinter(cmd).JSON(map[string]any{"layer": layerName, "matches": matches}); err != nil {
+		result, err := textResult(doc, input, layerName, recursive)
+		if err != nil {
+			return err
+		}
+		output := map[string]any{"layer": layerName, "matches": result}
+		if layerName == "" {
+			output = map[string]any{"nodeId": nodeIDs[0], "texts": result}
+		}
+		if err := cli.NewPrinter(cmd).JSON(output); err != nil {
 			return err
 		}
 		return nil
 	},
 }
 
+func textResult(doc any, input *figma.FileInput, layerName string, recursive bool) (any, error) {
+	if len(input.NodeIDs) > 0 && layerName == "" {
+		return extract.OrderedTextForFrame(doc), nil
+	}
+	if layerName == "" {
+		return nil, fmt.Errorf("--layer or a node ID is required")
+	}
+	return extract.FindTextByLayerName(doc, layerName, recursive), nil
+}
+
 func init() {
 	textsCmd.Flags().String("layer", "", "layer name to extract text from")
+	textsCmd.Flags().String("id", "", "node ID to extract descendant text from; defaults to URL node-id")
 	textsCmd.Flags().Bool("recursive", false, "include text from all descendant nodes")
 	rootCmd.AddCommand(textsCmd)
 }

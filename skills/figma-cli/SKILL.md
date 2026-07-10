@@ -23,7 +23,8 @@ Every command answers one question. Use this as a lookup table:
 | What are the Tailwind tokens? | `figma tokens --format tailwind <file-key>` |
 | What colors are used here? | `figma colors --id <node-id> <url>` |
 | What images/icons can I download? | `figma assets --output ./dir <url>?node-id=X` |
-| What's the text in this layer? | `figma texts --layer "Name" <url>` |
+| What's all the copy in this frame? | `figma texts <url-with-node-id>` |
+| What's the text in layers with this name? | `figma texts --layer "Name" <url>` |
 | What components exist here? | `figma components --id <node-id> <url>` |
 | What layers match this name/type? | `figma find --name "icon" --type INSTANCE <url>` |
 | What's this node? (details) | `figma inspect --id <node-id> <url>` |
@@ -119,12 +120,15 @@ Formats: `png`, `jpg`, `svg`, `pdf`.
 ### `figma texts` — Extract text content
 
 ```bash
+figma texts "https://www.figma.com/design/abc/Name?node-id=42-1"
+figma texts --id 42:1 "abc123"
+# → ordered JSON: { "nodeId": "42:1", "texts": [{ "id", "name", "text", "depth", "order", "parentName" }] }
+
 figma texts --layer "Hero Title" "abc123"
 figma texts --layer "Button Label" --recursive "abc123"
-# → JSON: { "layer": "Hero Title", "matches": [{ "id": "42:1", "text": "Welcome back" }] }
 ```
 
-`--layer` is required. `--recursive` includes descendants.
+A selected node recursively returns all descendant text in Figma tree order. Without a node ID, `--layer` is required; `--recursive` includes descendants of each named layer.
 
 ### `figma find` — Search layers
 

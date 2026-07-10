@@ -18,6 +18,17 @@ type TextNodeOutput struct {
 	Text string `json:"text"`
 }
 
+// OrderedTextOutput is copy from a selected frame in Figma tree order.
+type OrderedTextOutput struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Text       string   `json:"text"`
+	Depth      int      `json:"depth"`
+	Order      int      `json:"order"`
+	ParentName string   `json:"parentName"`
+	LineTypes  []string `json:"lineTypes,omitempty"`
+}
+
 // ChangedTextOutput represents a changed text node in a diff.
 type ChangedTextOutput struct {
 	ID   string `json:"id"`
@@ -54,6 +65,63 @@ func FindTextByLayerName(value any, layerName string, recursive bool) []LayerTex
 	var matches []LayerTextOutput
 	walkLayers(value, layerName, recursive, &matches)
 	return matches
+}
+
+// OrderedTextForFrame extracts all descendant copy in Figma tree order.
+func OrderedTextForFrame(value any) []OrderedTextOutput {
+	root, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	var outputs []OrderedTextOutput
+	walkOrderedText(root, 0, "", &outputs)
+	return outputs
+}
+
+func walkOrderedText(object map[string]any, depth int, parentName string, outputs *[]OrderedTextOutput) {
+	if object["type"] == textNodeType {
+		*outputs = append(*outputs, OrderedTextOutput{
+			ID:         StringValue(object["id"]),
+			Name:       StringValue(object["name"]),
+			Text:       StringValue(object["characters"]),
+			Depth:      depth,
+			Order:      len(*outputs),
+			ParentName: parentName,
+			LineTypes:  stringValues(object["lineTypes"]),
+		})
+	}
+
+	children, ok := object["children"].([]any)
+	if !ok {
+		return
+	}
+	for _, child := range children {
+		childObject, ok := child.(map[string]any)
+		if !ok {
+			continue
+		}
+		walkOrderedText(childObject, depth+1, StringValue(object["name"]), outputs)
+	}
+}
+
+func stringValues(value any) []string {
+	values, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		text, ok := value.(string)
+		if !ok || text == "NONE" {
+			continue
+		}
+		result = append(result, text)
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
 // TextEqual reports whether two text-node sets carry identical text by node

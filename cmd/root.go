@@ -32,6 +32,8 @@ and produces structured JSON — designed for humans and AI agents alike.
     figma inspect --id <node-id> <url>
 
   What text is on this screen?
+    figma texts "<url>?node-id=42-1"
+    figma texts --id 42:1 <url>
     figma texts --layer "Screen Name" <url>
 
   What colors does this frame use?
