@@ -14,6 +14,7 @@ This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, ass
 - Output envelopes and file/stdout handling: `internal/output/`
 - Figma API boundary: `internal/figma/`
 - Pure extraction/transforms: `internal/extract/`
+- Capability workflows: `internal/assets/`, `internal/comments/`, `internal/diff/`
 - Generated API models: `internal/figma/api/`
 - OpenAPI source/config: `openapi/`
 
@@ -30,7 +31,8 @@ This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, ass
 - Keep commands thin: parse flags, resolve input, call Figma/extract packages, print JSON.
 - Put Figma URL parsing, node ID normalization, API URL building, HTTP, and generated API handling in `internal/figma`.
 - Put document traversal and output shaping in `internal/extract`; no Cobra, env vars, stdout, or HTTP there.
-- Keep dependency direction one-way: `cmd` may import `internal/*`; extract must not import CLI or command packages. Imports of generated Figma API types are allowed for typed endpoint responses.
+- Keep dependency direction one-way: `cmd` composes internal packages; `internal/*` never imports `cmd`; `extract` never imports CLI, Cobra, environment, or HTTP packages.
+- Keep generated Figma API types at the Figma or owning capability boundary; map them before pure extraction logic.
 - Do not hand-edit `internal/figma/api/api.gen.go`; regenerate from `openapi/` instead.
 
 ## CLI Design Rules
@@ -50,5 +52,6 @@ This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, ass
 - Use TDD for behavior changes: add/adjust tests before implementation.
 - Prefer package-level tests near changed logic.
 - Run `go test ./...` before finalizing code changes.
-- Run `goimports -w <changed-go-files>` when available; otherwise use `gofmt`. CI checks both formatting and imports.
+- Enter the reproducible toolchain with direnv (`.envrc` uses `flake.nix`); it provides the Go, `golangci-lint`, and `goimports` versions expected here.
+- Run `goimports -w <changed-go-files>`, `golangci-lint run ./...`, and `go test ./...` before finalizing.
 - Mock HTTP with test servers or injected clients; do not require real Figma tokens in tests.

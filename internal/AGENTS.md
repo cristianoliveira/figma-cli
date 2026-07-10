@@ -6,17 +6,20 @@ Private application code for the CLI. Keep boundaries explicit and easy to test.
 
 ## Package Responsibilities
 
-- `cli/`: runtime glue, shared command helpers, downloads, error/client construction helpers.
+- `cli/`: runtime glue only: configured client/printer construction and exit-code errors.
 - `env/`: environment configuration such as `FIGMA_ACCESS_TOKEN`.
 - `figma/`: Figma domain/API boundary: input parsing, node IDs, URL builders, HTTP client, typed API responses, export/tokens API helpers.
-- `extract/`: transforms Figma document trees into CLI output models.
+- `extract/`: pure transforms from Figma document trees to CLI output models.
+- `assets/`: asset discovery, export, and file-download workflows.
+- `comments/`: comment API mapping, retrieval, and node-scoping workflows.
+- `diff/`: pure design-diff use cases; adapters supply its history interfaces.
 
 ## Dependency Rules
 
 - `internal/*` must not import `cmd`.
 - `extract` must remain mostly pure: no env vars, Cobra, stdout/stderr, or network calls.
-- `figma` may depend on generated `internal/figma/api` types.
-- `cli` may wire env and figma clients, but avoid hiding business logic there.
+- `figma` and capability adapters may depend on generated `internal/figma/api` types; map them before passing data to `extract`.
+- `cli` wires env and Figma clients only; place business workflows in their capability package.
 
 ## Testing
 
