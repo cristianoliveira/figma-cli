@@ -1,6 +1,10 @@
 ---
 name: figma-cli
-description: "Use this to answer frontend-relevant questions about Figma designs."
+description: >
+  Query Figma designs with the local figma CLI for frontend implementation, design inspection, assets, tokens, copy, comments, and version changes.
+  Use when user asks what is in a Figma URL/file, requests CSS/assets/tokens/layout/text/components, or asks what changed between Figma versions.
+  Triggers: "inspect this Figma", "get CSS from Figma", "download Figma assets", "find Figma copy", "compare Figma versions".
+  Requires FIGMA_ACCESS_TOKEN. Do NOT use for editing Figma files, generic frontend questions without a Figma input, or browser interaction.
 ---
 
 # Figma CLI
@@ -33,8 +37,11 @@ Every command answers one question. Use this as a lookup table:
 | What unresolved feedback affects this node? | `figma comments --include-ancestors --state open <url>` |
 | What changed structurally? | `figma changes --from v1 --to v2 <url>` |
 | What changed in the copy? | `figma diff text --from v1 --to v2 <url>` |
+| What is this file about? | `figma fetch-meta <url>` |
+| What versions exist? | `figma versions <url>` |
+| When did this text appear? | `figma diff blame --to <version> <url>` |
 | What files are in this project? | `figma files <project-id-or-url>` |
-| What projects exist? | `figma projects` |
+| What projects exist? | `figma projects [team-url-or-id]` |
 | Is my token working? | `figma me` |
 
 ---
@@ -109,6 +116,9 @@ figma assets --kind image --format png --output ./img "url?node-id=42:1"
 
 # With JSON manifest
 figma assets --json --output ./assets "url?node-id=42:1"
+
+# Keep successful downloads when only some exports fail
+figma assets --allow-partial --output ./assets "url?node-id=42:1"
 ```
 
 `--kind`: `all`, `icon` (instances + vectors), `image`, `instance`, `vector`.
@@ -237,15 +247,29 @@ figma diff text --from <version-id> --to <version-id> "abc123"
 
 `--quiet` gives grep-style exit code: 0 = changes exist, 1 = none.
 
+### `figma diff blame` — Explain text provenance
+
+```bash
+figma diff blame --to <version-id> "url?node-id=42-1"
+figma diff blame --from <older-version-id> --to <version-id> "url?node-id=42-1"
+```
+
+Reports the earliest inspected version where each current text value appeared.
+Use a node-scoped URL for focused results. `--from` bounds how far back to search.
+
 ### Discovery commands
 
 ```bash
-figma me                           # verify auth
-figma projects                     # list projects
-figma projects --team-id <id>      # filter by team
-figma files <project-id-or-url>    # list files in a project
-figma files --branches <id>        # include branch data
-figma versions "abc123"            # file version history
+figma me                              # verify auth
+figma projects                        # list projects from authenticated teams
+figma projects <team-url-or-team-id>  # select one team
+figma files <project-id-or-url>       # list files in a project
+figma files --branches <id>           # include branch data
+figma fetch-meta "abc123"             # compact file metadata
+figma versions "abc123"               # file version history
+figma versions --page-size 50 "abc123"
+figma versions --after <version-id> "abc123"   # older versions
+figma versions --before <version-id> "abc123"  # newer versions
 ```
 
 ---
@@ -296,5 +320,5 @@ non-`--json` `assets` which produce text). Pipe into `jq` for filtering:
 
 ```bash
 figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1" | jq '.result.fills'
-figma find --name "hero" "abc123" | jq '.matches[].id'
+figma find --name "hero" "abc123" | jq '.results[].id'
 ```
