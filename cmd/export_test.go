@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -30,7 +31,13 @@ func TestExportCommandWritesFileAndJSONContract(t *testing.T) {
 	)
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"path":"`+outputPath+`","format":"svg","node":"42:1"}`, result.Stdout)
+	expectedJSON, err := json.Marshal(map[string]string{
+		"path":   outputPath,
+		"format": "svg",
+		"node":   "42:1",
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, string(expectedJSON), result.Stdout)
 	content, err := os.ReadFile(outputPath)
 	require.NoError(t, err)
 	assert.Equal(t, "image", string(content))
