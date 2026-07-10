@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cristianoliveira/figma-cli/internal/assets"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -110,7 +111,7 @@ func TestAssetsCommandRejectsFormatBeforeLoadingClient(t *testing.T) {
 }
 
 func TestAssetExportResultFailsOnPartialExport(t *testing.T) {
-	err := assetExportResult(cli.AssetExportManifest{Succeeded: 1, Failed: 1}, false)
+	err := assetExportResult(assets.AssetExportManifest{Succeeded: 1, Failed: 1}, false)
 
 	var exitErr *cli.ExitCodeError
 	assert.ErrorAs(t, err, &exitErr)
@@ -118,7 +119,7 @@ func TestAssetExportResultFailsOnPartialExport(t *testing.T) {
 }
 
 func TestAssetExportResultAllowsExplicitPartialExport(t *testing.T) {
-	err := assetExportResult(cli.AssetExportManifest{Succeeded: 1, Failed: 1}, true)
+	err := assetExportResult(assets.AssetExportManifest{Succeeded: 1, Failed: 1}, true)
 
 	assert.NoError(t, err)
 }

@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/cristianoliveira/figma-cli/internal/assets"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -67,7 +68,7 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if filenameMode == "name" {
 				filename = func(asset extract.Asset) string { return assetNameFilename(asset, trimNamePrefix) }
 			}
-			manifest, err := cli.ExportAssets(cli.AssetExportRequest{
+			manifest, err := assets.ExportAssets(assets.AssetExportRequest{
 				Client:          client,
 				FileID:          input.FileID,
 				NodeIDs:         nodeIDs,
@@ -111,7 +112,7 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 	return command
 }
 
-func assetExportResult(manifest cli.AssetExportManifest, allowPartial bool) error {
+func assetExportResult(manifest assets.AssetExportManifest, allowPartial bool) error {
 	if manifest.Failed == 0 || allowPartial {
 		return nil
 	}

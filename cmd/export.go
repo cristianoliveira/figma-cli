@@ -3,6 +3,7 @@ package cmd
 import (
 	"net/http"
 
+	"github.com/cristianoliveira/figma-cli/internal/assets"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
@@ -31,7 +32,7 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 				return err
 			}
 			if outputPath == "" {
-				outputPath = cli.DefaultExportOutputPath(input.FileID, resolvedNodeID, format)
+				outputPath = assets.DefaultExportOutputPath(input.FileID, resolvedNodeID, format)
 			}
 			client, err := loadClient()
 			if err != nil {
@@ -50,7 +51,7 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if exportDownloadClient == nil {
 				exportDownloadClient = client.HTTP
 			}
-			if err := cli.DownloadFile(exportDownloadClient, outputPath, assetURL); err != nil {
+			if err := assets.DownloadFile(exportDownloadClient, outputPath, assetURL); err != nil {
 				return err
 			}
 			if err := cli.NewPrinter(cmd).File(outputPath, map[string]any{"format": format, "node": resolvedNodeID}); err != nil {

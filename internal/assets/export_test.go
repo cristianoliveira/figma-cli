@@ -1,4 +1,4 @@
-package cli
+package assets
 
 import (
 	"net/http"

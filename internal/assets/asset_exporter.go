@@ -1,4 +1,5 @@
-package cli
+// Package assets contains asset export and download workflows.
+package assets
 
 import (
 	"net/http"
