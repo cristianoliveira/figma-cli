@@ -73,25 +73,10 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 					return fmt.Errorf("comment %s not found", input.CommentID)
 				}
 			} else if len(nodeIDs) > 0 {
-				documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
+				outputs, err = cli.ScopeComments(client, input.FileID, nodeIDs, outputs, recursive, includeAncestors)
 				if err != nil {
 					return err
 				}
-				extract.AttachCommentNodePaths(outputs, extract.CommentNodePaths(documents))
-				scopeIDs := extract.CommentNodeIDs(documents, recursive)
-				if includeAncestors {
-					fileDocument, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
-					if err != nil {
-						return err
-					}
-					extract.AttachCommentNodePaths(outputs, extract.CommentNodePaths([]any{fileDocument}))
-					for _, nodeID := range nodeIDs {
-						for ancestorID := range extract.AncestorNodeIDs(fileDocument, nodeID) {
-							scopeIDs[ancestorID] = struct{}{}
-						}
-					}
-				}
-				outputs = extract.FilterCommentsByNodeIDs(outputs, scopeIDs)
 			}
 			threads := extract.GroupCommentThreads(outputs)
 			threads = extract.FilterCommentThreads(threads, state, author, after, before)
