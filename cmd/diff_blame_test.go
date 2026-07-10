@@ -4,22 +4,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cristianoliveira/figma-cli/internal/diff"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
-	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func blameAt(id, when, handle string) api.Version {
+func blameAt(id, when, user string) diff.Version {
 	t, _ := time.Parse(time.RFC3339, when)
-	return api.Version{Id: id, CreatedAt: t, User: api.User{Handle: handle, Id: "u" + id}}
+	return diff.Version{ID: id, CreatedAt: t, User: user}
 }
 
-func ptrVersion(v api.Version) *api.Version { return &v }
+func ptrVersion(v diff.Version) *diff.Version { return &v }
 
 func TestNewBlameOutputMapsFields(t *testing.T) {
-	result := figma.BlameResult{
+	result := diff.BlameResult{
 		IntroducedIn: blameAt("2360480101025964654", "2026-06-02T13:02:03Z", "Wolfgang"),
 		Previous:     ptrVersion(blameAt("2358538525635412943", "2026-05-28T07:30:15Z", "Wolfgang")),
 		Changes: extract.TextOutput{
@@ -41,7 +40,7 @@ func TestNewBlameOutputMapsFields(t *testing.T) {
 }
 
 func TestNewBlameOutputNilPrevious(t *testing.T) {
-	result := figma.BlameResult{
+	result := diff.BlameResult{
 		IntroducedIn:    blameAt("0", "2026-06-01T00:00:00Z", "Wolfgang"),
 		PredatesHistory: true,
 	}
@@ -53,7 +52,7 @@ func TestNewBlameOutputNilPrevious(t *testing.T) {
 }
 
 func TestFormatBlameRendersIntroAndChange(t *testing.T) {
-	out := newBlameOutput(figma.BlameResult{
+	out := newBlameOutput(diff.BlameResult{
 		IntroducedIn: blameAt("2360480101025964654", "2026-06-02T13:02:03Z", "Wolfgang"),
 		Previous:     ptrVersion(blameAt("2358538525635412943", "2026-05-28T07:30:15Z", "Wolfgang")),
 		Changes: extract.TextOutput{
@@ -76,7 +75,7 @@ func TestFormatTextPath(t *testing.T) {
 }
 
 func TestFormatBlameNotesPredatesHistory(t *testing.T) {
-	out := newBlameOutput(figma.BlameResult{
+	out := newBlameOutput(diff.BlameResult{
 		IntroducedIn:    blameAt("0", "2026-06-01T00:00:00Z", "Wolfgang"),
 		PredatesHistory: true,
 	})

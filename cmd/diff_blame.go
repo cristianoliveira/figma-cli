@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	"github.com/cristianoliveira/figma-cli/internal/diff"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
@@ -24,21 +25,21 @@ type blameOutput struct {
 	PredatesHistory bool                `json:"predatesHistory"`
 }
 
-func newBlameOutput(r figma.BlameResult) blameOutput {
+func newBlameOutput(r diff.BlameResult) blameOutput {
 	out := blameOutput{
 		IntroducedIn: blameVersionOutput{
-			ID:        r.IntroducedIn.Id,
+			ID:        r.IntroducedIn.ID,
 			CreatedAt: r.IntroducedIn.CreatedAt.Format(time.RFC3339),
-			User:      r.IntroducedIn.User.Handle,
+			User:      r.IntroducedIn.User,
 		},
 		Changes:         r.Changes,
 		PredatesHistory: r.PredatesHistory,
 	}
 	if r.Previous != nil {
 		out.Previous = &blameVersionOutput{
-			ID:        r.Previous.Id,
+			ID:        r.Previous.ID,
 			CreatedAt: r.Previous.CreatedAt.Format(time.RFC3339),
-			User:      r.Previous.User.Handle,
+			User:      r.Previous.User,
 		}
 	}
 	return out
@@ -119,7 +120,7 @@ Examples:
 			return err
 		}
 		client = client.WithContext(cmd.Context())
-		result, err := figma.FindTextChange(client, input.FileID, []string{nodeID}, toVersion, fromVersion)
+		result, err := diff.FindTextChange(figma.NewTextHistory(client, input.FileID, []string{nodeID}), toVersion, fromVersion)
 		if err != nil {
 			return err
 		}
