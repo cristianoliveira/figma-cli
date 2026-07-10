@@ -12,13 +12,15 @@ type TextNode struct {
 	ID   string
 	Name string
 	Text string
+	Path []string
 }
 
 // TextNodeOutput is a JSON-serializable text node.
 type TextNodeOutput struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Text string `json:"text"`
+	ID   string   `json:"id"`
+	Name string   `json:"name"`
+	Text string   `json:"text"`
+	Path []string `json:"path,omitempty"`
 }
 
 // TextLineOutput preserves Figma-provided line and list intent without inferring HTML semantics.
@@ -45,10 +47,11 @@ type OrderedTextOutput struct {
 
 // ChangedTextOutput represents a changed text node in a diff.
 type ChangedTextOutput struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	From string `json:"from"`
-	To   string `json:"to"`
+	ID   string   `json:"id"`
+	Name string   `json:"name"`
+	From string   `json:"from"`
+	To   string   `json:"to"`
+	Path []string `json:"path,omitempty"`
 }
 
 // TextOutput is the result of a text diff between two versions.
@@ -69,7 +72,7 @@ type LayerTextOutput struct {
 // ExtractTextNodes walks a document tree and collects all TEXT nodes.
 func ExtractTextNodes(value any) []TextNode {
 	var nodes []TextNode
-	walkTextNodes(value, &nodes)
+	walkTextNodes(value, nil, &nodes)
 	return nodes
 }
 
@@ -225,7 +228,7 @@ func DiffText(from, to []TextNode) TextOutput {
 			continue
 		}
 		if fromNode.Text != toNode.Text {
-			diff.Changed = append(diff.Changed, ChangedTextOutput{ID: id, Name: toNode.Name, From: fromNode.Text, To: toNode.Text})
+			diff.Changed = append(diff.Changed, ChangedTextOutput{ID: id, Name: toNode.Name, From: fromNode.Text, To: toNode.Text, Path: toNode.Path})
 		}
 	}
 	for id, toNode := range toByID {
@@ -240,27 +243,31 @@ func DiffText(from, to []TextNode) TextOutput {
 	return diff
 }
 
-func walkTextNodes(value any, nodes *[]TextNode) {
+func walkTextNodes(value any, parentPath []string, nodes *[]TextNode) {
 	object, ok := value.(map[string]any)
 	if !ok {
 		return
 	}
 
+	name := StringValue(object["name"])
 	if object["type"] == textNodeType {
 		id, _ := object["id"].(string)
-		name, _ := object["name"].(string)
 		text, _ := object["characters"].(string)
 		if id != "" {
-			*nodes = append(*nodes, TextNode{ID: id, Name: name, Text: text})
+			*nodes = append(*nodes, TextNode{ID: id, Name: name, Text: text, Path: append([]string(nil), parentPath...)})
 		}
 	}
 
+	path := append([]string(nil), parentPath...)
+	if name != "" && object["type"] != textNodeType {
+		path = append(path, name)
+	}
 	children, ok := object["children"].([]any)
 	if !ok {
 		return
 	}
 	for _, child := range children {
-		walkTextNodes(child, nodes)
+		walkTextNodes(child, path, nodes)
 	}
 }
 

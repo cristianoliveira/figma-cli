@@ -70,6 +70,29 @@ func TestOrderedTextForFrameReturnsEmptyForInvalidDocument(t *testing.T) {
 	assert.Empty(t, OrderedTextForFrame(nil))
 }
 
+func TestExtractTextNodesIncludesReadableParentPath(t *testing.T) {
+	document := map[string]any{"id": "0", "name": "Document", "type": "DOCUMENT", "children": []any{
+		map[string]any{"id": "1", "name": "Checkout", "type": "FRAME", "children": []any{
+			map[string]any{"id": "2", "name": "Title", "type": "TEXT", "characters": "Pay now"},
+		}},
+	}}
+
+	nodes := ExtractTextNodes(document)
+
+	assert.Equal(t, []string{"Document", "Checkout"}, nodes[0].Path)
+	diff := DiffText(nil, nodes)
+	assert.Equal(t, []string{"Document", "Checkout"}, diff.Added[0].Path)
+}
+
+func TestDiffTextChangedCopyIncludesTargetParentPath(t *testing.T) {
+	from := []TextNode{{ID: "2", Name: "Title", Text: "Pay"}}
+	to := []TextNode{{ID: "2", Name: "Title", Text: "Pay now", Path: []string{"Document", "Checkout"}}}
+
+	diff := DiffText(from, to)
+
+	assert.Equal(t, []string{"Document", "Checkout"}, diff.Changed[0].Path)
+}
+
 func TestTextEqual(t *testing.T) {
 	a := []TextNode{{ID: "1:1", Text: "hi"}, {ID: "1:2", Text: "yo"}}
 

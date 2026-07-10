@@ -91,7 +91,7 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 				extract.AttachCommentNodePaths(outputs, extract.CommentNodePaths(documents))
 				scopeIDs := extract.CommentNodeIDs(documents, recursive)
 				if includeAncestors {
-					fileDocument, err := figma.FetchDocument(client, input.FileID, nil, "", "")
+					fileDocument, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
 					if err != nil {
 						return err
 					}

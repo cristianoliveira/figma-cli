@@ -53,15 +53,22 @@ func formatBlame(out blameOutput) string {
 	intro := out.IntroducedIn
 	fmt.Fprintf(&b, "Introduced in %s by %s on %s%s\n", intro.ID, intro.User, formatBlameDate(intro.CreatedAt), note)
 	for _, c := range out.Changes.Changed {
-		fmt.Fprintf(&b, "  %s %q: %q -> %q\n", c.ID, c.Name, c.From, c.To)
+		fmt.Fprintf(&b, "  %s%s %q: %q -> %q\n", c.ID, formatTextPath(c.Path), c.Name, c.From, c.To)
 	}
 	for _, a := range out.Changes.Added {
-		fmt.Fprintf(&b, "  %s %q: added %q\n", a.ID, a.Name, a.Text)
+		fmt.Fprintf(&b, "  %s%s %q: added %q\n", a.ID, formatTextPath(a.Path), a.Name, a.Text)
 	}
 	for _, r := range out.Changes.Removed {
-		fmt.Fprintf(&b, "  %s %q: removed %q\n", r.ID, r.Name, r.Text)
+		fmt.Fprintf(&b, "  %s%s %q: removed %q\n", r.ID, formatTextPath(r.Path), r.Name, r.Text)
 	}
 	return b.String()
+}
+
+func formatTextPath(path []string) string {
+	if len(path) == 0 {
+		return ""
+	}
+	return " [" + strings.Join(path, "/") + "]"
 }
 
 func formatBlameDate(rfc3339 string) string {

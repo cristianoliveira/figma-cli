@@ -70,6 +70,11 @@ func TestFormatBlameRendersIntroAndChange(t *testing.T) {
 	assert.Contains(t, s, `"old" -> "new"`)
 }
 
+func TestFormatTextPath(t *testing.T) {
+	assert.Equal(t, " [Document/Checkout]", formatTextPath([]string{"Document", "Checkout"}))
+	assert.Empty(t, formatTextPath(nil))
+}
+
 func TestFormatBlameNotesPredatesHistory(t *testing.T) {
 	out := newBlameOutput(figma.BlameResult{
 		IntroducedIn:    blameAt("0", "2026-06-01T00:00:00Z", "Wolfgang"),

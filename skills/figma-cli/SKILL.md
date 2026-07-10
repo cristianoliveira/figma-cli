@@ -30,7 +30,7 @@ Every command answers one question. Use this as a lookup table:
 | What layers match this name/type? | `figma find --name "icon" --type INSTANCE <url>` |
 | What's this node? (details) | `figma inspect <url-with-node-id>` |
 | What's this copied Figma comment? | `figma comments <url-with-comment-hash>` |
-| What unresolved feedback affects this node? | `figma comments --include-ancestors --unresolved-only <url>` |
+| What unresolved feedback affects this node? | `figma comments --include-ancestors --state open <url>` |
 | What changed structurally? | `figma changes --from v1 --to v2 <url>` |
 | What changed in the copy? | `figma diff text --from v1 --to v2 <url>` |
 | What files are in this project? | `figma files <project-id-or-url>` |
@@ -232,6 +232,7 @@ Reports added/removed/renamed nodes, component swaps, auto-layout changes, style
 ```bash
 figma diff text --from <version-id> --to <version-id> "abc123"
 # → JSON: { added: [...], removed: [...], changed: [...] }
+# Added/removed/changed entries include readable parent `path` when available.
 ```
 
 `--quiet` gives grep-style exit code: 0 = changes exist, 1 = none.

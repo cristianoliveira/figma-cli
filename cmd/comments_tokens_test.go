@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -38,6 +41,28 @@ func TestCommentsCommandRejectsInvalidStateBeforeLoadingClient(t *testing.T) {
 
 	assert.EqualError(t, result.Err, `invalid comment state "pending": expected all, open, or resolved`)
 	assert.False(t, loaded)
+}
+
+func TestCommentsCommandIncludesAncestorsWithScopedFileRequest(t *testing.T) {
+	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		var body string
+		switch {
+		case strings.HasSuffix(request.URL.Path, "/comments"):
+			body = `{"comments":[{"id":"root","message":"Parent feedback","created_at":"2026-01-01T00:00:00Z","file_key":"abc","client_meta":{"node_id":"1:1","node_offset":{"x":0,"y":0}},"reactions":[],"user":{"handle":"Ada","id":"1","img_url":""}}]}`
+		case strings.HasSuffix(request.URL.Path, "/nodes"):
+			body = `{"nodes":{"1:2":{"document":{"id":"1:2","name":"Button","type":"FRAME"}}}}`
+		default:
+			assert.Equal(t, "1:2", request.URL.Query().Get("ids"))
+			body = `{"document":{"id":"0:0","name":"Document","type":"DOCUMENT","children":[{"id":"1:1","name":"Screen","type":"FRAME","children":[{"id":"1:2","name":"Button","type":"FRAME"}]}]}}`
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}}
+
+	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=1-2", "--include-ancestors")
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, "Parent feedback")
+	assert.Contains(t, result.Stdout, "Screen")
 }
 
 func TestCommentsCommandReturnsAPIErrors(t *testing.T) {
