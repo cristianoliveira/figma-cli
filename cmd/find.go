@@ -11,13 +11,14 @@ import (
 
 var findCmd = &cobra.Command{
 	Use:   "find [figma-url-or-file-id]",
-	Short: "Find Figma layers by name",
+	Short: "Find Figma layers by name and/or type",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		layerName, _ := cmd.Flags().GetString("name")
+		nodeType, _ := cmd.Flags().GetString("type")
 		nodeID, _ := cmd.Flags().GetString("id")
-		if layerName == "" {
-			return fmt.Errorf("--name is required")
+		if layerName == "" && nodeType == "" {
+			return fmt.Errorf("at least one of --name or --type is required")
 		}
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
@@ -32,8 +33,12 @@ var findCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		matches := extract.FindLayersByName(doc, layerName)
-		if err := cli.NewPrinter(cmd).JSON(map[string]any{"name": layerName, "matches": matches}); err != nil {
+		matches := extract.Search(doc, extract.SearchCriteria{Name: layerName, Type: nodeType})
+		if err := cli.NewPrinter(cmd).JSON(map[string]any{
+			"name":    layerName,
+			"type":    nodeType,
+			"matches": matches,
+		}); err != nil {
 			return err
 		}
 		return nil
@@ -41,7 +46,8 @@ var findCmd = &cobra.Command{
 }
 
 func init() {
-	findCmd.Flags().String("name", "", "exact layer name to find")
+	findCmd.Flags().String("name", "", "substring of layer name to find (case-insensitive)")
+	findCmd.Flags().String("type", "", "node type to find, e.g. FRAME, COMPONENT, INSTANCE, SECTION (case-insensitive)")
 	findCmd.Flags().String("id", "", "node ID to search within; accepts 20089:685897 or 20089-685897")
 	rootCmd.AddCommand(findCmd)
 }

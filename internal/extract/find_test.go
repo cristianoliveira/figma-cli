@@ -6,26 +6,55 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFindLayersByName(t *testing.T) {
-	doc := map[string]any{
+func searchDoc() map[string]any {
+	return map[string]any{
 		"id": "0:0", "name": "root", "type": "FRAME",
 		"children": []any{
-			map[string]any{"id": "1:1", "name": "Button", "type": "FRAME"},
-			map[string]any{"id": "1:2", "name": "Other", "type": "FRAME", "children": []any{
-				map[string]any{"id": "1:3", "name": "Button", "type": "INSTANCE"},
+			map[string]any{"id": "1:1", "name": "Login Button", "type": "COMPONENT"},
+			map[string]any{"id": "1:2", "name": "Card", "type": "FRAME", "children": []any{
+				map[string]any{"id": "1:3", "name": "Signup Button", "type": "INSTANCE"},
+				map[string]any{"id": "1:4", "name": "Icon", "type": "VECTOR"},
 			}},
+			map[string]any{"id": "1:5", "name": "Footer", "type": "SECTION"},
 		},
 	}
+}
 
-	matches := FindLayersByName(doc, "Button")
+func TestSearchByName(t *testing.T) {
+	matches := Search(searchDoc(), SearchCriteria{Name: "button"})
+
 	assert.Len(t, matches, 2)
 	assert.Equal(t, "1:1", matches[0].ID)
 	assert.Equal(t, "1:3", matches[1].ID)
-
-	// Matching is exact, not substring.
-	assert.Empty(t, FindLayersByName(doc, "But"))
 }
 
-func TestFindLayersByNameNil(t *testing.T) {
-	assert.Nil(t, FindLayersByName(nil, "x"))
+func TestSearchByType(t *testing.T) {
+	matches := Search(searchDoc(), SearchCriteria{Type: "frame"})
+
+	assert.Len(t, matches, 2)
+	assert.Equal(t, "0:0", matches[0].ID)
+	assert.Equal(t, "1:2", matches[1].ID)
+}
+
+func TestSearchByNameAndType(t *testing.T) {
+	matches := Search(searchDoc(), SearchCriteria{Name: "button", Type: "COMPONENT"})
+
+	assert.Len(t, matches, 1)
+	assert.Equal(t, "1:1", matches[0].ID)
+}
+
+func TestSearchNoMatch(t *testing.T) {
+	assert.Empty(t, Search(searchDoc(), SearchCriteria{Name: "nonexistent"}))
+	assert.Empty(t, Search(searchDoc(), SearchCriteria{Type: "WIDGET"}))
+}
+
+func TestSearchNil(t *testing.T) {
+	assert.Nil(t, Search(nil, SearchCriteria{Name: "x"}))
+}
+
+func TestSearchNoCriteriaReturnsAll(t *testing.T) {
+	matches := Search(searchDoc(), SearchCriteria{})
+
+	// root + 5 descendants = 6 nodes.
+	assert.Len(t, matches, 6)
 }
