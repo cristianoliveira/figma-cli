@@ -31,6 +31,7 @@ Every command answers one question. Use this as a lookup table:
 | What's this node? (details) | `figma inspect <url-with-node-id>` |
 | What's this copied Figma comment? | `figma comments <url-with-comment-hash>` |
 | What unresolved feedback affects this node? | `figma comments --include-ancestors --unresolved-only <url>` |
+| What changed structurally? | `figma changes --from v1 --to v2 <url>` |
 | What changed in the copy? | `figma diff text --from v1 --to v2 <url>` |
 | What files are in this project? | `figma files <project-id-or-url>` |
 | What projects exist? | `figma projects` |
@@ -199,6 +200,16 @@ figma comments --after 2026-01-01T00:00:00Z <file-url>
 ```
 
 Comments use the stable `{scope, results}` envelope. Each result is a thread with `root` and chronologically ordered `replies`; anchored roots include `node_path` when node scope is available. Each comment includes a direct Figma `url`. `--recursive=false` limits normal node lookup to the selected node; hash lookup by comment ID takes precedence over node filtering.
+
+### `figma changes` — Structural changes between versions
+
+```bash
+figma changes --from <version-id> --to <version-id> "abc123"
+figma changes --from <version-id> --to <version-id> "url?node-id=42-1"
+# → JSON: { "scope": {...}, "from": "...", "to": "...", "changes": [{ "id", "path", "type", "nodeType", "changes": [...] }] }
+```
+
+Reports added/removed/renamed nodes, component swaps, auto-layout changes, style binding changes, bounds changes, and child reordering. Prefer a node-scoped URL for focused PR review and faster requests.
 
 ### `figma diff text` — Copy changes between versions
 
