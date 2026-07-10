@@ -33,6 +33,7 @@ Every command answers one question. Use this as a lookup table:
 | What components exist here? | `figma components --id <node-id> <url>` |
 | What layers match this name/type? | `figma find --name "icon" --type INSTANCE <url>` |
 | What's this node? (details) | `figma inspect <url-with-node-id>` |
+| What should I implement from this node? | `figma inspect --handoff <url-with-node-id>` |
 | What's this copied Figma comment? | `figma comments <url-with-comment-hash>` |
 | What unresolved feedback affects this node? | `figma comments --include-ancestors --state open <url>` |
 | What changed structurally? | `figma changes --from v1 --to v2 <url>` |
@@ -204,10 +205,15 @@ Default results contain only `COMPONENT`, `COMPONENT_SET`, and `INSTANCE` nodes.
 ```bash
 figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1"
 figma inspect --id 42:1 "abc123" # explicit scope for a bare file key
-figma inspect --recursive "url?node-id=42-1" # implementation specs for selected tree
+figma inspect --recursive "url?node-id=42-1" # implementation specs for entire selected tree
+figma inspect --handoff "url?node-id=42-1"   # bounded implementation specs + component usage
+figma inspect --handoff --depth 2 --include-hidden "url?node-id=42-1"
 # → default JSON: { "scope": {...}, "result": { type, name, bounds, paints, layout, effects, componentProperties, propertyDefinitions, styleBindings, resolvedStyles, variableBindings, resolvedVariables } }
 # → recursive JSON: { "scope": {...}, "results": [{...}, {...}] }
+# → handoff JSON: { "scope": {...}, "result": { "nodes": [{...}], "components": [{ "name", "componentId", "count" }] } }
 ```
+
+Use `--handoff` as the design-to-code default: it limits traversal to depth 4, excludes invisible descendants, and summarizes repeated component instances. `--recursive` remains the unbounded flat implementation inventory and cannot be combined with `--handoff`.
 
 Raw binding IDs are always preserved. `resolvedStyles` adds style name/type from node metadata. `resolvedVariables` adds variable and collection names when the Variables API is accessible; it is omitted without failing when metadata access is unavailable. Components and instances expose variants, property values, and property definitions. Mixed text exposes style override IDs and typography metadata. Prefer this over a separate handoff/spec command so implementation properties keep one source of truth.
 

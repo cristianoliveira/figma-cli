@@ -27,6 +27,15 @@ func newInspectCommandWithVariables(
 		RunE: func(cmd *cobra.Command, args []string) error {
 			explicitNodeID, _ := cmd.Flags().GetString("id")
 			recursive, _ := cmd.Flags().GetBool("recursive")
+			handoff, _ := cmd.Flags().GetBool("handoff")
+			depth, _ := cmd.Flags().GetInt("depth")
+			includeHidden, _ := cmd.Flags().GetBool("include-hidden")
+			if handoff && recursive {
+				return fmt.Errorf("--handoff and --recursive cannot be used together")
+			}
+			if depth < 0 {
+				return fmt.Errorf("--depth must be zero or greater")
+			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
 				return err
@@ -47,19 +56,20 @@ func newInspectCommandWithVariables(
 			if !ok {
 				return fmt.Errorf("node %s has an invalid document", nodeID)
 			}
+			scope := output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}}
 			if recursive {
 				nodes := extract.InspectTree(document)
 				enrichInspectNodes(nodes, details.Styles, client, input.FileID, fetchVariables)
-				return cli.NewPrinter(cmd).JSON(output.NewQuery(
-					output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}}, nodes,
-				))
+				return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, nodes))
+			}
+			if handoff {
+				result := extract.ExtractHandoff(document, extract.HandoffOptions{MaxDepth: depth, IncludeHidden: includeHidden})
+				enrichInspectNodes(result.Nodes, details.Styles, client, input.FileID, fetchVariables)
+				return cli.NewPrinter(cmd).JSON(output.Detail[extract.HandoffOutput]{Scope: scope, Result: result})
 			}
 			node := extract.NodeToInspectOutput(document)
 			node = enrichInspectNode(node, details.Styles, client, input.FileID, fetchVariables)
-			result := output.Detail[extract.InspectOutput]{
-				Scope:  output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}},
-				Result: node,
-			}
+			result := output.Detail[extract.InspectOutput]{Scope: scope, Result: node}
 			if err := cli.NewPrinter(cmd).JSON(result); err != nil {
 				return err
 			}
@@ -68,6 +78,9 @@ func newInspectCommandWithVariables(
 	}
 	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
 	command.Flags().Bool("recursive", false, "include implementation specs for all descendant nodes")
+	command.Flags().Bool("handoff", false, "emit bounded implementation specs and component usage")
+	command.Flags().Int("depth", 4, "maximum descendant depth for --handoff")
+	command.Flags().Bool("include-hidden", false, "include invisible descendants in --handoff")
 	return command
 }
 

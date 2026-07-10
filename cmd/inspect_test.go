@@ -39,6 +39,24 @@ func TestInspectCommandRecursivelyEmitsImplementationSpecs(t *testing.T) {
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"results":[{"id":"42:1","name":"Button","type":"COMPONENT","propertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"bounds":{},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","text":"Save","bounds":{},"layout":{},"typography":{}}]}`, result.Stdout)
 }
 
+func TestInspectCommandEmitsBoundedHandoff(t *testing.T) {
+	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Checkout","type":"FRAME","children":[{"id":"42:2","name":"Hidden","type":"TEXT","visible":false},{"id":"42:3","name":"Button","type":"INSTANCE","componentId":"9:1","styles":{"fill":"S:fill"},"children":[{"id":"42:4","name":"Label","type":"TEXT","characters":"Pay"}]},{"id":"42:5","name":"Button","type":"INSTANCE","componentId":"9:1"}]},"styles":{"S:fill":{"name":"Brand/Primary","styleType":"FILL"}}}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}}
+	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--handoff", "--depth", "1")
+
+	require.NoError(t, result.Err)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"nodes":[{"id":"42:1","name":"Checkout","type":"FRAME","bounds":{},"layout":{},"typography":{}},{"id":"42:3","name":"Button","type":"INSTANCE","componentId":"9:1","bounds":{},"layout":{},"typography":{},"styleBindings":{"fill":"S:fill"},"resolvedStyles":{"fill":{"id":"S:fill","name":"Brand/Primary","type":"FILL"}}},{"id":"42:5","name":"Button","type":"INSTANCE","componentId":"9:1","bounds":{},"layout":{},"typography":{}}],"components":[{"name":"Button","componentId":"9:1","count":2}]}}`, result.Stdout)
+}
+
+func TestInspectCommandRejectsHandoffWithRecursive(t *testing.T) {
+	command := newInspectCommand(func() (*figma.Client, error) { return nil, errors.New("must not load") })
+	result := executeCommand(command, "https://www.figma.com/design/abc/Name?node-id=42-1", "--handoff", "--recursive")
+
+	assert.EqualError(t, result.Err, "--handoff and --recursive cannot be used together")
+}
+
 func TestInspectCommandKeepsRawVariablesWhenMetadataIsUnavailable(t *testing.T) {
 	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","boundVariables":{"fills":[{"type":"VARIABLE_ALIAS","id":"V:brand"}]}}}}}`
