@@ -46,3 +46,31 @@ func TestNodeToInspectOutput(t *testing.T) {
 	assert.Equal(t, "#FF0000", out.Fills[0])
 	assert.Equal(t, "#000000", out.BackgroundColor)
 }
+
+func TestNodeToInspectOutputIncludesStyleAndVariableBindings(t *testing.T) {
+	node := map[string]any{
+		"id": "1:1", "name": "Button", "type": "FRAME",
+		"styles": map[string]any{"fill": "S:fill", "effect": "S:shadow"},
+		"boundVariables": map[string]any{
+			"fills":        []any{map[string]any{"type": "VARIABLE_ALIAS", "id": "V:brand"}},
+			"cornerRadius": map[string]any{"type": "VARIABLE_ALIAS", "id": "V:radius"},
+		},
+	}
+
+	out := NodeToInspectOutput(node)
+
+	assert.Equal(t, map[string]string{"fill": "S:fill", "effect": "S:shadow"}, out.StyleBindings)
+	assert.Equal(t, map[string][]string{"fills": {"V:brand"}, "cornerRadius": {"V:radius"}}, out.VariableBindings)
+}
+
+func TestNodeToInspectOutputIgnoresMalformedBindings(t *testing.T) {
+	node := map[string]any{
+		"styles":         map[string]any{"fill": 42},
+		"boundVariables": map[string]any{"fills": []any{"invalid"}},
+	}
+
+	out := NodeToInspectOutput(node)
+
+	assert.Empty(t, out.StyleBindings)
+	assert.Empty(t, out.VariableBindings)
+}
