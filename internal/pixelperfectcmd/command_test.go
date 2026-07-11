@@ -57,6 +57,16 @@ func TestParseImageRegion(t *testing.T) {
 	assert.Equal(t, &diff.Bounds{X: 10, Y: 20, Width: 300, Height: 400}, region)
 }
 
+func TestDiffImageCommandRejectsEmptyIgnoredRegions(t *testing.T) {
+	for _, region := range []string{"0,0,0,1", "0,0,1,0", "0,0,-1,1", "0,0,1,-1"} {
+		t.Run(region, func(t *testing.T) {
+			result := executeCommand(newCommand(diff.CompareImagesWithIgnoredRegions), "reference.png", "actual.png", "--output", "mask.png", "--ignore-region", region)
+
+			assert.EqualError(t, result.Err, "invalid --ignore-region: width and height must be positive")
+		})
+	}
+}
+
 func TestDiffImageCommandRejectsInvalidAnalysisLimits(t *testing.T) {
 	tests := []struct {
 		name, flag, value, expected string

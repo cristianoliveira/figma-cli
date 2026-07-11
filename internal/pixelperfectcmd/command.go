@@ -56,6 +56,9 @@ func newCommand(compare imageComparer) *cobra.Command {
 				if parseErr != nil {
 					return fmt.Errorf("invalid --ignore-region: %w", parseErr)
 				}
+				if ignoredRegion.Width < 1 || ignoredRegion.Height < 1 {
+					return fmt.Errorf("invalid --ignore-region: width and height must be positive")
+				}
 				ignored = append(ignored, *ignoredRegion)
 			}
 			comparisonMask, _ := cmd.Flags().GetString("mask")

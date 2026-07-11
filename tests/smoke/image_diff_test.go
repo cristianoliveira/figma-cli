@@ -237,6 +237,8 @@ func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
 		{name: "malformed region", flags: []string{"--region", "0,0,4"}, expected: "--region must be x,y,width,height"},
 		{name: "non numeric region", flags: []string{"--region", "0,zero,4,3"}, expected: "--region must contain integers"},
 		{name: "malformed ignored region", flags: []string{"--ignore-region", "0,0,4"}, expected: "invalid --ignore-region"},
+		{name: "empty ignored region", flags: []string{"--ignore-region", "0,0,0,1"}, expected: "invalid --ignore-region: width and height must be positive"},
+		{name: "negative ignored region size", flags: []string{"--ignore-region", "0,0,1,-1"}, expected: "invalid --ignore-region: width and height must be positive"},
 		{name: "negative offset radius", flags: []string{"--suggest-offset", "-1"}, expected: "--suggest-offset must be non-negative"},
 		{name: "negative region gap", flags: []string{"--region-gap", "-1"}, expected: "--region-gap must be non-negative"},
 		{name: "zero minimum region pixels", flags: []string{"--min-region-pixels", "0"}, expected: "--min-region-pixels must be positive"},
