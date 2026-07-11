@@ -24,6 +24,7 @@ func TestImageDiffScenarios(t *testing.T) {
 	}{
 		{name: "identical images", actual: "identical.png"},
 		{name: "disconnected changes", actual: "two-regions.png", changed: 2, regionCount: 2},
+		{name: "tiny regions can be omitted", actual: "two-regions.png", flags: []string{"--min-region-pixels", "2"}, changed: 2},
 		{name: "threshold ignores subtle rendering noise", actual: "subtle-change.png", flags: []string{"--threshold", "5"}},
 	}
 	for _, test := range tests {

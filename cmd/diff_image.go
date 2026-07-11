@@ -38,6 +38,8 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 				}
 				result.Overlay = overlay
 			}
+			minRegionPixels, _ := cmd.Flags().GetInt("min-region-pixels")
+			result.Regions = filterImageRegions(result.Regions, minRegionPixels)
 			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
 			if maxRMSE >= 0 && result.RMSE > maxRMSE {
 				return fmt.Errorf("image diff validation failed: RMSE %.6f exceeds maximum %.6f", result.RMSE, maxRMSE)
@@ -53,9 +55,20 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 	command.Flags().Uint8("threshold", 0, "ignore per-channel differences at or below this value (0-255)")
 	command.Flags().String("region", "", "compare only x,y,width,height")
 	command.Flags().String("overlay", "", "path for directional overlay (reference red, actual green)")
+	command.Flags().Int("min-region-pixels", 1, "omit disconnected regions smaller than this many changed pixels")
 	command.Flags().Float64("max-rmse", -1, "fail when normalized RMSE exceeds this value")
 	command.Flags().Float64("max-changed-ratio", -1, "fail when changed-pixel ratio exceeds this value")
 	return command
+}
+
+func filterImageRegions(regions []diff.Region, minimumPixels int) []diff.Region {
+	filtered := make([]diff.Region, 0, len(regions))
+	for _, region := range regions {
+		if region.ChangedPixels >= minimumPixels {
+			filtered = append(filtered, region)
+		}
+	}
+	return filtered
 }
 
 func parseImageRegion(value string) (*diff.Bounds, error) {

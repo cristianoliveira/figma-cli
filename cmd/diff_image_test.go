@@ -26,6 +26,14 @@ func TestDiffImageCommandProducesMaskAndJSONMetrics(t *testing.T) {
 	assert.JSONEq(t, `{"width":2,"height":2,"changedPixels":0,"changedRatio":0,"rmse":0,"mask":"`+mask+`"}`, result.Stdout)
 }
 
+func TestFilterImageRegionsRemovesTinyClusters(t *testing.T) {
+	regions := []diff.Region{{ChangedPixels: 2}, {ChangedPixels: 20}, {ChangedPixels: 5}}
+
+	filtered := filterImageRegions(regions, 5)
+
+	assert.Equal(t, []diff.Region{{ChangedPixels: 20}, {ChangedPixels: 5}}, filtered)
+}
+
 func TestParseImageRegion(t *testing.T) {
 	region, err := parseImageRegion("10, 20,300,400")
 
