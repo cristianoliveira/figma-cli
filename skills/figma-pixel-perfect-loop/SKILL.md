@@ -30,6 +30,12 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
      ```bash
      figma export --format png --output output/visual-diff/figma-reference.png --id <frame-id> <file-key>
      ```
+   - Verify image dimensions first, before any diff: pixel metrics are meaningful only when the reference and implementation have identical bounds. Prefer the portable, Nix-pinned tool:
+     ```bash
+     nix shell nixpkgs#imagemagick -c identify -format '%f: %wx%h\n' \
+       output/visual-diff/figma-reference.png \
+       output/visual-diff/implementation.png
+     ```
    - Capture specifications, never guess when Figma can answer:
      ```bash
      figma css --recursive --id <frame-id> <file-key> > .tmp/figma/frame.css
