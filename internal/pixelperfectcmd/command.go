@@ -3,6 +3,7 @@ package pixelperfectcmd
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,7 +63,9 @@ func newCommand(compare imageComparer) *cobra.Command {
 				if offsetErr != nil {
 					return offsetErr
 				}
-				result.SuggestedOffset = &suggestedOffset
+				if !math.IsInf(suggestedOffset.RMSE, 0) && !math.IsNaN(suggestedOffset.RMSE) {
+					result.SuggestedOffset = &suggestedOffset
+				}
 			}
 			regionGap, _ := cmd.Flags().GetInt("region-gap")
 			result.Regions = groupImageRegions(result.Regions, regionGap)

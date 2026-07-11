@@ -131,6 +131,24 @@ func TestPixelPerfectBoundaryAndCompositingScenarios(t *testing.T) {
 	}
 }
 
+func TestPixelPerfectOmitsOffsetWhenMaskExcludesAllPixels(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"),
+		"--output", mask,
+		"--mask", filepath.Join(fixtures, "all-excluded-mask.png"),
+		"--suggest-offset", "2",
+	).CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal(output, &comparison))
+	assert.Zero(t, comparison.ComparedPixels)
+	assert.Nil(t, comparison.SuggestedOffset)
+}
+
 func TestPixelPerfectRejectsWrongSizeComparisonMask(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
