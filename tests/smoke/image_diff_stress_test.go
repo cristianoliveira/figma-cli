@@ -83,6 +83,44 @@ func TestPixelPerfectReportsMixedForCompetingMismatchSignals(t *testing.T) {
 	assert.Less(t, region.EdgeRMSE, region.RMSE*0.5)
 }
 
+func TestPixelPerfectExposesClassificationBoundarySensitivity(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	for _, test := range []struct {
+		name           string
+		dominantPixels int
+		expected       string
+	}{
+		{name: "below dominant color boundary", dominantPixels: 699, expected: "mixed"},
+		{name: "at dominant color boundary", dominantPixels: 700, expected: "solid-fill"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			dir := t.TempDir()
+			reference := filepath.Join(dir, "reference.png")
+			actual := filepath.Join(dir, "actual.png")
+			mask := filepath.Join(dir, "mask.png")
+			base := image.NewRGBA(image.Rect(0, 0, 1000, 1))
+			changed := image.NewRGBA(base.Bounds())
+			for x := 0; x < 1000; x++ {
+				mismatch := color.RGBA{G: 120, A: 255}
+				if x < test.dominantPixels {
+					mismatch = color.RGBA{R: 120, A: 255}
+				}
+				changed.SetRGBA(x, 0, mismatch)
+			}
+			writeSmokePNG(t, reference, base)
+			writeSmokePNG(t, actual, changed)
+
+			output, err := exec.Command(binary, reference, actual, "--output", mask).CombinedOutput()
+			require.NoError(t, err, string(output))
+			var comparison diff.ImageComparison
+			require.NoError(t, json.Unmarshal(output, &comparison))
+			require.Len(t, comparison.Regions, 1)
+			assert.Equal(t, test.expected, comparison.Regions[0].Classification)
+			assert.Equal(t, test.dominantPixels, comparison.Regions[0].DominantColorPairs[0].Pixels)
+		})
+	}
+}
+
 func TestPixelPerfectHandlesDenseAlphaGradient(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	dir := t.TempDir()
