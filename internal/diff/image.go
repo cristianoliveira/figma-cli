@@ -32,6 +32,7 @@ type ImageComparison struct {
 	RGBRMSE         float64          `json:"rgbRmse"`
 	LuminanceRMSE   float64          `json:"luminanceRmse"`
 	AlphaRMSE       float64          `json:"alphaRmse"`
+	EdgeRMSE        float64          `json:"edgeRmse"`
 	ComparedRegion  *Bounds          `json:"comparedRegion,omitempty"`
 	Bounds          *Bounds          `json:"bounds,omitempty"`
 	Regions         []Region         `json:"regions,omitempty"`
@@ -118,6 +119,7 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 		result.RGBRMSE = math.Sqrt(rgbSquaredError/float64(compared*3)) / 255
 		result.LuminanceRMSE = math.Sqrt(luminanceSquaredError/float64(compared)) / 255
 		result.AlphaRMSE = math.Sqrt(alphaSquaredError/float64(compared)) / 255
+		result.EdgeRMSE = imageEdgeRMSE(reference, actual, area, ignored)
 	}
 	if region != nil {
 		comparedRegion := area
@@ -157,6 +159,38 @@ func encodePNG(path string, img image.Image) error {
 		return err
 	}
 	return file.Close()
+}
+
+func imageEdgeRMSE(reference, actual image.Image, area Bounds, ignored []Bounds) float64 {
+	var squaredError float64
+	samples := 0
+	for y := area.Y; y < area.Y+area.Height; y++ {
+		for x := area.X; x < area.X+area.Width; x++ {
+			if pointIgnored(x, y, ignored) {
+				continue
+			}
+			referencePixel := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+x, reference.Bounds().Min.Y+y)).(color.NRGBA)
+			actualPixel := color.NRGBAModel.Convert(actual.At(actual.Bounds().Min.X+x, actual.Bounds().Min.Y+y)).(color.NRGBA)
+			for _, previous := range [][2]int{{x - 1, y}, {x, y - 1}} {
+				if previous[0] < area.X || previous[1] < area.Y || pointIgnored(previous[0], previous[1], ignored) {
+					continue
+				}
+				referencePrevious := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+previous[0], reference.Bounds().Min.Y+previous[1])).(color.NRGBA)
+				actualPrevious := color.NRGBAModel.Convert(actual.At(actual.Bounds().Min.X+previous[0], actual.Bounds().Min.Y+previous[1])).(color.NRGBA)
+				delta := (visibleLuminance(referencePixel) - visibleLuminance(referencePrevious)) - (visibleLuminance(actualPixel) - visibleLuminance(actualPrevious))
+				squaredError += delta * delta
+				samples++
+			}
+		}
+	}
+	if samples == 0 {
+		return 0
+	}
+	return math.Sqrt(squaredError/float64(samples)) / 255
+}
+
+func visibleLuminance(pixel color.NRGBA) float64 {
+	return luminance(pixel) * float64(pixel.A) / 255
 }
 
 func luminance(pixel color.NRGBA) float64 {
