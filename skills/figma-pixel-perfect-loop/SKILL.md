@@ -62,7 +62,9 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
    - Add `--overlay <path>` when direction matters: red means stronger/present in Figma, green means stronger/present in implementation.
    - Use `--region-gap` to group nearby glyph clusters, `--min-region-pixels` to omit tiny clusters, and repeat `--ignore-region` for known dynamic or irrelevant areas.
    - Use `--suggest-offset <radius>` to report likely translation. Never apply it silently; original metrics remain authoritative.
-   - Read metrics diagnostically: `edgeRmse` emphasizes geometry, `luminanceRmse` brightness, `rgbRmse` color, and `alphaRmse` transparency/effects.
+   - Read global and per-region metrics diagnostically: `edgeRmse` emphasizes geometry, `luminanceRmse` brightness, `rgbRmse` color, and `alphaRmse` transparency/effects.
+   - Use region hints carefully: `solid-fill` plus `dominantColorPairs` points to fill mismatch; `geometry` points to bounds/spacing; `sparse-raster` is commonly text or antialiasing; `mixed` needs visual inspection.
+   - Use `--mask <png>` for irregular comparison areas. Visible non-black pixels are included; black or transparent pixels are ignored.
    - Keep screenshots, masks, overlays, and JSON metrics under `output/visual-diff/`.
 
 4. **Refine outside-in, one region per loop**
@@ -78,7 +80,7 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
 5. **Use metrics correctly**
    - A lower crop RMSE and changed ratio are evidence of improvement.
    - Use `--max-rmse` and `--max-changed-ratio` when the loop needs deterministic pass/fail validation.
-   - An increased score is feedback, not failure: inspect the mask, check coordinate alignment and crop boundaries, then correct the largest discrepancy.
+   - An increased score is feedback, not failure: inspect the directional overlay, regional classification and dominant color pairs, coordinate alignment, and crop boundaries; then correct the largest discrepancy.
    - Do not claim pixel-perfect based only on DOM content or a whole-page metric.
 
 ## Stable Playwright Capture
