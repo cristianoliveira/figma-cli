@@ -39,6 +39,7 @@ Every command answers one question. Use this as a lookup table:
 | What unresolved feedback affects this node? | `figma comments --include-ancestors --state open <url>` |
 | What changed structurally? | `figma changes --from v1 --to v2 <url>` |
 | What changed in the copy? | `figma diff text --from v1 --to v2 <url>` |
+| How different are two PNG screenshots? | `figma diff image reference.png actual.png --output diff.png` |
 | What is this file about? | `figma meta <url>` |
 | What versions exist? | `figma versions <url>` |
 | When did this text appear? | `figma diff blame --to <version> <url>` |
@@ -247,6 +248,23 @@ figma changes --from <version-id> --to <version-id> --quiet "abc123"
 ```
 
 Reports added/removed/renamed nodes, component swaps, auto-layout changes, style binding changes, bounds changes, and child reordering. `--terse` omits property details. `--limit` bounds emitted nodes while `total` and `truncated` preserve diff size. `--quiet` uses grep-style status: 0 means changes exist, 1 means none. Prefer a node-scoped URL for focused PR review and faster requests.
+
+### `figma diff image` — Validate visual similarity
+
+```bash
+# Whole-image baseline and transparent red difference mask
+figma diff image reference.png implementation.png --output diff.png
+
+# Compare one source-image region; bounds remain absolute in JSON
+figma diff image reference.png implementation.png \
+  --region 522,282,160,160 --output region-diff.png
+
+# Ignore minor raster noise and fail deterministic validation gates
+figma diff image reference.png implementation.png --output diff.png \
+  --threshold 8 --max-rmse 0.03 --max-changed-ratio 0.02
+```
+
+Inputs must be equal-sized PNGs. JSON reports normalized RMSE, changed-pixel ratio, overall bounds, and up to 20 largest disconnected regions. `--region` uses `x,y,width,height`; the mask is crop-sized while reported bounds use full-image coordinates. Use threshold and validation flags for agent loops or CI.
 
 ### `figma diff text` — Copy changes between versions
 

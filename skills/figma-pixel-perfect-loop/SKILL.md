@@ -3,7 +3,7 @@ name: figma-pixel-perfect-loop
 description: >
   Iteratively match a local UI to a Figma frame using measured visual diffs.
   Use when user says "make this match Figma", "pixel perfect this page", "compare our UI to Figma", "improve visual similarity", or "keep refining the Figma implementation".
-  Works with a Figma URL, local implementation, figma CLI, Playwright, Nix, and ImageMagick.
+  Works with a Figma URL, local implementation, figma CLI, and Playwright; ImageMagick is only an optional cross-check.
   Do NOT use for generic frontend implementation without a Figma reference, Figma editing, or a one-time visual review.
 ---
 
@@ -30,12 +30,14 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
      ```bash
      figma export --format png --output output/visual-diff/figma-reference.png --id <frame-id> <file-key>
      ```
-   - Verify image dimensions first, before any diff: pixel metrics are meaningful only when the reference and implementation have identical bounds. Prefer the portable, Nix-pinned tool:
+   - Run a whole-frame baseline. `figma diff image` rejects unequal dimensions before producing misleading metrics:
      ```bash
-     nix shell nixpkgs#imagemagick -c identify -format '%f: %wx%h\n' \
+     figma diff image \
        output/visual-diff/figma-reference.png \
-       output/visual-diff/implementation.png
+       output/visual-diff/implementation.png \
+       --output output/visual-diff/baseline-mask.png
      ```
+   - Use returned disconnected `regions` to locate high-impact mismatch clusters. The whole-frame RMSE remains orientation, not verdict.
    - Capture specifications, never guess when Figma can answer:
      ```bash
      figma css --recursive --id <frame-id> <file-key> > .tmp/figma/frame.css
@@ -49,15 +51,15 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
 
 3. **Compare one region, not the whole page**
    - Whole-frame RMSE is only a baseline; it over-penalizes moved content.
-   - Crop the same Figma and implementation region using a direct child frame's bounds relative to the selected parent. Compare with a temporary Nix shell:
+   - Compare the same Figma and implementation region using a direct child frame's bounds relative to the selected parent:
      ```bash
-     nix shell nixpkgs#imagemagick -c sh -c '
-       magick figma-reference.png -crop <width>x<height>+<x>+<y> +repage reference.png
-       magick implementation.png -crop <width>x<height>+<x>+<y> +repage implementation.png
-       magick compare -metric RMSE reference.png implementation.png diff.png 2>rmse.txt; test $? -le 1
-     '
+     figma diff image figma-reference.png implementation.png \
+       --region <x>,<y>,<width>,<height> \
+       --threshold 8 \
+       --output output/visual-diff/region-mask.png
      ```
-   - Keep the reference, implementation crop, diff image, and metric under `output/visual-diff/`.
+   - Region masks are crop-sized; `comparedRegion`, mismatch `bounds`, and disconnected region bounds remain absolute full-image coordinates.
+   - Keep screenshots, masks, and JSON metrics under `output/visual-diff/`.
 
 4. **Refine outside-in, one region per loop**
    1. canvas and sidebar
@@ -70,8 +72,9 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
    - For text, also compare DOM line boxes: width, height, top offset, font family, size, line-height, weight, and link baseline. Fix text geometry before using a raster score to tune glyph rendering.
 
 5. **Use metrics correctly**
-   - A lower crop RMSE is evidence of improvement.
-   - An increased score is feedback, not failure: inspect `diff.png`, check coordinate alignment and crop boundaries, then correct the largest discrepancy.
+   - A lower crop RMSE and changed ratio are evidence of improvement.
+   - Use `--max-rmse` and `--max-changed-ratio` when the loop needs deterministic pass/fail validation.
+   - An increased score is feedback, not failure: inspect the mask, check coordinate alignment and crop boundaries, then correct the largest discrepancy.
    - Do not claim pixel-perfect based only on DOM content or a whole-page metric.
 
 ## Guardrails
@@ -88,7 +91,7 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
 ## Completion Checklist
 
 - Reference and implementation screenshots have identical dimensions without image resampling, including equivalent shadow/effect padding.
-- Every important region has a matching crop and `diff.png`.
+- Every important region has a recorded `--region` comparison and mask PNG.
 - Each text region records Figma and DOM bounds; multiline copy, links, and control labels have matching line-box height and baseline before final raster comparison.
 - CSS values trace back to Figma inspect/CSS output or exported assets.
 - Region metrics are recorded and improving or explicitly explained.
