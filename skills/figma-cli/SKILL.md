@@ -263,7 +263,9 @@ pixel-perfect reference.png implementation.png \
 
 # Ignore minor raster noise and fail deterministic validation gates
 pixel-perfect reference.png implementation.png --output diff.png \
-  --threshold 8 --max-rmse 0.03 --max-changed-ratio 0.02
+  --threshold 8 --perceptual-threshold 0.1 \
+  --max-rmse 0.03 --max-changed-ratio 0.02 \
+  --max-perceptual-changed-ratio 0.01
 
 # Diagnose direction, alignment, noisy clusters, and known dynamic areas
 pixel-perfect reference.png implementation.png --output diff.png \
@@ -272,7 +274,7 @@ pixel-perfect reference.png implementation.png --output diff.png \
   --ignore-region 0,0,100,40
 ```
 
-Inputs must be equal-sized PNGs. JSON reports normalized overall, RGB, luminance, alpha, and edge RMSE; changed-pixel ratio; overall bounds; and up to 20 largest disconnected regions. `--region` uses `x,y,width,height`; masks and overlays are crop-sized while reported bounds use full-image coordinates. Red overlay pixels are stronger in the reference; green pixels are stronger in the implementation. Suggested offsets are diagnostic and never silently applied. Repeat `--ignore-region` for known dynamic areas. Use threshold and validation flags for agent loops or CI.
+Inputs must be equal-sized PNGs. JSON preserves raw metrics, OKLab perceptual metrics, report-only antialias evidence, changed rows/bounds, and up to 20 largest disconnected regions. High raw but low perceptual change with dominant antialias evidence usually points to capture/font rendering rather than layout CSS. `--region` uses `x,y,width,height`; masks and overlays are crop-sized while reported bounds use full-image coordinates. Red overlay pixels are stronger in the reference; green pixels are stronger in the implementation. Suggested offsets are diagnostic and never silently applied. Repeat `--ignore-region` for known dynamic areas. Use threshold and validation flags for agent loops or CI.
 
 ### `figma diff text` — Copy changes between versions
 

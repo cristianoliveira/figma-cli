@@ -22,13 +22,17 @@ Measure and localize screenshot differences without silently resizing or alignin
      --overlay diff-overlay.png
    ```
 2. Reject unequal dimensions. Same dimensions are necessary but do not prove shared coordinates.
-3. Read global `rmse`, `changedRatio`, `edgeRmse`, `rgbRmse`, `luminanceRmse`, and `alphaRmse`.
-4. Rank returned regions. Inspect each region's RMSE, changed ratio, dominant color pairs, and classification.
+3. Preserve three evidence layers:
+   - raw: `changedPixels`, `changedRatio`, `rmse`, `rgbRmse`, `luminanceRmse`, `alphaRmse`, and `edgeRmse`
+   - perceptual: `perceptualRmse`, `perceptualChangedPixels`, and `perceptualChangedRatio`
+   - rendering: `antialiasedPixels`
+4. Use `bounds` and `changedRows` to localize work, then rank regions. Read the same raw, perceptual, and antialias evidence per region before using classification hints.
 5. Narrow the next comparison:
    ```bash
    pixel-perfect reference.png implementation.png \
      --region <x>,<y>,<width>,<height> \
      --threshold 8 \
+     --perceptual-threshold 0.1 \
      --region-gap 8 \
      --min-region-pixels 12 \
      --output region-mask.png \
@@ -38,12 +42,16 @@ Measure and localize screenshot differences without silently resizing or alignin
 
 ## Diagnosis
 
-- `solid-fill` plus dominant color pair: inspect fill/background color.
-- `geometry` or high `edgeRmse`: inspect bounds, spacing, border, icon, or displacement.
-- `sparse-raster`: likely text or antialiasing; verify font and DOM line boxes.
-- High `alphaRmse`: inspect transparency, shadows, and effect padding.
-- `--suggest-offset <radius>` reports likely translation but never applies it.
-- Red overlay means stronger/present in reference; green means stronger/present in implementation.
+| Evidence | Next action |
+|---|---|
+| High raw, low perceptual, high antialias share | Verify fonts, browser, device scale, and capture stability; avoid speculative CSS changes. |
+| High `edgeRmse` | Inspect bounds, spacing, border, icon size, or displacement. |
+| High perceptual error with low edge error | Inspect fill, text color, opacity, shadow, or gradient. |
+| High `alphaRmse` | Inspect transparency, shadows, and effect padding. |
+| `solid-fill` plus dominant color pair | Inspect fill/background color. |
+| `mixed`, especially after `--region-gap` | Inspect pixels, Figma/DOM facts, and grouped subregions; do not force one diagnosis. |
+
+`--suggest-offset <radius>` reports likely translation but never applies it. Red overlay means stronger/present in reference; green means stronger/present in implementation. Classifications are heuristic; raw evidence is authoritative.
 
 ## Exclusions and CI
 
@@ -53,6 +61,7 @@ pixel-perfect reference.png implementation.png \
   --mask comparison-mask.png \
   --max-rmse 0.03 \
   --max-changed-ratio 0.02 \
+  --max-perceptual-changed-ratio 0.01 \
   --output diff-mask.png
 ```
 

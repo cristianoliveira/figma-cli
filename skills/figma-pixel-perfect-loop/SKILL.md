@@ -62,8 +62,11 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
    - Add `--overlay <path>` when direction matters: red means stronger/present in Figma, green means stronger/present in implementation.
    - Use `--region-gap` to group nearby glyph clusters, `--min-region-pixels` to omit tiny clusters, and repeat `--ignore-region` for known dynamic or irrelevant areas.
    - Use `--suggest-offset <radius>` to report likely translation. Never apply it silently; original metrics remain authoritative.
-   - Read global and per-region metrics diagnostically: `edgeRmse` emphasizes geometry, `luminanceRmse` brightness, `rgbRmse` color, and `alphaRmse` transparency/effects.
-   - Use region hints carefully: `solid-fill` plus `dominantColorPairs` points to fill mismatch; `geometry` points to bounds/spacing; `sparse-raster` is commonly text or antialiasing; `mixed` needs visual inspection.
+   - Preserve raw evidence (`changedRatio`, `rmse`, color/alpha/edge metrics), perceptual evidence (`perceptualRmse`, `perceptualChangedRatio`), and rendering evidence (`antialiasedPixels`). Read all three globally and per region.
+   - Use `bounds` and `changedRows` to map raster changes back to Figma nodes and DOM elements.
+   - High raw but low perceptual change with a high antialias share usually means font/browser rasterization. Verify capture environment before changing CSS.
+   - High `edgeRmse` points to geometry. High perceptual error with low edge error points to color, opacity, shadow, or gradient.
+   - Use region hints carefully: `solid-fill` plus `dominantColorPairs` points to fill mismatch; `geometry` points to bounds/spacing; `sparse-raster` is commonly text or antialiasing; `mixed` needs Figma and DOM inspection. Grouping unlike regions can turn clear signals into `mixed`.
    - Use `--mask <png>` for irregular comparison areas. Visible non-black pixels are included; black or transparent pixels are ignored.
    - Keep screenshots, masks, overlays, and JSON metrics under `output/visual-diff/`.
 
@@ -78,8 +81,8 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
    - For text, also compare DOM line boxes: width, height, top offset, font family, size, line-height, weight, and link baseline. Fix text geometry before using a raster score to tune glyph rendering.
 
 5. **Use metrics correctly**
-   - A lower crop RMSE and changed ratio are evidence of improvement.
-   - Use `--max-rmse` and `--max-changed-ratio` when the loop needs deterministic pass/fail validation.
+   - Lower raw and perceptual regional errors are evidence of improvement. If only raw error remains and antialias evidence dominates, stop changing layout blindly and verify rendering constraints.
+   - Use `--max-rmse`, `--max-changed-ratio`, and `--max-perceptual-changed-ratio` when the loop needs deterministic pass/fail validation. Keep raw gates when exact raster equality is required; use the perceptual gate for practical human-visible convergence.
    - An increased score is feedback, not failure: inspect the directional overlay, regional classification and dominant color pairs, coordinate alignment, and crop boundaries; then correct the largest discrepancy.
    - Do not claim pixel-perfect based only on DOM content or a whole-page metric.
 
@@ -127,5 +130,6 @@ await page.addStyleTag({ content: `
 - Capture metadata fixes viewport, device scale, browser, font readiness, background, and effect padding.
 - Each text region records Figma and DOM bounds; multiline copy, links, and control labels have matching line-box height and baseline before final raster comparison.
 - CSS values trace back to Figma inspect/CSS output or exported assets.
-- Region metrics are recorded and improving or explicitly explained.
+- Raw, perceptual, and antialias region evidence is recorded and improving or explicitly explained.
+- Remaining raw-only antialias differences are attributed to verified font/browser/capture constraints rather than hidden by thresholds.
 - Final response states evidence and remaining differences; never merely says “matches.”
