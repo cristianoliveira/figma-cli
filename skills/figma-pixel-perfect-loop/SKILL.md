@@ -114,6 +114,15 @@ await page.addStyleTag({ content: `
 
 ## Guardrails
 
+### Non-negotiable: recreate UI; never fake it with screenshots
+
+- Never place the Figma export, reference screenshot, cropped screenshot, or any rasterized capture into the page to represent UI. This includes `<img>`, CSS `background-image`, canvas drawing, base64/data URLs, SVG wrappers containing embedded screenshots, and pseudo-elements.
+- Build components as real DOM/native UI with layout, text, controls, and styles. The implementation must remain selectable, accessible, interactive, and responsive where the design requires it.
+- Images are allowed only when they are genuine design content: photos, illustrations, logos, icons, textures, or other artwork intended to appear as an image. Use the asset exported from Figma when available.
+- An allowed image must represent only that image asset—not a card, panel, form, navigation area, text block, control group, page section, or whole screen flattened into pixels.
+- Never use a reference image as a temporary shortcut to improve similarity metrics. If source code or the rendered DOM contains one, stop, remove it, and recreate the UI before continuing the comparison loop.
+- Before accepting visual improvement, inspect DOM and CSS to verify the changed region is implemented from components rather than reference-image pixels. A better diff score does not override this rule.
+
 - Use the Figma frame's native dimensions for both images. Do not resize either image before comparison: a rescaled screenshot changes antialiasing and invalidates RMSE.
 - Capture the implementation in a wrapper whose bounds include the same effect/shadow extent as the Figma export; locator screenshots commonly clip shadows.
 - Calculate every crop from Figma bounds; never eyeball crop coordinates.
@@ -125,6 +134,7 @@ await page.addStyleTag({ content: `
 
 ## Completion Checklist
 
+- No reference screenshot, Figma frame export, or crop is rendered in the implementation. Every UI region is real DOM/native UI; each rendered image is verified as genuine illustration/artwork content.
 - Reference and implementation screenshots have identical dimensions without image resampling, including equivalent shadow/effect padding.
 - Every important region has a recorded `--region` comparison and mask PNG.
 - Capture metadata fixes viewport, device scale, browser, font readiness, background, and effect padding.
