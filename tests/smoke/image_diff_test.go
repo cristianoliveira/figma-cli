@@ -240,6 +240,10 @@ func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
 		{name: "negative offset radius", flags: []string{"--suggest-offset", "-1"}, expected: "--suggest-offset must be non-negative"},
 		{name: "negative region gap", flags: []string{"--region-gap", "-1"}, expected: "--region-gap must be non-negative"},
 		{name: "zero minimum region pixels", flags: []string{"--min-region-pixels", "0"}, expected: "--min-region-pixels must be positive"},
+		{name: "NaN RMSE limit", flags: []string{"--max-rmse", "NaN"}, expected: "--max-rmse must be -1 or a finite non-negative number"},
+		{name: "invalid negative RMSE limit", flags: []string{"--max-rmse", "-2"}, expected: "--max-rmse must be -1 or a finite non-negative number"},
+		{name: "changed ratio above one", flags: []string{"--max-changed-ratio", "1.1"}, expected: "--max-changed-ratio must be -1 or between 0 and 1"},
+		{name: "invalid negative changed ratio", flags: []string{"--max-changed-ratio", "-2"}, expected: "--max-changed-ratio must be -1 or between 0 and 1"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

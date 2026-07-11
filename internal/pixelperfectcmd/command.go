@@ -37,6 +37,14 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if minRegionPixels < 1 {
 				return fmt.Errorf("--min-region-pixels must be positive")
 			}
+			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
+			if maxRMSE != -1 && (maxRMSE < 0 || math.IsNaN(maxRMSE) || math.IsInf(maxRMSE, 0)) {
+				return fmt.Errorf("--max-rmse must be -1 or a finite non-negative number")
+			}
+			maxChangedRatio, _ := cmd.Flags().GetFloat64("max-changed-ratio")
+			if maxChangedRatio != -1 && (maxChangedRatio < 0 || maxChangedRatio > 1 || math.IsNaN(maxChangedRatio) || math.IsInf(maxChangedRatio, 0)) {
+				return fmt.Errorf("--max-changed-ratio must be -1 or between 0 and 1")
+			}
 			region, err := parseImageRegion(cmd.Flags().Lookup("region").Value.String())
 			if err != nil {
 				return err
@@ -95,11 +103,9 @@ func newCommand(compare imageComparer) *cobra.Command {
 				result.Regions[index].DominantColorPairs = metrics.DominantColorPairs
 				result.Regions[index].Classification = diff.ClassifyImageRegion(metrics)
 			}
-			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
 			if maxRMSE >= 0 && result.RMSE > maxRMSE {
 				return fmt.Errorf("image diff validation failed: RMSE %.6f exceeds maximum %.6f", result.RMSE, maxRMSE)
 			}
-			maxChangedRatio, _ := cmd.Flags().GetFloat64("max-changed-ratio")
 			if maxChangedRatio >= 0 && result.ChangedRatio > maxChangedRatio {
 				return fmt.Errorf("image diff validation failed: changed ratio %.6f exceeds maximum %.6f", result.ChangedRatio, maxChangedRatio)
 			}
