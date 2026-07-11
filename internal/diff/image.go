@@ -24,6 +24,7 @@ type Region struct {
 	RMSE               float64     `json:"rmse"`
 	EdgeRMSE           float64     `json:"edgeRmse"`
 	DominantColorPairs []ColorPair `json:"dominantColorPairs,omitempty"`
+	Classification     string      `json:"classification"`
 }
 
 type ImageComparison struct {
