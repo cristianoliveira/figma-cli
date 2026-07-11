@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type imageComparer func(referencePath, actualPath, maskPath string, threshold uint8, region *diff.Bounds) (diff.ImageComparison, error)
+type imageComparer func(referencePath, actualPath, maskPath string, threshold uint8, region *diff.Bounds, ignored []diff.Bounds) (diff.ImageComparison, error)
 
 func newDiffImageCommand(compare imageComparer) *cobra.Command {
 	command := &cobra.Command{
@@ -27,13 +27,22 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			result, err := compare(args[0], args[1], output, threshold, region)
+			ignoredValues, _ := cmd.Flags().GetStringArray("ignore-region")
+			ignored := make([]diff.Bounds, 0, len(ignoredValues))
+			for _, value := range ignoredValues {
+				ignoredRegion, parseErr := parseImageRegion(value)
+				if parseErr != nil {
+					return fmt.Errorf("invalid --ignore-region: %w", parseErr)
+				}
+				ignored = append(ignored, *ignoredRegion)
+			}
+			result, err := compare(args[0], args[1], output, threshold, region, ignored)
 			if err != nil {
 				return err
 			}
 			overlay, _ := cmd.Flags().GetString("overlay")
 			if overlay != "" {
-				if err := diff.WriteImageOverlay(args[0], args[1], overlay, region); err != nil {
+				if err := diff.WriteImageOverlay(args[0], args[1], overlay, region, ignored); err != nil {
 					return err
 				}
 				result.Overlay = overlay
@@ -54,6 +63,7 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask")
 	command.Flags().Uint8("threshold", 0, "ignore per-channel differences at or below this value (0-255)")
 	command.Flags().String("region", "", "compare only x,y,width,height")
+	command.Flags().StringArray("ignore-region", nil, "exclude x,y,width,height; repeat for multiple areas")
 	command.Flags().String("overlay", "", "path for directional overlay (reference red, actual green)")
 	command.Flags().Int("min-region-pixels", 1, "omit disconnected regions smaller than this many changed pixels")
 	command.Flags().Float64("max-rmse", -1, "fail when normalized RMSE exceeds this value")
@@ -91,5 +101,5 @@ func parseImageRegion(value string) (*diff.Bounds, error) {
 }
 
 func init() {
-	diffCmd.AddCommand(newDiffImageCommand(diff.CompareImagesInRegion))
+	diffCmd.AddCommand(newDiffImageCommand(diff.CompareImagesWithIgnoredRegions))
 }

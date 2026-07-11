@@ -26,6 +26,7 @@ type ImageComparison struct {
 	Width          int      `json:"width"`
 	Height         int      `json:"height"`
 	ChangedPixels  int      `json:"changedPixels"`
+	ComparedPixels int      `json:"comparedPixels"`
 	ChangedRatio   float64  `json:"changedRatio"`
 	RMSE           float64  `json:"rmse"`
 	ComparedRegion *Bounds  `json:"comparedRegion,omitempty"`
@@ -40,6 +41,10 @@ func CompareImages(referencePath, actualPath, maskPath string, threshold uint8) 
 }
 
 func CompareImagesInRegion(referencePath, actualPath, maskPath string, threshold uint8, region *Bounds) (ImageComparison, error) {
+	return CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath, threshold, region, nil)
+}
+
+func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string, threshold uint8, region *Bounds, ignored []Bounds) (ImageComparison, error) {
 	reference, err := decodePNG(referencePath)
 	if err != nil {
 		return ImageComparison{}, fmt.Errorf("decode reference: %w", err)
@@ -63,11 +68,16 @@ func CompareImagesInRegion(referencePath, actualPath, maskPath string, threshold
 	width, height := area.Width, area.Height
 	mask := image.NewNRGBA(image.Rect(0, 0, width, height))
 	changedPixels := make([]bool, width*height)
-	changed, minX, minY, maxX, maxY := 0, width, height, -1, -1
+	changed, compared, minX, minY, maxX, maxY := 0, 0, width, height, -1, -1
 	var rgbSquaredError, alphaSquaredError float64
 	hasTransparency := false
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
+			absoluteX, absoluteY := area.X+x, area.Y+y
+			if pointIgnored(absoluteX, absoluteY, ignored) {
+				continue
+			}
+			compared++
 			r := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+area.X+x, reference.Bounds().Min.Y+area.Y+y)).(color.NRGBA)
 			a := color.NRGBAModel.Convert(actual.At(actual.Bounds().Min.X+area.X+x, actual.Bounds().Min.Y+area.Y+y)).(color.NRGBA)
 			delta := [4]uint8{absDiff(r.R, a.R), absDiff(r.G, a.G), absDiff(r.B, a.B), absDiff(r.A, a.A)}
@@ -95,7 +105,11 @@ func CompareImagesInRegion(referencePath, actualPath, maskPath string, threshold
 		channelCount = 4
 		squaredError += alphaSquaredError
 	}
-	result := ImageComparison{Width: width, Height: height, ChangedPixels: changed, ChangedRatio: float64(changed) / float64(width*height), RMSE: math.Sqrt(squaredError/float64(width*height*channelCount)) / 255, Mask: maskPath}
+	result := ImageComparison{Width: width, Height: height, ChangedPixels: changed, ComparedPixels: compared, Mask: maskPath}
+	if compared > 0 {
+		result.ChangedRatio = float64(changed) / float64(compared)
+		result.RMSE = math.Sqrt(squaredError/float64(compared*channelCount)) / 255
+	}
 	if region != nil {
 		comparedRegion := area
 		result.ComparedRegion = &comparedRegion
@@ -134,6 +148,15 @@ func encodePNG(path string, img image.Image) error {
 		return err
 	}
 	return file.Close()
+}
+
+func pointIgnored(x, y int, regions []Bounds) bool {
+	for _, region := range regions {
+		if x >= region.X && x < region.X+region.Width && y >= region.Y && y < region.Y+region.Height {
+			return true
+		}
+	}
+	return false
 }
 
 func findRegions(changed []bool, width, height int) []Region {

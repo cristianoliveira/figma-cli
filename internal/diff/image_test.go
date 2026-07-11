@@ -60,6 +60,25 @@ func TestCompareImagesInRegionMeasuresOnlySelectedArea(t *testing.T) {
 	assert.Equal(t, Bounds{X: 3, Y: 1, Width: 1, Height: 1}, result.Regions[0].Bounds)
 }
 
+func TestCompareImagesIgnoresSelectedRegions(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 3, 1)))
+	changed := image.NewRGBA(image.Rect(0, 0, 3, 1))
+	changed.Set(0, 0, color.White)
+	changed.Set(2, 0, color.White)
+	writeTestPNG(t, actual, changed)
+
+	result, err := CompareImagesWithIgnoredRegions(reference, actual, filepath.Join(dir, "mask.png"), 0, nil, []Bounds{{X: 0, Y: 0, Width: 1, Height: 1}})
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.ChangedPixels)
+	assert.Equal(t, 2, result.ComparedPixels)
+	assert.InDelta(t, 0.5, result.ChangedRatio, 0.000001)
+	assert.Equal(t, &Bounds{X: 2, Y: 0, Width: 1, Height: 1}, result.Bounds)
+}
+
 func TestCompareImagesUsesRGBRMSEForOpaqueRegions(t *testing.T) {
 	dir := t.TempDir()
 	reference := image.NewRGBA(image.Rect(0, 0, 2, 2))
@@ -92,7 +111,7 @@ func TestWriteImageOverlayShowsReferenceInRedAndActualInGreen(t *testing.T) {
 	writeTestPNG(t, actualPath, actual)
 	overlayPath := filepath.Join(dir, "overlay.png")
 
-	err := WriteImageOverlay(referencePath, actualPath, overlayPath, nil)
+	err := WriteImageOverlay(referencePath, actualPath, overlayPath, nil, nil)
 
 	require.NoError(t, err)
 	overlay, err := decodePNG(overlayPath)

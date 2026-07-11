@@ -8,7 +8,7 @@ import (
 
 // WriteImageOverlay writes a transparent directional difference image.
 // Red pixels are stronger in the reference; green pixels are stronger in the actual image.
-func WriteImageOverlay(referencePath, actualPath, outputPath string, region *Bounds) error {
+func WriteImageOverlay(referencePath, actualPath, outputPath string, region *Bounds, ignored []Bounds) error {
 	reference, err := decodePNG(referencePath)
 	if err != nil {
 		return fmt.Errorf("decode reference: %w", err)
@@ -30,6 +30,9 @@ func WriteImageOverlay(referencePath, actualPath, outputPath string, region *Bou
 	overlay := image.NewNRGBA(image.Rect(0, 0, area.Width, area.Height))
 	for y := 0; y < area.Height; y++ {
 		for x := 0; x < area.Width; x++ {
+			if pointIgnored(area.X+x, area.Y+y, ignored) {
+				continue
+			}
 			referencePixel := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+area.X+x, reference.Bounds().Min.Y+area.Y+y)).(color.NRGBA)
 			actualPixel := color.NRGBAModel.Convert(actual.At(actual.Bounds().Min.X+area.X+x, actual.Bounds().Min.Y+area.Y+y)).(color.NRGBA)
 			referenceStrength := directionalDifference(referencePixel, actualPixel)
