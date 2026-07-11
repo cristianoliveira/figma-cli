@@ -37,6 +37,14 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 				}
 				ignored = append(ignored, *ignoredRegion)
 			}
+			comparisonMask, _ := cmd.Flags().GetString("mask")
+			if comparisonMask != "" {
+				maskedRegions, maskErr := diff.IgnoredRegionsFromMask(comparisonMask, args[0])
+				if maskErr != nil {
+					return maskErr
+				}
+				ignored = append(ignored, maskedRegions...)
+			}
 			result, err := compare(args[0], args[1], output, threshold, region, ignored)
 			if err != nil {
 				return err
@@ -78,6 +86,7 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 	command.Flags().Uint8("threshold", 0, "ignore per-channel differences at or below this value (0-255)")
 	command.Flags().String("region", "", "compare only x,y,width,height")
 	command.Flags().StringArray("ignore-region", nil, "exclude x,y,width,height; repeat for multiple areas")
+	command.Flags().String("mask", "", "full-size PNG selecting compared pixels (visible non-black includes)")
 	command.Flags().String("overlay", "", "path for directional overlay (reference red, actual green)")
 	command.Flags().Int("suggest-offset", 0, "report best translation within this pixel radius without applying it")
 	command.Flags().Int("region-gap", 0, "group mismatch regions separated by at most this many pixels")
