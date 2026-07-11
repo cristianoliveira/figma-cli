@@ -14,6 +14,7 @@ Private application code for the CLI. Keep boundaries explicit and easy to test.
 - `comments/`: comment API mapping, retrieval, and node-scoping workflows.
 - `diff/`: Figma design-history diff use cases; adapters supply its history interfaces.
 - `imagediff/`: generic PNG comparison, masks, overlays, metrics, alignment hints, regions, and classification; no Figma dependencies.
+- `pixelperfectcmd/`: standalone Cobra command orchestration for the generic image comparison engine.
 
 ## Dependency Rules
 

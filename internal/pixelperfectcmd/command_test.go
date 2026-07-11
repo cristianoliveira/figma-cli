@@ -1,11 +1,14 @@
-package cmd
+package pixelperfectcmd
 
 import (
+	"bytes"
 	"image"
 	"image/png"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/cobra"
 
 	diff "github.com/cristianoliveira/figma-cli/internal/imagediff"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +23,7 @@ func TestDiffImageCommandProducesMaskAndJSONMetrics(t *testing.T) {
 	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 2, 2)))
 	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 2, 2)))
 
-	result := executeCommand(newDiffImageCommand(diff.CompareImagesWithIgnoredRegions), reference, actual, "--output", mask)
+	result := executeCommand(newCommand(diff.CompareImagesWithIgnoredRegions), reference, actual, "--output", mask)
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"width":2,"height":2,"changedPixels":0,"comparedPixels":4,"changedRatio":0,"rmse":0,"rgbRmse":0,"luminanceRmse":0,"alphaRmse":0,"edgeRmse":0,"mask":"`+mask+`"}`, result.Stdout)
@@ -64,7 +67,7 @@ func TestDiffImageCommandFailsValidationThreshold(t *testing.T) {
 	changed.Set(0, 0, image.White)
 	writeTestPNG(t, actual, changed)
 
-	result := executeCommand(newDiffImageCommand(diff.CompareImagesWithIgnoredRegions), reference, actual, "--output", mask, "--max-changed-ratio", "0.1")
+	result := executeCommand(newCommand(diff.CompareImagesWithIgnoredRegions), reference, actual, "--output", mask, "--max-changed-ratio", "0.1")
 
 	assert.EqualError(t, result.Err, "image diff validation failed: changed ratio 0.250000 exceeds maximum 0.100000")
 }
@@ -75,4 +78,18 @@ func writeTestPNG(t *testing.T, path string, img image.Image) {
 	require.NoError(t, err)
 	require.NoError(t, png.Encode(file, img))
 	require.NoError(t, file.Close())
+}
+
+func executeCommand(command *cobra.Command, args ...string) commandResult {
+	var stdout, stderr bytes.Buffer
+	command.SetOut(&stdout)
+	command.SetErr(&stderr)
+	command.SetArgs(args)
+	err := command.Execute()
+	return commandResult{Stdout: stdout.String(), Stderr: stderr.String(), Err: err}
+}
+
+type commandResult struct {
+	Stdout, Stderr string
+	Err            error
 }

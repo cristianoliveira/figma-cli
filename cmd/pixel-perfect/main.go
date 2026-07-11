@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cristianoliveira/figma-cli/cmd"
+	"github.com/cristianoliveira/figma-cli/internal/pixelperfectcmd"
 )
 
 func main() {
-	command := cmd.NewPixelPerfectCommand()
+	command := pixelperfectcmd.NewCommand()
 	command.SilenceErrors = true
 	command.SilenceUsage = true
 	if err := command.Execute(); err != nil {

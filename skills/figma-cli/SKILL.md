@@ -39,7 +39,7 @@ Every command answers one question. Use this as a lookup table:
 | What unresolved feedback affects this node? | `figma comments --include-ancestors --state open <url>` |
 | What changed structurally? | `figma changes --from v1 --to v2 <url>` |
 | What changed in the copy? | `figma diff text --from v1 --to v2 <url>` |
-| How different are two PNG screenshots? | `figma diff image reference.png actual.png --output diff.png` |
+| How different are two PNG screenshots? | `pixel-perfect reference.png actual.png --output diff.png` |
 | What is this file about? | `figma meta <url>` |
 | What versions exist? | `figma versions <url>` |
 | When did this text appear? | `figma diff blame --to <version> <url>` |
@@ -249,24 +249,24 @@ figma changes --from <version-id> --to <version-id> --quiet "abc123"
 
 Reports added/removed/renamed nodes, component swaps, auto-layout changes, style binding changes, bounds changes, and child reordering. `--terse` omits property details. `--limit` bounds emitted nodes while `total` and `truncated` preserve diff size. `--quiet` uses grep-style status: 0 means changes exist, 1 means none. Prefer a node-scoped URL for focused PR review and faster requests.
 
-### `figma diff image` — Validate visual similarity
+### `pixel-perfect` — Validate visual similarity
 
-This compatibility adapter uses the same generic engine as standalone `pixel-perfect`. Prefer `pixel-perfect` for workflows that do not otherwise need Figma commands.
+Screenshot comparison is provided by the standalone `pixel-perfect` CLI and does not require Figma credentials.
 
 ```bash
 # Whole-image baseline and transparent red difference mask
-figma diff image reference.png implementation.png --output diff.png
+pixel-perfect reference.png implementation.png --output diff.png
 
 # Compare one source-image region; bounds remain absolute in JSON
-figma diff image reference.png implementation.png \
+pixel-perfect reference.png implementation.png \
   --region 522,282,160,160 --output region-diff.png
 
 # Ignore minor raster noise and fail deterministic validation gates
-figma diff image reference.png implementation.png --output diff.png \
+pixel-perfect reference.png implementation.png --output diff.png \
   --threshold 8 --max-rmse 0.03 --max-changed-ratio 0.02
 
 # Diagnose direction, alignment, noisy clusters, and known dynamic areas
-figma diff image reference.png implementation.png --output diff.png \
+pixel-perfect reference.png implementation.png --output diff.png \
   --overlay overlay.png --suggest-offset 5 \
   --region-gap 8 --min-region-pixels 12 \
   --ignore-region 0,0,100,40

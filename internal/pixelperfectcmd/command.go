@@ -1,19 +1,19 @@
-package cmd
+package pixelperfectcmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/cristianoliveira/figma-cli/internal/cli"
 	diff "github.com/cristianoliveira/figma-cli/internal/imagediff"
 	"github.com/spf13/cobra"
 )
 
 type imageComparer func(referencePath, actualPath, maskPath string, threshold uint8, region *diff.Bounds, ignored []diff.Bounds) (diff.ImageComparison, error)
 
-func newDiffImageCommand(compare imageComparer) *cobra.Command {
+func newCommand(compare imageComparer) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "image <reference.png> <actual.png>",
 		Short: "Compare equal-sized PNGs and write a changed-pixel mask",
@@ -91,7 +91,7 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 			if maxChangedRatio >= 0 && result.ChangedRatio > maxChangedRatio {
 				return fmt.Errorf("image diff validation failed: changed ratio %.6f exceeds maximum %.6f", result.ChangedRatio, maxChangedRatio)
 			}
-			return cli.NewPrinter(cmd).JSON(result)
+			return writeJSON(cmd, result)
 		},
 	}
 	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask")
@@ -169,14 +169,15 @@ func parseImageRegion(value string) (*diff.Bounds, error) {
 	return &diff.Bounds{X: values[0], Y: values[1], Width: values[2], Height: values[3]}, nil
 }
 
-// NewPixelPerfectCommand creates the standalone generic image comparison command.
-func NewPixelPerfectCommand() *cobra.Command {
-	command := newDiffImageCommand(diff.CompareImagesWithIgnoredRegions)
-	command.Use = "pixel-perfect <reference.png> <actual.png>"
-	command.PersistentFlags().Bool("json", false, "emit result as JSON")
-	return command
+func writeJSON(command *cobra.Command, value any) error {
+	encoder := json.NewEncoder(command.OutOrStdout())
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(value)
 }
 
-func init() {
-	diffCmd.AddCommand(newDiffImageCommand(diff.CompareImagesWithIgnoredRegions))
+// NewCommand creates the standalone image comparison command.
+func NewCommand() *cobra.Command {
+	command := newCommand(diff.CompareImagesWithIgnoredRegions)
+	command.Use = "pixel-perfect <reference.png> <actual.png>"
+	return command
 }

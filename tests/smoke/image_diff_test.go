@@ -26,29 +26,8 @@ func TestPixelPerfectStandaloneCLI(t *testing.T) {
 	assert.NotEmpty(t, comparison.Regions[0].Classification)
 }
 
-func TestPixelPerfectMatchesFigmaImageDiffAdapter(t *testing.T) {
-	fixtures := filepath.Join("fixtures", "image-diff")
-	reference, actual := filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png")
-	standalone := runImageDiff(t, buildCommand(t, "pixel-perfect"), []string{reference, actual})
-	adapter := runImageDiff(t, buildCLI(t), []string{"diff", "image", reference, actual})
-
-	assert.Equal(t, adapter.ChangedPixels, standalone.ChangedPixels)
-	assert.Equal(t, adapter.RMSE, standalone.RMSE)
-	assert.Equal(t, adapter.Regions, standalone.Regions)
-}
-
-func runImageDiff(t *testing.T, binary string, prefix []string) diff.ImageComparison {
-	t.Helper()
-	args := append(prefix, "--output", filepath.Join(t.TempDir(), "mask.png"))
-	output, err := exec.Command(binary, args...).CombinedOutput()
-	require.NoError(t, err, string(output))
-	var comparison diff.ImageComparison
-	require.NoError(t, json.Unmarshal(output, &comparison))
-	return comparison
-}
-
 func TestImageDiffScenarios(t *testing.T) {
-	binary := buildCLI(t)
+	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	tests := []struct {
 		name                  string
@@ -77,7 +56,7 @@ func TestImageDiffScenarios(t *testing.T) {
 			outputDir := t.TempDir()
 			mask := filepath.Join(outputDir, "mask.png")
 			overlay := filepath.Join(outputDir, "overlay.png")
-			args := []string{"diff", "image", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, test.actual), "--output", mask, "--overlay", overlay}
+			args := []string{filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, test.actual), "--output", mask, "--overlay", overlay}
 			args = append(args, test.flags...)
 			output, err := exec.Command(binary, args...).CombinedOutput()
 
@@ -109,10 +88,6 @@ func TestImageDiffScenarios(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
-}
-
-func buildCLI(t *testing.T) string {
-	return buildCommand(t, "figma")
 }
 
 func buildCommand(t *testing.T, name string) string {

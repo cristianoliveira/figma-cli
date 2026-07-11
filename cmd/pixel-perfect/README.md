@@ -137,7 +137,3 @@ Same dimensions are necessary but do not prove that screenshots share one coordi
 ## Limitations
 
 `pixel-perfect` is a measurement and diagnostic primitive, not a CSS debugger. Raster results remain sensitive to fonts, browser/OS rendering, alpha, capture bounds, and antialiasing. Region classifications are heuristics and cannot reliably name the exact CSS property to change.
-
-## Figma compatibility
-
-`figma diff image` is a compatibility adapter over the same engine. Prefer `pixel-perfect` when the workflow does not otherwise need Figma commands.
