@@ -27,6 +27,8 @@ func TestPixelPerfectAgainstUpstreamComparisonCorpus(t *testing.T) {
 				assert.Greater(t, result.RGBRMSE, 0.0)
 				assert.Greater(t, result.EdgeRMSE, 0.0)
 				assert.Greater(t, result.PerceptualRMSE, 0.0)
+				assert.Equal(t, 178, result.PerceptualChangedPixels)
+				assert.Less(t, result.PerceptualChangedPixels, result.ChangedPixels)
 			},
 		},
 		{
@@ -35,6 +37,8 @@ func TestPixelPerfectAgainstUpstreamComparisonCorpus(t *testing.T) {
 			assertMetrics: func(t *testing.T, result diff.ImageComparison) {
 				assert.Greater(t, result.EdgeRMSE, result.RGBRMSE)
 				assert.Greater(t, result.PerceptualRMSE, 0.0)
+				assert.Equal(t, 2, result.PerceptualChangedPixels)
+				assert.Less(t, result.PerceptualChangedPixels, result.ChangedPixels)
 			},
 		},
 		{
@@ -44,6 +48,7 @@ func TestPixelPerfectAgainstUpstreamComparisonCorpus(t *testing.T) {
 				assert.Zero(t, result.RMSE)
 				assert.Zero(t, result.AlphaRMSE)
 				assert.Zero(t, result.PerceptualRMSE)
+				assert.Zero(t, result.PerceptualChangedPixels)
 			},
 		},
 	}

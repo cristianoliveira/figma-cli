@@ -5,6 +5,8 @@ import (
 	"math"
 )
 
+const DefaultPerceptualThreshold = 0.1
+
 type oklabColor struct {
 	lightness float64
 	a         float64
