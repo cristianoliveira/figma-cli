@@ -26,6 +26,7 @@ type Region struct {
 	PerceptualRMSE          float64     `json:"perceptualRmse"`
 	PerceptualChangedPixels int         `json:"perceptualChangedPixels"`
 	PerceptualChangedRatio  float64     `json:"perceptualChangedRatio"`
+	AntialiasedPixels       int         `json:"antialiasedPixels"`
 	DominantColorPairs      []ColorPair `json:"dominantColorPairs,omitempty"`
 	Classification          string      `json:"classification"`
 }
@@ -89,6 +90,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 		}
 	}
 	width, height := area.Width, area.Height
+	fullImage := Bounds{Width: imageWidth, Height: imageHeight}
 	mask := image.NewNRGBA(image.Rect(0, 0, width, height))
 	changedPixels := make([]bool, width*height)
 	changedRows := make([]bool, height)
@@ -122,7 +124,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 				continue
 			}
 			changed++
-			if likelyAntialiased(reference, actual, absoluteX, absoluteY, area) {
+			if likelyAntialiased(reference, actual, absoluteX, absoluteY, fullImage, ignored) {
 				antialiased++
 			}
 			changedPixels[y*width+x] = true

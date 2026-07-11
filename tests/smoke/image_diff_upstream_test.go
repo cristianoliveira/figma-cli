@@ -30,6 +30,11 @@ func TestPixelPerfectAgainstUpstreamComparisonCorpus(t *testing.T) {
 				assert.Equal(t, 178, result.PerceptualChangedPixels)
 				assert.Less(t, result.PerceptualChangedPixels, result.ChangedPixels)
 				assert.Equal(t, 2670, result.AntialiasedPixels)
+				regionalAntialias := 0
+				for _, region := range result.Regions {
+					regionalAntialias += region.AntialiasedPixels
+				}
+				assert.Equal(t, result.AntialiasedPixels, regionalAntialias)
 			},
 		},
 		{
@@ -41,6 +46,9 @@ func TestPixelPerfectAgainstUpstreamComparisonCorpus(t *testing.T) {
 				assert.Equal(t, 2, result.PerceptualChangedPixels)
 				assert.Less(t, result.PerceptualChangedPixels, result.ChangedPixels)
 				assert.Equal(t, result.ChangedPixels, result.AntialiasedPixels)
+				for _, region := range result.Regions {
+					assert.Equal(t, region.ChangedPixels, region.AntialiasedPixels)
+				}
 			},
 		},
 		{

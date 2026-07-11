@@ -102,6 +102,7 @@ pixel-perfect reference.png implementation.png \
       "perceptualRmse": 0.122,
       "perceptualChangedPixels": 7214,
       "perceptualChangedRatio": 0.7515,
+      "antialiasedPixels": 318,
       "dominantColorPairs": [
         {"reference": "#0667C8", "actual": "#1676D2", "pixels": 7214}
       ],

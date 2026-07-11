@@ -21,6 +21,7 @@ type RegionMetrics struct {
 	PerceptualRMSE          float64     `json:"perceptualRmse"`
 	PerceptualChangedPixels int         `json:"perceptualChangedPixels"`
 	PerceptualChangedRatio  float64     `json:"perceptualChangedRatio"`
+	AntialiasedPixels       int         `json:"antialiasedPixels"`
 	DominantColorPairs      []ColorPair `json:"dominantColorPairs,omitempty"`
 }
 
@@ -43,7 +44,8 @@ func MeasureImageRegionWithThresholds(referencePath, actualPath string, bounds B
 	if bounds.X < 0 || bounds.Y < 0 || bounds.Width <= 0 || bounds.Height <= 0 || bounds.X+bounds.Width > reference.Bounds().Dx() || bounds.Y+bounds.Height > reference.Bounds().Dy() {
 		return RegionMetrics{}, fmt.Errorf("region %d,%d,%d,%d is outside image bounds %dx%d", bounds.X, bounds.Y, bounds.Width, bounds.Height, reference.Bounds().Dx(), reference.Bounds().Dy())
 	}
-	changed, perceptualChanged, compared, channels := 0, 0, 0, 3
+	fullImage := Bounds{Width: reference.Bounds().Dx(), Height: reference.Bounds().Dy()}
+	changed, perceptualChanged, antialiased, compared, channels := 0, 0, 0, 0, 3
 	colorPairs := make(map[[8]uint8]int)
 	var rgbError, alphaError, perceptualError float64
 	transparent := false
@@ -58,6 +60,9 @@ func MeasureImageRegionWithThresholds(referencePath, actualPath string, bounds B
 			deltas := []uint8{absDiff(r.R, a.R), absDiff(r.G, a.G), absDiff(r.B, a.B), absDiff(r.A, a.A)}
 			if max(deltas[0], deltas[1], deltas[2], deltas[3]) > threshold {
 				changed++
+				if likelyAntialiased(reference, actual, x, y, fullImage, ignored) {
+					antialiased++
+				}
 				colorPairs[[8]uint8{r.R, r.G, r.B, r.A, a.R, a.G, a.B, a.A}]++
 			}
 			for _, d := range deltas[:3] {
@@ -84,7 +89,8 @@ func MeasureImageRegionWithThresholds(referencePath, actualPath string, bounds B
 		ChangedPixels: changed, ChangedRatio: float64(changed) / float64(compared),
 		RMSE: math.Sqrt(total/float64(compared*channels)) / 255, EdgeRMSE: imageEdgeRMSE(reference, actual, bounds, ignored),
 		PerceptualRMSE: math.Sqrt(perceptualError / float64(compared)), PerceptualChangedPixels: perceptualChanged,
-		PerceptualChangedRatio: float64(perceptualChanged) / float64(compared), DominantColorPairs: dominantColorPairs(colorPairs),
+		PerceptualChangedRatio: float64(perceptualChanged) / float64(compared), AntialiasedPixels: antialiased,
+		DominantColorPairs: dominantColorPairs(colorPairs),
 	}, nil
 }
 
