@@ -176,6 +176,36 @@ func TestPixelPerfectCLIErrorContracts(t *testing.T) {
 	}
 }
 
+func TestPixelPerfectHelpDocumentsStandaloneContract(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	output, err := exec.Command(binary, "--help").CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	help := string(output)
+	assert.Contains(t, help, "pixel-perfect <reference.png> <actual.png>")
+	for _, flag := range []string{"--output", "--overlay", "--region", "--ignore-region", "--mask", "--threshold", "--suggest-offset", "--max-rmse", "--max-changed-ratio"} {
+		assert.Contains(t, help, flag)
+	}
+}
+
+func TestPixelPerfectRejectsRegionsOutsideImage(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	reference := filepath.Join(fixtures, "reference.png")
+	actual := filepath.Join(fixtures, "two-regions.png")
+	for _, region := range []string{"0,0,0,0", "-1,0,2,2", "100,100,2,2", "3,2,5,5"} {
+		t.Run(region, func(t *testing.T) {
+			mask := filepath.Join(t.TempDir(), "mask.png")
+			output, err := exec.Command(binary, reference, actual, "--output", mask, "--region", region).CombinedOutput()
+
+			require.Error(t, err)
+			assert.Contains(t, string(output), "is outside image bounds 4x3")
+			_, statErr := os.Stat(mask)
+			assert.ErrorIs(t, statErr, os.ErrNotExist)
+		})
+	}
+}
+
 func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
