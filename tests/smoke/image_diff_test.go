@@ -103,6 +103,7 @@ func TestPixelPerfectBoundaryAndCompositingScenarios(t *testing.T) {
 		{name: "difference equal to threshold is ignored", reference: "reference.png", actual: "threshold-equal.png", flags: []string{"--threshold", "5"}, compared: 12},
 		{name: "difference above threshold is detected", reference: "reference.png", actual: "threshold-exceeded.png", flags: []string{"--threshold", "5"}, changed: 12, compared: 12},
 		{name: "alpha-only changes affect alpha metric", reference: "reference.png", actual: "alpha-only-change.png", changed: 12, compared: 12, assertResult: func(t *testing.T, result diff.ImageComparison) { assert.Greater(t, result.AlphaRMSE, 0.0) }},
+		{name: "hidden RGB is ignored for transparent pixels", reference: "all-excluded-mask.png", actual: "transparent-hidden-rgb.png", compared: 12},
 		{name: "fully excluded comparison is valid", reference: "reference.png", actual: "two-regions.png", flags: []string{"--mask", filepath.Join(fixtures, "all-excluded-mask.png")}},
 		{name: "translation direction is exact", reference: "offset-reference.png", actual: "offset-right-one.png", flags: []string{"--suggest-offset", "2"}, changed: 2, compared: 12, assertResult: func(t *testing.T, result diff.ImageComparison) {
 			require.NotNil(t, result.SuggestedOffset)
@@ -142,6 +143,59 @@ func TestPixelPerfectRejectsWrongSizeComparisonMask(t *testing.T) {
 	assert.Contains(t, string(output), "comparison mask dimensions differ")
 	_, statErr := os.Stat(mask)
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func TestPixelPerfectCLIErrorContracts(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	reference := filepath.Join(fixtures, "reference.png")
+	actual := filepath.Join(fixtures, "two-regions.png")
+	tests := []struct {
+		name, expected string
+		args           func(*testing.T) []string
+	}{
+		{name: "missing arguments", expected: "error: accepts 2 arg(s), received 0", args: func(*testing.T) []string { return nil }},
+		{name: "missing required output", expected: "error: --output is required", args: func(*testing.T) []string { return []string{reference, actual} }},
+		{name: "unknown flag", expected: "error: unknown flag: --unknown", args: func(*testing.T) []string { return []string{reference, actual, "--unknown"} }},
+		{name: "malformed PNG", expected: "error:", args: func(t *testing.T) []string {
+			invalid := filepath.Join(t.TempDir(), "invalid.png")
+			require.NoError(t, os.WriteFile(invalid, []byte("not a png"), 0o600))
+			return []string{reference, invalid, "--output", filepath.Join(t.TempDir(), "mask.png")}
+		}},
+		{name: "output is directory", expected: "error:", args: func(t *testing.T) []string {
+			return []string{reference, actual, "--output", t.TempDir()}
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			output, err := exec.Command(binary, test.args(t)...).CombinedOutput()
+			require.Error(t, err)
+			assert.Contains(t, string(output), test.expected)
+		})
+	}
+}
+
+func TestPixelPerfectOutputIsDeterministic(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	args := []string{
+		filepath.Join(fixtures, "real-ui-reference.png"),
+		filepath.Join(fixtures, "real-ui-implementation.png"),
+		"--output", mask, "--region-gap", "8", "--min-region-pixels", "12",
+	}
+
+	first, err := exec.Command(binary, args...).CombinedOutput()
+	require.NoError(t, err, string(first))
+	firstMask, err := os.ReadFile(mask)
+	require.NoError(t, err)
+	second, err := exec.Command(binary, args...).CombinedOutput()
+	require.NoError(t, err, string(second))
+	secondMask, err := os.ReadFile(mask)
+	require.NoError(t, err)
+
+	assert.Equal(t, string(first), string(second))
+	assert.Equal(t, firstMask, secondMask)
 }
 
 func TestPixelPerfectRealUIScreenshot(t *testing.T) {
