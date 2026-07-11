@@ -29,6 +29,9 @@ type ImageComparison struct {
 	ComparedPixels  int              `json:"comparedPixels"`
 	ChangedRatio    float64          `json:"changedRatio"`
 	RMSE            float64          `json:"rmse"`
+	RGBRMSE         float64          `json:"rgbRmse"`
+	LuminanceRMSE   float64          `json:"luminanceRmse"`
+	AlphaRMSE       float64          `json:"alphaRmse"`
 	ComparedRegion  *Bounds          `json:"comparedRegion,omitempty"`
 	Bounds          *Bounds          `json:"bounds,omitempty"`
 	Regions         []Region         `json:"regions,omitempty"`
@@ -70,7 +73,7 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 	mask := image.NewNRGBA(image.Rect(0, 0, width, height))
 	changedPixels := make([]bool, width*height)
 	changed, compared, minX, minY, maxX, maxY := 0, 0, width, height, -1, -1
-	var rgbSquaredError, alphaSquaredError float64
+	var rgbSquaredError, luminanceSquaredError, alphaSquaredError float64
 	hasTransparency := false
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
@@ -86,6 +89,8 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 			for _, value := range delta[:3] {
 				rgbSquaredError += float64(value) * float64(value)
 			}
+			luminanceDelta := luminance(r) - luminance(a)
+			luminanceSquaredError += luminanceDelta * luminanceDelta
 			alphaSquaredError += float64(delta[3]) * float64(delta[3])
 			hasTransparency = hasTransparency || r.A != 255 || a.A != 255
 			if maxDelta <= threshold {
@@ -110,6 +115,9 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 	if compared > 0 {
 		result.ChangedRatio = float64(changed) / float64(compared)
 		result.RMSE = math.Sqrt(squaredError/float64(compared*channelCount)) / 255
+		result.RGBRMSE = math.Sqrt(rgbSquaredError/float64(compared*3)) / 255
+		result.LuminanceRMSE = math.Sqrt(luminanceSquaredError/float64(compared)) / 255
+		result.AlphaRMSE = math.Sqrt(alphaSquaredError/float64(compared)) / 255
 	}
 	if region != nil {
 		comparedRegion := area
@@ -149,6 +157,10 @@ func encodePNG(path string, img image.Image) error {
 		return err
 	}
 	return file.Close()
+}
+
+func luminance(pixel color.NRGBA) float64 {
+	return 0.2126*float64(pixel.R) + 0.7152*float64(pixel.G) + 0.0722*float64(pixel.B)
 }
 
 func pointIgnored(x, y int, regions []Bounds) bool {

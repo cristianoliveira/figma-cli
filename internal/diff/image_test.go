@@ -98,6 +98,9 @@ func TestCompareImagesUsesRGBRMSEForOpaqueRegions(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.InDelta(t, 0.5, result.RMSE, 0.000001)
+	assert.InDelta(t, 0.5, result.RGBRMSE, 0.000001)
+	assert.InDelta(t, 0.5, result.LuminanceRMSE, 0.000001)
+	assert.Zero(t, result.AlphaRMSE)
 }
 
 func TestWriteImageOverlayShowsReferenceInRedAndActualInGreen(t *testing.T) {
