@@ -57,6 +57,23 @@ func TestParseImageRegion(t *testing.T) {
 	assert.Equal(t, &diff.Bounds{X: 10, Y: 20, Width: 300, Height: 400}, region)
 }
 
+func TestDiffImageCommandRejectsInvalidAnalysisLimits(t *testing.T) {
+	tests := []struct {
+		name, flag, value, expected string
+	}{
+		{name: "negative offset radius", flag: "--suggest-offset", value: "-1", expected: "--suggest-offset must be non-negative"},
+		{name: "negative region gap", flag: "--region-gap", value: "-1", expected: "--region-gap must be non-negative"},
+		{name: "zero minimum region pixels", flag: "--min-region-pixels", value: "0", expected: "--min-region-pixels must be positive"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := executeCommand(newCommand(diff.CompareImagesWithIgnoredRegions), "reference.png", "actual.png", "--output", "mask.png", test.flag, test.value)
+
+			assert.EqualError(t, result.Err, test.expected)
+		})
+	}
+}
+
 func TestDiffImageCommandFailsValidationThreshold(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")

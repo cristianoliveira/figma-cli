@@ -237,6 +237,9 @@ func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
 		{name: "malformed region", flags: []string{"--region", "0,0,4"}, expected: "--region must be x,y,width,height"},
 		{name: "non numeric region", flags: []string{"--region", "0,zero,4,3"}, expected: "--region must contain integers"},
 		{name: "malformed ignored region", flags: []string{"--ignore-region", "0,0,4"}, expected: "invalid --ignore-region"},
+		{name: "negative offset radius", flags: []string{"--suggest-offset", "-1"}, expected: "--suggest-offset must be non-negative"},
+		{name: "negative region gap", flags: []string{"--region-gap", "-1"}, expected: "--region-gap must be non-negative"},
+		{name: "zero minimum region pixels", flags: []string{"--min-region-pixels", "0"}, expected: "--min-region-pixels must be positive"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -25,6 +25,18 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if output == "" {
 				return fmt.Errorf("--output is required")
 			}
+			offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
+			if offsetRadius < 0 {
+				return fmt.Errorf("--suggest-offset must be non-negative")
+			}
+			regionGap, _ := cmd.Flags().GetInt("region-gap")
+			if regionGap < 0 {
+				return fmt.Errorf("--region-gap must be non-negative")
+			}
+			minRegionPixels, _ := cmd.Flags().GetInt("min-region-pixels")
+			if minRegionPixels < 1 {
+				return fmt.Errorf("--min-region-pixels must be positive")
+			}
 			region, err := parseImageRegion(cmd.Flags().Lookup("region").Value.String())
 			if err != nil {
 				return err
@@ -57,7 +69,6 @@ func newCommand(compare imageComparer) *cobra.Command {
 				}
 				result.Overlay = overlay
 			}
-			offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
 			if offsetRadius > 0 {
 				suggestedOffset, offsetErr := diff.SuggestImageOffset(args[0], args[1], offsetRadius, region, ignored)
 				if offsetErr != nil {
@@ -67,9 +78,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 					result.SuggestedOffset = &suggestedOffset
 				}
 			}
-			regionGap, _ := cmd.Flags().GetInt("region-gap")
 			result.Regions = groupImageRegions(result.Regions, regionGap)
-			minRegionPixels, _ := cmd.Flags().GetInt("min-region-pixels")
 			result.Regions = filterImageRegions(result.Regions, minRegionPixels)
 			if len(result.Regions) > 20 {
 				result.Regions = result.Regions[:20]
