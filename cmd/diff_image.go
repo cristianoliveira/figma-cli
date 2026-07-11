@@ -31,6 +31,13 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			overlay, _ := cmd.Flags().GetString("overlay")
+			if overlay != "" {
+				if err := diff.WriteImageOverlay(args[0], args[1], overlay, region); err != nil {
+					return err
+				}
+				result.Overlay = overlay
+			}
 			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
 			if maxRMSE >= 0 && result.RMSE > maxRMSE {
 				return fmt.Errorf("image diff validation failed: RMSE %.6f exceeds maximum %.6f", result.RMSE, maxRMSE)
@@ -45,6 +52,7 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask")
 	command.Flags().Uint8("threshold", 0, "ignore per-channel differences at or below this value (0-255)")
 	command.Flags().String("region", "", "compare only x,y,width,height")
+	command.Flags().String("overlay", "", "path for directional overlay (reference red, actual green)")
 	command.Flags().Float64("max-rmse", -1, "fail when normalized RMSE exceeds this value")
 	command.Flags().Float64("max-changed-ratio", -1, "fail when changed-pixel ratio exceeds this value")
 	return command

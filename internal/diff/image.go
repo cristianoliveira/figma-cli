@@ -32,6 +32,7 @@ type ImageComparison struct {
 	Bounds         *Bounds  `json:"bounds,omitempty"`
 	Regions        []Region `json:"regions,omitempty"`
 	Mask           string   `json:"mask"`
+	Overlay        string   `json:"overlay,omitempty"`
 }
 
 func CompareImages(referencePath, actualPath, maskPath string, threshold uint8) (ImageComparison, error) {

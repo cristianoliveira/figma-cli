@@ -28,8 +28,10 @@ func TestImageDiffScenarios(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mask := filepath.Join(t.TempDir(), "mask.png")
-			args := []string{"diff", "image", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, test.actual), "--output", mask}
+			outputDir := t.TempDir()
+			mask := filepath.Join(outputDir, "mask.png")
+			overlay := filepath.Join(outputDir, "overlay.png")
+			args := []string{"diff", "image", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, test.actual), "--output", mask, "--overlay", overlay}
 			args = append(args, test.flags...)
 			output, err := exec.Command(binary, args...).CombinedOutput()
 
@@ -39,6 +41,8 @@ func TestImageDiffScenarios(t *testing.T) {
 			assert.Equal(t, test.changed, comparison.ChangedPixels)
 			assert.Len(t, comparison.Regions, test.regionCount)
 			_, err = os.Stat(mask)
+			require.NoError(t, err)
+			_, err = os.Stat(overlay)
 			require.NoError(t, err)
 		})
 	}

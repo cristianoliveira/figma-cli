@@ -81,6 +81,26 @@ func TestCompareImagesUsesRGBRMSEForOpaqueRegions(t *testing.T) {
 	assert.InDelta(t, 0.5, result.RMSE, 0.000001)
 }
 
+func TestWriteImageOverlayShowsReferenceInRedAndActualInGreen(t *testing.T) {
+	dir := t.TempDir()
+	reference := image.NewRGBA(image.Rect(0, 0, 2, 1))
+	actual := image.NewRGBA(image.Rect(0, 0, 2, 1))
+	reference.Set(0, 0, color.White)
+	actual.Set(1, 0, color.White)
+	referencePath, actualPath := filepath.Join(dir, "reference.png"), filepath.Join(dir, "actual.png")
+	writeTestPNG(t, referencePath, reference)
+	writeTestPNG(t, actualPath, actual)
+	overlayPath := filepath.Join(dir, "overlay.png")
+
+	err := WriteImageOverlay(referencePath, actualPath, overlayPath, nil)
+
+	require.NoError(t, err)
+	overlay, err := decodePNG(overlayPath)
+	require.NoError(t, err)
+	assert.Equal(t, color.NRGBA{R: 255, A: 255}, color.NRGBAModel.Convert(overlay.At(0, 0)))
+	assert.Equal(t, color.NRGBA{G: 255, A: 255}, color.NRGBAModel.Convert(overlay.At(1, 0)))
+}
+
 func TestCompareImagesRejectsDifferentDimensions(t *testing.T) {
 	dir := t.TempDir()
 	a := filepath.Join(dir, "a.png")
