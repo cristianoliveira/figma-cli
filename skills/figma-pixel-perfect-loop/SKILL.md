@@ -61,6 +61,7 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
    - For the selected region, extract its Figma bounds and styles. Translate exact fills, border radius, shadows, typography, padding, and child positions into CSS.
    - Export Figma SVG children for non-trivial icons instead of redrawing approximations.
    - Re-screenshot, re-crop, and compare. Record the new RMSE.
+   - For text, also compare DOM line boxes: width, height, top offset, font family, size, line-height, weight, and link baseline. Fix text geometry before using a raster score to tune glyph rendering.
 
 5. **Use metrics correctly**
    - A lower crop RMSE is evidence of improvement.
@@ -69,7 +70,8 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
 
 ## Guardrails
 
-- Use the Figma frame's native dimensions for both images.
+- Use the Figma frame's native dimensions for both images. Do not resize either image before comparison: a rescaled screenshot changes antialiasing and invalidates RMSE.
+- Capture the implementation in a wrapper whose bounds include the same effect/shadow extent as the Figma export; locator screenshots commonly clip shadows.
 - Calculate every crop from Figma bounds; never eyeball crop coordinates.
 - Change the smallest region that can improve the result. Do not mix unrelated refactors into a visual iteration.
 - Before changing a shared CSS variable, identify all its consumers and re-diff each affected region. A token change is a multi-region iteration, not a local correction.
@@ -79,8 +81,9 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
 
 ## Completion Checklist
 
-- Reference and implementation screenshots have identical dimensions.
+- Reference and implementation screenshots have identical dimensions without image resampling, including equivalent shadow/effect padding.
 - Every important region has a matching crop and `diff.png`.
+- Each text region records Figma and DOM bounds; multiline copy, links, and control labels have matching line-box height and baseline before final raster comparison.
 - CSS values trace back to Figma inspect/CSS output or exported assets.
 - Region metrics are recorded and improving or explicitly explained.
 - Final response states evidence and remaining differences; never merely says “matches.”
