@@ -1,4 +1,4 @@
-package diff
+package imagediff
 
 func ClassifyImageRegion(metrics RegionMetrics) string {
 	if metrics.ChangedPixels == 0 {

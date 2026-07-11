@@ -12,7 +12,8 @@ Private application code for the CLI. Keep boundaries explicit and easy to test.
 - `extract/`: pure transforms from Figma document trees to CLI output models.
 - `assets/`: asset discovery, export, and file-download workflows.
 - `comments/`: comment API mapping, retrieval, and node-scoping workflows.
-- `diff/`: pure design-diff use cases; adapters supply its history interfaces.
+- `diff/`: Figma design-history diff use cases; adapters supply its history interfaces.
+- `imagediff/`: generic PNG comparison, masks, overlays, metrics, alignment hints, regions, and classification; no Figma dependencies.
 
 ## Dependency Rules
 

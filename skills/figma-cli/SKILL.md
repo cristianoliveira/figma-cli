@@ -251,6 +251,8 @@ Reports added/removed/renamed nodes, component swaps, auto-layout changes, style
 
 ### `figma diff image` — Validate visual similarity
 
+This compatibility adapter uses the same generic engine as standalone `pixel-perfect`. Prefer `pixel-perfect` for workflows that do not otherwise need Figma commands.
+
 ```bash
 # Whole-image baseline and transparent red difference mask
 figma diff image reference.png implementation.png --output diff.png

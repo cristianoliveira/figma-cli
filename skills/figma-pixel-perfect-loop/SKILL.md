@@ -3,7 +3,7 @@ name: figma-pixel-perfect-loop
 description: >
   Iteratively match a local UI to a Figma frame using measured visual diffs.
   Use when user says "make this match Figma", "pixel perfect this page", "compare our UI to Figma", "improve visual similarity", or "keep refining the Figma implementation".
-  Works with a Figma URL, local implementation, figma CLI, and Playwright; ImageMagick is only an optional cross-check.
+  Works with a Figma URL, local implementation, pixel-perfect CLI, figma CLI, and Playwright; ImageMagick is only an optional cross-check.
   Do NOT use for generic frontend implementation without a Figma reference, Figma editing, or a one-time visual review.
 ---
 
@@ -30,9 +30,9 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
      ```bash
      figma export --format png --output output/visual-diff/figma-reference.png --id <frame-id> <file-key>
      ```
-   - Run a whole-frame baseline. `figma diff image` rejects unequal dimensions before producing misleading metrics:
+   - Run a whole-frame baseline. `pixel-perfect` rejects unequal dimensions before producing misleading metrics:
      ```bash
-     figma diff image \
+     pixel-perfect \
        output/visual-diff/figma-reference.png \
        output/visual-diff/implementation.png \
        --output output/visual-diff/baseline-mask.png
@@ -53,7 +53,7 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
    - Whole-frame RMSE is only a baseline; it over-penalizes moved content.
    - Compare the same Figma and implementation region using a direct child frame's bounds relative to the selected parent:
      ```bash
-     figma diff image figma-reference.png implementation.png \
+     pixel-perfect figma-reference.png implementation.png \
        --region <x>,<y>,<width>,<height> \
        --threshold 8 \
        --output output/visual-diff/region-mask.png

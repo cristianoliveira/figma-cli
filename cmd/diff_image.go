@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
-	"github.com/cristianoliveira/figma-cli/internal/diff"
+	diff "github.com/cristianoliveira/figma-cli/internal/imagediff"
 	"github.com/spf13/cobra"
 )
 
@@ -167,6 +167,14 @@ func parseImageRegion(value string) (*diff.Bounds, error) {
 		values[index] = value
 	}
 	return &diff.Bounds{X: values[0], Y: values[1], Width: values[2], Height: values[3]}, nil
+}
+
+// NewPixelPerfectCommand creates the standalone generic image comparison command.
+func NewPixelPerfectCommand() *cobra.Command {
+	command := newDiffImageCommand(diff.CompareImagesWithIgnoredRegions)
+	command.Use = "pixel-perfect <reference.png> <actual.png>"
+	command.PersistentFlags().Bool("json", false, "emit result as JSON")
+	return command
 }
 
 func init() {

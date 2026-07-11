@@ -7,10 +7,45 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cristianoliveira/figma-cli/internal/diff"
+	diff "github.com/cristianoliveira/figma-cli/internal/imagediff"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestPixelPerfectStandaloneCLI(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	output, err := exec.Command(binary, filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--output", mask).CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal(output, &comparison))
+	assert.Equal(t, 2, comparison.ChangedPixels)
+	require.Len(t, comparison.Regions, 2)
+	assert.NotEmpty(t, comparison.Regions[0].Classification)
+}
+
+func TestPixelPerfectMatchesFigmaImageDiffAdapter(t *testing.T) {
+	fixtures := filepath.Join("fixtures", "image-diff")
+	reference, actual := filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png")
+	standalone := runImageDiff(t, buildCommand(t, "pixel-perfect"), []string{reference, actual})
+	adapter := runImageDiff(t, buildCLI(t), []string{"diff", "image", reference, actual})
+
+	assert.Equal(t, adapter.ChangedPixels, standalone.ChangedPixels)
+	assert.Equal(t, adapter.RMSE, standalone.RMSE)
+	assert.Equal(t, adapter.Regions, standalone.Regions)
+}
+
+func runImageDiff(t *testing.T, binary string, prefix []string) diff.ImageComparison {
+	t.Helper()
+	args := append(prefix, "--output", filepath.Join(t.TempDir(), "mask.png"))
+	output, err := exec.Command(binary, args...).CombinedOutput()
+	require.NoError(t, err, string(output))
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal(output, &comparison))
+	return comparison
+}
 
 func TestImageDiffScenarios(t *testing.T) {
 	binary := buildCLI(t)
@@ -77,9 +112,13 @@ func TestImageDiffScenarios(t *testing.T) {
 }
 
 func buildCLI(t *testing.T) string {
+	return buildCommand(t, "figma")
+}
+
+func buildCommand(t *testing.T, name string) string {
 	t.Helper()
-	binary := filepath.Join(t.TempDir(), "figma")
-	command := exec.Command("go", "build", "-o", binary, "./cmd/figma")
+	binary := filepath.Join(t.TempDir(), name)
+	command := exec.Command("go", "build", "-o", binary, "./cmd/"+name)
 	command.Dir = filepath.Join("..", "..")
 	output, err := command.CombinedOutput()
 	require.NoError(t, err, string(output))

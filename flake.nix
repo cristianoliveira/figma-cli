@@ -11,22 +11,24 @@
       let
         pkgs = import nixpkgs { inherit system; };
 
-        figma = pkgs.buildGoModule {
-          pname = "figma";
+        mkCLI = pname: subPackage: pkgs.buildGoModule {
+          inherit pname;
           version = "0.1.0";
           src = ./.;
           vendorHash = "sha256-Y+fyGkDugE4WmjvhInJ4tp+7BtBxXZi+Pdhas90NaF0=";
-
-          subPackages = [ "cmd/figma" ];
+          subPackages = [ subPackage ];
         };
+        figma = mkCLI "figma" "cmd/figma";
+        pixel-perfect = mkCLI "pixel-perfect" "cmd/pixel-perfect";
       in {
         packages = {
-          inherit figma;
+          inherit figma pixel-perfect;
           default = figma;
         };
 
         apps = {
           figma = utils.lib.mkApp { drv = figma; };
+          pixel-perfect = utils.lib.mkApp { drv = pixel-perfect; };
           default = utils.lib.mkApp { drv = figma; };
         };
 
