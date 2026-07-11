@@ -30,6 +30,7 @@ func TestCompareImagesWritesMaskAndMeasuresChangedArea(t *testing.T) {
 	assert.Equal(t, 2, result.Height)
 	assert.Equal(t, 2, result.ChangedPixels)
 	assert.InDelta(t, 1.0/3.0, result.ChangedRatio, 0.0001)
+	assert.Greater(t, result.PerceptualRMSE, 0.0)
 	assert.Equal(t, &Bounds{X: 1, Y: 0, Width: 2, Height: 2}, result.Bounds)
 	assert.Equal(t, []int{0, 1}, result.ChangedRows)
 	require.Len(t, result.Regions, 2)

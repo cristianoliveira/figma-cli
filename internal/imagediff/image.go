@@ -38,6 +38,7 @@ type ImageComparison struct {
 	LuminanceRMSE   float64          `json:"luminanceRmse"`
 	AlphaRMSE       float64          `json:"alphaRmse"`
 	EdgeRMSE        float64          `json:"edgeRmse"`
+	PerceptualRMSE  float64          `json:"perceptualRmse"`
 	ComparedRegion  *Bounds          `json:"comparedRegion,omitempty"`
 	Bounds          *Bounds          `json:"bounds,omitempty"`
 	ChangedRows     []int            `json:"changedRows,omitempty"`
@@ -81,7 +82,7 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 	changedPixels := make([]bool, width*height)
 	changedRows := make([]bool, height)
 	changed, compared, minX, minY, maxX, maxY := 0, 0, width, height, -1, -1
-	var rgbSquaredError, luminanceSquaredError, alphaSquaredError float64
+	var rgbSquaredError, luminanceSquaredError, alphaSquaredError, perceptualSquaredError float64
 	hasTransparency := false
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
@@ -100,6 +101,8 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 			luminanceDelta := luminance(r) - luminance(a)
 			luminanceSquaredError += luminanceDelta * luminanceDelta
 			alphaSquaredError += float64(delta[3]) * float64(delta[3])
+			perceptualDelta := perceptualColorDistance(r, a)
+			perceptualSquaredError += perceptualDelta * perceptualDelta
 			hasTransparency = hasTransparency || r.A != 255 || a.A != 255
 			if maxDelta <= threshold {
 				continue
@@ -128,6 +131,7 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 		result.LuminanceRMSE = math.Sqrt(luminanceSquaredError/float64(compared)) / 255
 		result.AlphaRMSE = math.Sqrt(alphaSquaredError/float64(compared)) / 255
 		result.EdgeRMSE = imageEdgeRMSE(reference, actual, area, ignored)
+		result.PerceptualRMSE = math.Sqrt(perceptualSquaredError / float64(compared))
 	}
 	if region != nil {
 		comparedRegion := area

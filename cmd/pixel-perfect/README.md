@@ -84,6 +84,7 @@ pixel-perfect reference.png implementation.png \
   "luminanceRmse": 0.061,
   "alphaRmse": 0.012,
   "edgeRmse": 0.048,
+  "perceptualRmse": 0.052,
   "bounds": {"x": 12, "y": 80, "width": 520, "height": 310},
   "changedRows": [80, 81, 120, 121],
   "regions": [
@@ -112,6 +113,7 @@ pixel-perfect reference.png implementation.png \
 - `luminanceRmse`: brightness difference.
 - `alphaRmse`: transparency and effect difference.
 - `edgeRmse`: local visible-luminance gradient difference; useful for geometry.
+- `perceptualRmse`: OKLab HyAB color distance after alpha compositing; useful for human-visible color change.
 - `changedRatio`: thresholded changed pixels divided by compared pixels.
 - `bounds`: smallest absolute rectangle containing all changed pixels.
 - `changedRows`: sorted absolute row indexes containing changed pixels; useful as compact localization evidence.
