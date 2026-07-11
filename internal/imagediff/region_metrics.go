@@ -14,14 +14,21 @@ type ColorPair struct {
 }
 
 type RegionMetrics struct {
-	ChangedPixels      int         `json:"changedPixels"`
-	ChangedRatio       float64     `json:"changedRatio"`
-	RMSE               float64     `json:"rmse"`
-	EdgeRMSE           float64     `json:"edgeRmse"`
-	DominantColorPairs []ColorPair `json:"dominantColorPairs,omitempty"`
+	ChangedPixels           int         `json:"changedPixels"`
+	ChangedRatio            float64     `json:"changedRatio"`
+	RMSE                    float64     `json:"rmse"`
+	EdgeRMSE                float64     `json:"edgeRmse"`
+	PerceptualRMSE          float64     `json:"perceptualRmse"`
+	PerceptualChangedPixels int         `json:"perceptualChangedPixels"`
+	PerceptualChangedRatio  float64     `json:"perceptualChangedRatio"`
+	DominantColorPairs      []ColorPair `json:"dominantColorPairs,omitempty"`
 }
 
 func MeasureImageRegion(referencePath, actualPath string, bounds Bounds, threshold uint8, ignored []Bounds) (RegionMetrics, error) {
+	return MeasureImageRegionWithThresholds(referencePath, actualPath, bounds, threshold, DefaultPerceptualThreshold, ignored)
+}
+
+func MeasureImageRegionWithThresholds(referencePath, actualPath string, bounds Bounds, threshold uint8, perceptualThreshold float64, ignored []Bounds) (RegionMetrics, error) {
 	reference, err := decodePNG(referencePath)
 	if err != nil {
 		return RegionMetrics{}, fmt.Errorf("decode reference: %w", err)
@@ -36,9 +43,9 @@ func MeasureImageRegion(referencePath, actualPath string, bounds Bounds, thresho
 	if bounds.X < 0 || bounds.Y < 0 || bounds.Width <= 0 || bounds.Height <= 0 || bounds.X+bounds.Width > reference.Bounds().Dx() || bounds.Y+bounds.Height > reference.Bounds().Dy() {
 		return RegionMetrics{}, fmt.Errorf("region %d,%d,%d,%d is outside image bounds %dx%d", bounds.X, bounds.Y, bounds.Width, bounds.Height, reference.Bounds().Dx(), reference.Bounds().Dy())
 	}
-	changed, compared, channels := 0, 0, 3
+	changed, perceptualChanged, compared, channels := 0, 0, 0, 3
 	colorPairs := make(map[[8]uint8]int)
-	var rgbError, alphaError float64
+	var rgbError, alphaError, perceptualError float64
 	transparent := false
 	for y := bounds.Y; y < bounds.Y+bounds.Height; y++ {
 		for x := bounds.X; x < bounds.X+bounds.Width; x++ {
@@ -57,6 +64,11 @@ func MeasureImageRegion(referencePath, actualPath string, bounds Bounds, thresho
 				rgbError += float64(d) * float64(d)
 			}
 			alphaError += float64(deltas[3]) * float64(deltas[3])
+			perceptualDelta := perceptualColorDistance(r, a)
+			perceptualError += perceptualDelta * perceptualDelta
+			if perceptualDelta > perceptualThreshold {
+				perceptualChanged++
+			}
 			transparent = transparent || r.A != 255 || a.A != 255
 		}
 	}
@@ -68,7 +80,12 @@ func MeasureImageRegion(referencePath, actualPath string, bounds Bounds, thresho
 		channels = 4
 		total += alphaError
 	}
-	return RegionMetrics{ChangedPixels: changed, ChangedRatio: float64(changed) / float64(compared), RMSE: math.Sqrt(total/float64(compared*channels)) / 255, EdgeRMSE: imageEdgeRMSE(reference, actual, bounds, ignored), DominantColorPairs: dominantColorPairs(colorPairs)}, nil
+	return RegionMetrics{
+		ChangedPixels: changed, ChangedRatio: float64(changed) / float64(compared),
+		RMSE: math.Sqrt(total/float64(compared*channels)) / 255, EdgeRMSE: imageEdgeRMSE(reference, actual, bounds, ignored),
+		PerceptualRMSE: math.Sqrt(perceptualError / float64(compared)), PerceptualChangedPixels: perceptualChanged,
+		PerceptualChangedRatio: float64(perceptualChanged) / float64(compared), DominantColorPairs: dominantColorPairs(colorPairs),
+	}, nil
 }
 
 func dominantColorPairs(counts map[[8]uint8]int) []ColorPair {

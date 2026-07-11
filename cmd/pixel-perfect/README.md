@@ -98,6 +98,9 @@ pixel-perfect reference.png implementation.png \
       "changedRatio": 0.9822,
       "rmse": 0.143,
       "edgeRmse": 0.031,
+      "perceptualRmse": 0.122,
+      "perceptualChangedPixels": 7214,
+      "perceptualChangedRatio": 0.7515,
       "dominantColorPairs": [
         {"reference": "#0667C8", "actual": "#1676D2", "pixels": 7214}
       ],

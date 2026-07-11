@@ -88,8 +88,15 @@ func TestMeasureImageRegionReportsLocalMetrics(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")
 	actual := filepath.Join(dir, "actual.png")
-	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 4, 2)))
+	referenceImage := image.NewRGBA(image.Rect(0, 0, 4, 2))
 	changed := image.NewRGBA(image.Rect(0, 0, 4, 2))
+	for y := 0; y < 2; y++ {
+		for x := 0; x < 4; x++ {
+			referenceImage.Set(x, y, color.Black)
+			changed.Set(x, y, color.Black)
+		}
+	}
+	writeTestPNG(t, reference, referenceImage)
 	changed.Set(2, 0, color.White)
 	writeTestPNG(t, actual, changed)
 
@@ -100,6 +107,9 @@ func TestMeasureImageRegionReportsLocalMetrics(t *testing.T) {
 	assert.InDelta(t, 0.25, metrics.ChangedRatio, 0.000001)
 	assert.Greater(t, metrics.RMSE, 0.0)
 	assert.Greater(t, metrics.EdgeRMSE, 0.0)
+	assert.Greater(t, metrics.PerceptualRMSE, 0.0)
+	assert.Equal(t, 1, metrics.PerceptualChangedPixels)
+	assert.InDelta(t, 0.25, metrics.PerceptualChangedRatio, 0.000001)
 }
 
 func TestMeasureImageRegionReportsDominantColorPairs(t *testing.T) {

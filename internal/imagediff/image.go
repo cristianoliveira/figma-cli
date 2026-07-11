@@ -18,13 +18,16 @@ type Bounds struct {
 }
 
 type Region struct {
-	Bounds             Bounds      `json:"bounds"`
-	ChangedPixels      int         `json:"changedPixels"`
-	ChangedRatio       float64     `json:"changedRatio"`
-	RMSE               float64     `json:"rmse"`
-	EdgeRMSE           float64     `json:"edgeRmse"`
-	DominantColorPairs []ColorPair `json:"dominantColorPairs,omitempty"`
-	Classification     string      `json:"classification"`
+	Bounds                  Bounds      `json:"bounds"`
+	ChangedPixels           int         `json:"changedPixels"`
+	ChangedRatio            float64     `json:"changedRatio"`
+	RMSE                    float64     `json:"rmse"`
+	EdgeRMSE                float64     `json:"edgeRmse"`
+	PerceptualRMSE          float64     `json:"perceptualRmse"`
+	PerceptualChangedPixels int         `json:"perceptualChangedPixels"`
+	PerceptualChangedRatio  float64     `json:"perceptualChangedRatio"`
+	DominantColorPairs      []ColorPair `json:"dominantColorPairs,omitempty"`
+	Classification          string      `json:"classification"`
 }
 
 type ImageComparison struct {

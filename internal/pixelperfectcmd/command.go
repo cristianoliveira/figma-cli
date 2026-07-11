@@ -113,7 +113,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 				result.Regions = result.Regions[:20]
 			}
 			for index := range result.Regions {
-				metrics, metricsErr := diff.MeasureImageRegion(args[0], args[1], result.Regions[index].Bounds, threshold, ignored)
+				metrics, metricsErr := diff.MeasureImageRegionWithThresholds(args[0], args[1], result.Regions[index].Bounds, threshold, perceptualThreshold, ignored)
 				if metricsErr != nil {
 					return metricsErr
 				}
@@ -121,6 +121,9 @@ func newCommand(compare imageComparer) *cobra.Command {
 				result.Regions[index].ChangedRatio = metrics.ChangedRatio
 				result.Regions[index].RMSE = metrics.RMSE
 				result.Regions[index].EdgeRMSE = metrics.EdgeRMSE
+				result.Regions[index].PerceptualRMSE = metrics.PerceptualRMSE
+				result.Regions[index].PerceptualChangedPixels = metrics.PerceptualChangedPixels
+				result.Regions[index].PerceptualChangedRatio = metrics.PerceptualChangedRatio
 				result.Regions[index].DominantColorPairs = metrics.DominantColorPairs
 				result.Regions[index].Classification = diff.ClassifyImageRegion(metrics)
 			}
