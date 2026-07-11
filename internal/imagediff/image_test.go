@@ -34,6 +34,7 @@ func TestCompareImagesWritesMaskAndMeasuresChangedArea(t *testing.T) {
 	assert.Equal(t, 2, result.PerceptualChangedPixels)
 	assert.InDelta(t, 1.0/3.0, result.PerceptualChangedRatio, 0.0001)
 	assert.Equal(t, DefaultPerceptualThreshold, result.PerceptualThreshold)
+	assert.Equal(t, EvidenceBreakdown{RawAndPerceptualPixels: 2}, result.Evidence)
 	assert.Equal(t, &Bounds{X: 1, Y: 0, Width: 2, Height: 2}, result.Bounds)
 	assert.Equal(t, []int{0, 1}, result.ChangedRows)
 	require.Len(t, result.Regions, 2)
@@ -59,6 +60,7 @@ func TestCompareImagesWithThresholdsConfiguresPerceptualEvidence(t *testing.T) {
 	assert.Zero(t, result.PerceptualChangedPixels)
 	assert.Zero(t, result.PerceptualChangedRatio)
 	assert.Equal(t, 1, result.ChangedPixels)
+	assert.Equal(t, EvidenceBreakdown{RawOnlyPixels: 1}, result.Evidence)
 }
 
 func TestCompareImagesInRegionMeasuresOnlySelectedArea(t *testing.T) {

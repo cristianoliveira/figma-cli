@@ -78,6 +78,8 @@ func TestPixelPerfectAgainstUpstreamComparisonCorpus(t *testing.T) {
 			assert.Equal(t, test.height, comparison.Height)
 			assert.Equal(t, test.width*test.height, comparison.ComparedPixels)
 			assert.Equal(t, test.changed, comparison.ChangedPixels)
+			assert.Equal(t, comparison.ChangedPixels, comparison.Evidence.RawOnlyPixels+comparison.Evidence.RawAndPerceptualPixels)
+			assert.Equal(t, comparison.PerceptualChangedPixels, comparison.Evidence.PerceptualOnlyPixels+comparison.Evidence.RawAndPerceptualPixels)
 			assert.Len(t, comparison.Regions, test.regions)
 			assertPNGDimensions(t, mask, test.width, test.height)
 			test.assertMetrics(t, comparison)

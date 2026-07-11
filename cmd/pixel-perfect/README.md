@@ -90,6 +90,11 @@ pixel-perfect reference.png implementation.png \
   "perceptualChangedRatio": 0.0084,
   "perceptualThreshold": 0.1,
   "antialiasedPixels": 1840,
+  "evidence": {
+    "rawOnlyPixels": 7119,
+    "perceptualOnlyPixels": 0,
+    "rawAndPerceptualPixels": 2310
+  },
   "bounds": {"x": 12, "y": 80, "width": 520, "height": 310},
   "changedRows": [80, 81, 120, 121],
   "regions": [
@@ -125,6 +130,7 @@ pixel-perfect reference.png implementation.png \
 - `perceptualRmse`: OKLab HyAB color distance after alpha compositing; useful for human-visible color change.
 - `perceptualChangedPixels` and `perceptualChangedRatio`: pixels above the reported `perceptualThreshold`; configure it with `--perceptual-threshold` (default `0.1`; any finite non-negative HyAB distance is accepted). Raw changed-pixel evidence and `--threshold` semantics remain unchanged.
 - `antialiasedPixels`: raw changed pixels that match neighborhood ramp evidence. This is report-only and never silently removes changes.
+- `evidence`: exact overlap between raw and perceptual changed-pixel sets, exposing disagreement without forcing an interpretation.
 - `changedRatio`: thresholded changed pixels divided by compared pixels.
 - `bounds`: smallest absolute rectangle containing all changed pixels.
 - `changedRows`: sorted absolute row indexes containing changed pixels; useful as compact localization evidence.

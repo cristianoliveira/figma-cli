@@ -26,7 +26,7 @@ func TestDiffImageCommandProducesMaskAndJSONMetrics(t *testing.T) {
 	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--output", mask)
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"width":2,"height":2,"changedPixels":0,"comparedPixels":4,"changedRatio":0,"rmse":0,"rgbRmse":0,"luminanceRmse":0,"alphaRmse":0,"edgeRmse":0,"perceptualRmse":0,"perceptualChangedPixels":0,"perceptualChangedRatio":0,"perceptualThreshold":0.1,"antialiasedPixels":0,"mask":"`+mask+`"}`, result.Stdout)
+	assert.JSONEq(t, `{"width":2,"height":2,"changedPixels":0,"comparedPixels":4,"changedRatio":0,"rmse":0,"rgbRmse":0,"luminanceRmse":0,"alphaRmse":0,"edgeRmse":0,"perceptualRmse":0,"perceptualChangedPixels":0,"perceptualChangedRatio":0,"perceptualThreshold":0.1,"antialiasedPixels":0,"evidence":{"rawOnlyPixels":0,"perceptualOnlyPixels":0,"rawAndPerceptualPixels":0},"mask":"`+mask+`"}`, result.Stdout)
 }
 
 func TestGroupImageRegionsMergesNearbyClusters(t *testing.T) {

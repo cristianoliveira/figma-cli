@@ -31,29 +31,36 @@ type Region struct {
 	Classification          string      `json:"classification"`
 }
 
+type EvidenceBreakdown struct {
+	RawOnlyPixels          int `json:"rawOnlyPixels"`
+	PerceptualOnlyPixels   int `json:"perceptualOnlyPixels"`
+	RawAndPerceptualPixels int `json:"rawAndPerceptualPixels"`
+}
+
 type ImageComparison struct {
-	Width                   int              `json:"width"`
-	Height                  int              `json:"height"`
-	ChangedPixels           int              `json:"changedPixels"`
-	ComparedPixels          int              `json:"comparedPixels"`
-	ChangedRatio            float64          `json:"changedRatio"`
-	RMSE                    float64          `json:"rmse"`
-	RGBRMSE                 float64          `json:"rgbRmse"`
-	LuminanceRMSE           float64          `json:"luminanceRmse"`
-	AlphaRMSE               float64          `json:"alphaRmse"`
-	EdgeRMSE                float64          `json:"edgeRmse"`
-	PerceptualRMSE          float64          `json:"perceptualRmse"`
-	PerceptualChangedPixels int              `json:"perceptualChangedPixels"`
-	PerceptualChangedRatio  float64          `json:"perceptualChangedRatio"`
-	PerceptualThreshold     float64          `json:"perceptualThreshold"`
-	AntialiasedPixels       int              `json:"antialiasedPixels"`
-	ComparedRegion          *Bounds          `json:"comparedRegion,omitempty"`
-	Bounds                  *Bounds          `json:"bounds,omitempty"`
-	ChangedRows             []int            `json:"changedRows,omitempty"`
-	Regions                 []Region         `json:"regions,omitempty"`
-	Mask                    string           `json:"mask"`
-	Overlay                 string           `json:"overlay,omitempty"`
-	SuggestedOffset         *SuggestedOffset `json:"suggestedOffset,omitempty"`
+	Width                   int               `json:"width"`
+	Height                  int               `json:"height"`
+	ChangedPixels           int               `json:"changedPixels"`
+	ComparedPixels          int               `json:"comparedPixels"`
+	ChangedRatio            float64           `json:"changedRatio"`
+	RMSE                    float64           `json:"rmse"`
+	RGBRMSE                 float64           `json:"rgbRmse"`
+	LuminanceRMSE           float64           `json:"luminanceRmse"`
+	AlphaRMSE               float64           `json:"alphaRmse"`
+	EdgeRMSE                float64           `json:"edgeRmse"`
+	PerceptualRMSE          float64           `json:"perceptualRmse"`
+	PerceptualChangedPixels int               `json:"perceptualChangedPixels"`
+	PerceptualChangedRatio  float64           `json:"perceptualChangedRatio"`
+	PerceptualThreshold     float64           `json:"perceptualThreshold"`
+	AntialiasedPixels       int               `json:"antialiasedPixels"`
+	Evidence                EvidenceBreakdown `json:"evidence"`
+	ComparedRegion          *Bounds           `json:"comparedRegion,omitempty"`
+	Bounds                  *Bounds           `json:"bounds,omitempty"`
+	ChangedRows             []int             `json:"changedRows,omitempty"`
+	Regions                 []Region          `json:"regions,omitempty"`
+	Mask                    string            `json:"mask"`
+	Overlay                 string            `json:"overlay,omitempty"`
+	SuggestedOffset         *SuggestedOffset  `json:"suggestedOffset,omitempty"`
 }
 
 func CompareImages(referencePath, actualPath, maskPath string, threshold uint8) (ImageComparison, error) {
@@ -94,7 +101,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 	mask := image.NewNRGBA(image.Rect(0, 0, width, height))
 	changedPixels := make([]bool, width*height)
 	changedRows := make([]bool, height)
-	changed, perceptualChanged, antialiased, compared, minX, minY, maxX, maxY := 0, 0, 0, 0, width, height, -1, -1
+	changed, perceptualChanged, antialiased, rawOnly, perceptualOnly, both, compared, minX, minY, maxX, maxY := 0, 0, 0, 0, 0, 0, 0, width, height, -1, -1
 	var rgbSquaredError, luminanceSquaredError, alphaSquaredError, perceptualSquaredError float64
 	hasTransparency := false
 	for y := 0; y < height; y++ {
@@ -116,11 +123,21 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 			alphaSquaredError += float64(delta[3]) * float64(delta[3])
 			perceptualDelta := perceptualColorDistance(r, a)
 			perceptualSquaredError += perceptualDelta * perceptualDelta
-			if perceptualDelta > perceptualThreshold {
+			isPerceptualChange := perceptualDelta > perceptualThreshold
+			if isPerceptualChange {
 				perceptualChanged++
 			}
 			hasTransparency = hasTransparency || r.A != 255 || a.A != 255
-			if maxDelta <= threshold {
+			isRawChange := maxDelta > threshold
+			switch {
+			case isRawChange && isPerceptualChange:
+				both++
+			case isRawChange:
+				rawOnly++
+			case isPerceptualChange:
+				perceptualOnly++
+			}
+			if !isRawChange {
 				continue
 			}
 			changed++
@@ -145,6 +162,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 	result := ImageComparison{
 		Width: width, Height: height, ChangedPixels: changed, ComparedPixels: compared, Mask: maskPath,
 		PerceptualChangedPixels: perceptualChanged, PerceptualThreshold: perceptualThreshold, AntialiasedPixels: antialiased,
+		Evidence: EvidenceBreakdown{RawOnlyPixels: rawOnly, PerceptualOnlyPixels: perceptualOnly, RawAndPerceptualPixels: both},
 	}
 	if compared > 0 {
 		result.ChangedRatio = float64(changed) / float64(compared)
