@@ -45,6 +45,7 @@ type ImageComparison struct {
 	PerceptualChangedPixels int              `json:"perceptualChangedPixels"`
 	PerceptualChangedRatio  float64          `json:"perceptualChangedRatio"`
 	PerceptualThreshold     float64          `json:"perceptualThreshold"`
+	AntialiasedPixels       int              `json:"antialiasedPixels"`
 	ComparedRegion          *Bounds          `json:"comparedRegion,omitempty"`
 	Bounds                  *Bounds          `json:"bounds,omitempty"`
 	ChangedRows             []int            `json:"changedRows,omitempty"`
@@ -91,7 +92,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 	mask := image.NewNRGBA(image.Rect(0, 0, width, height))
 	changedPixels := make([]bool, width*height)
 	changedRows := make([]bool, height)
-	changed, perceptualChanged, compared, minX, minY, maxX, maxY := 0, 0, 0, width, height, -1, -1
+	changed, perceptualChanged, antialiased, compared, minX, minY, maxX, maxY := 0, 0, 0, 0, width, height, -1, -1
 	var rgbSquaredError, luminanceSquaredError, alphaSquaredError, perceptualSquaredError float64
 	hasTransparency := false
 	for y := 0; y < height; y++ {
@@ -121,6 +122,9 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 				continue
 			}
 			changed++
+			if likelyAntialiased(reference, actual, absoluteX, absoluteY, area) {
+				antialiased++
+			}
 			changedPixels[y*width+x] = true
 			changedRows[y] = true
 			minX, minY, maxX, maxY = min(minX, x), min(minY, y), max(maxX, x), max(maxY, y)
@@ -138,7 +142,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 	}
 	result := ImageComparison{
 		Width: width, Height: height, ChangedPixels: changed, ComparedPixels: compared, Mask: maskPath,
-		PerceptualChangedPixels: perceptualChanged, PerceptualThreshold: perceptualThreshold,
+		PerceptualChangedPixels: perceptualChanged, PerceptualThreshold: perceptualThreshold, AntialiasedPixels: antialiased,
 	}
 	if compared > 0 {
 		result.ChangedRatio = float64(changed) / float64(compared)
