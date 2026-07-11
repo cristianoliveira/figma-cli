@@ -175,6 +175,52 @@ func TestPixelPerfectCLIErrorContracts(t *testing.T) {
 	}
 }
 
+func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	reference := filepath.Join(fixtures, "reference.png")
+	actual := filepath.Join(fixtures, "two-regions.png")
+	tests := []struct {
+		name, expected string
+		flags          []string
+	}{
+		{name: "threshold overflow", flags: []string{"--threshold", "256"}, expected: "value out of range"},
+		{name: "malformed region", flags: []string{"--region", "0,0,4"}, expected: "--region must be x,y,width,height"},
+		{name: "non numeric region", flags: []string{"--region", "0,zero,4,3"}, expected: "--region must contain integers"},
+		{name: "malformed ignored region", flags: []string{"--ignore-region", "0,0,4"}, expected: "invalid --ignore-region"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args := []string{reference, actual, "--output", filepath.Join(t.TempDir(), "mask.png")}
+			args = append(args, test.flags...)
+			output, err := exec.Command(binary, args...).CombinedOutput()
+			require.Error(t, err)
+			assert.Contains(t, string(output), test.expected)
+		})
+	}
+}
+
+func TestPixelPerfectCombinesRegionAndRepeatedIgnores(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"),
+		"--output", mask,
+		"--region", "0,0,4,2",
+		"--ignore-region", "0,0,1,1",
+		"--ignore-region", "1,0,1,1",
+	).CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal(output, &comparison))
+	assert.Equal(t, 0, comparison.ChangedPixels)
+	assert.Equal(t, 6, comparison.ComparedPixels)
+	assert.Equal(t, &diff.Bounds{X: 0, Y: 0, Width: 4, Height: 2}, comparison.ComparedRegion)
+	assertPNGDimensions(t, mask, 4, 2)
+}
+
 func TestPixelPerfectOutputIsDeterministic(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
