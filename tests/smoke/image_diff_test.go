@@ -23,9 +23,11 @@ func TestImageDiffScenarios(t *testing.T) {
 		regionCount      int
 		expectedCompared int
 		expectsOffset    bool
+		expectsColorPair bool
 	}{
 		{name: "identical images", actual: "identical.png"},
 		{name: "disconnected changes", actual: "two-regions.png", changed: 2, regionCount: 2},
+		{name: "region reports dominant color pair", actual: "two-regions.png", changed: 2, regionCount: 2, expectsColorPair: true},
 		{name: "tiny regions can be omitted", actual: "two-regions.png", flags: []string{"--min-region-pixels", "2"}, changed: 2},
 		{name: "nearby regions can be grouped", actual: "two-regions.png", flags: []string{"--region-gap", "4"}, changed: 2, regionCount: 1},
 		{name: "known dynamic area can be ignored", actual: "two-regions.png", flags: []string{"--ignore-region", "0,0,1,1"}, changed: 1, regionCount: 1},
@@ -56,6 +58,10 @@ func TestImageDiffScenarios(t *testing.T) {
 			}
 			if test.expectsOffset {
 				assert.NotNil(t, comparison.SuggestedOffset)
+			}
+			if test.expectsColorPair {
+				require.NotEmpty(t, comparison.Regions[0].DominantColorPairs)
+				assert.Greater(t, comparison.Regions[0].DominantColorPairs[0].Pixels, 0)
 			}
 			_, err = os.Stat(mask)
 			require.NoError(t, err)

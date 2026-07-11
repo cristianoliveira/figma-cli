@@ -80,6 +80,7 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 				result.Regions[index].ChangedRatio = metrics.ChangedRatio
 				result.Regions[index].RMSE = metrics.RMSE
 				result.Regions[index].EdgeRMSE = metrics.EdgeRMSE
+				result.Regions[index].DominantColorPairs = metrics.DominantColorPairs
 			}
 			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
 			if maxRMSE >= 0 && result.RMSE > maxRMSE {

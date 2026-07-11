@@ -78,6 +78,25 @@ func TestMeasureImageRegionReportsLocalMetrics(t *testing.T) {
 	assert.Greater(t, metrics.EdgeRMSE, 0.0)
 }
 
+func TestMeasureImageRegionReportsDominantColorPairs(t *testing.T) {
+	dir := t.TempDir()
+	referenceImage := image.NewRGBA(image.Rect(0, 0, 3, 1))
+	actualImage := image.NewRGBA(image.Rect(0, 0, 3, 1))
+	for x := 0; x < 3; x++ {
+		referenceImage.Set(x, 0, color.RGBA{R: 0x06, G: 0x67, B: 0xC8, A: 255})
+		actualImage.Set(x, 0, color.RGBA{R: 0x16, G: 0x76, B: 0xD2, A: 255})
+	}
+	reference, actual := filepath.Join(dir, "reference.png"), filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, referenceImage)
+	writeTestPNG(t, actual, actualImage)
+
+	metrics, err := MeasureImageRegion(reference, actual, Bounds{Width: 3, Height: 1}, 0, nil)
+
+	require.NoError(t, err)
+	require.Len(t, metrics.DominantColorPairs, 1)
+	assert.Equal(t, ColorPair{Reference: "#0667C8", Actual: "#1676D2", Pixels: 3}, metrics.DominantColorPairs[0])
+}
+
 func TestCompareImagesIgnoresSelectedRegions(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")

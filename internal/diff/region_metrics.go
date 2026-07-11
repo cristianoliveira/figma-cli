@@ -4,13 +4,21 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"sort"
 )
 
+type ColorPair struct {
+	Reference string `json:"reference"`
+	Actual    string `json:"actual"`
+	Pixels    int    `json:"pixels"`
+}
+
 type RegionMetrics struct {
-	ChangedPixels int     `json:"changedPixels"`
-	ChangedRatio  float64 `json:"changedRatio"`
-	RMSE          float64 `json:"rmse"`
-	EdgeRMSE      float64 `json:"edgeRmse"`
+	ChangedPixels      int         `json:"changedPixels"`
+	ChangedRatio       float64     `json:"changedRatio"`
+	RMSE               float64     `json:"rmse"`
+	EdgeRMSE           float64     `json:"edgeRmse"`
+	DominantColorPairs []ColorPair `json:"dominantColorPairs,omitempty"`
 }
 
 func MeasureImageRegion(referencePath, actualPath string, bounds Bounds, threshold uint8, ignored []Bounds) (RegionMetrics, error) {
@@ -29,6 +37,7 @@ func MeasureImageRegion(referencePath, actualPath string, bounds Bounds, thresho
 		return RegionMetrics{}, fmt.Errorf("region %d,%d,%d,%d is outside image bounds %dx%d", bounds.X, bounds.Y, bounds.Width, bounds.Height, reference.Bounds().Dx(), reference.Bounds().Dy())
 	}
 	changed, compared, channels := 0, 0, 3
+	colorPairs := make(map[[8]uint8]int)
 	var rgbError, alphaError float64
 	transparent := false
 	for y := bounds.Y; y < bounds.Y+bounds.Height; y++ {
@@ -42,6 +51,7 @@ func MeasureImageRegion(referencePath, actualPath string, bounds Bounds, thresho
 			deltas := []uint8{absDiff(r.R, a.R), absDiff(r.G, a.G), absDiff(r.B, a.B), absDiff(r.A, a.A)}
 			if max(deltas[0], deltas[1], deltas[2], deltas[3]) > threshold {
 				changed++
+				colorPairs[[8]uint8{r.R, r.G, r.B, r.A, a.R, a.G, a.B, a.A}]++
 			}
 			for _, d := range deltas[:3] {
 				rgbError += float64(d) * float64(d)
@@ -58,5 +68,32 @@ func MeasureImageRegion(referencePath, actualPath string, bounds Bounds, thresho
 		channels = 4
 		total += alphaError
 	}
-	return RegionMetrics{ChangedPixels: changed, ChangedRatio: float64(changed) / float64(compared), RMSE: math.Sqrt(total/float64(compared*channels)) / 255, EdgeRMSE: imageEdgeRMSE(reference, actual, bounds, ignored)}, nil
+	return RegionMetrics{ChangedPixels: changed, ChangedRatio: float64(changed) / float64(compared), RMSE: math.Sqrt(total/float64(compared*channels)) / 255, EdgeRMSE: imageEdgeRMSE(reference, actual, bounds, ignored), DominantColorPairs: dominantColorPairs(colorPairs)}, nil
+}
+
+func dominantColorPairs(counts map[[8]uint8]int) []ColorPair {
+	pairs := make([]ColorPair, 0, len(counts))
+	for colors, pixels := range counts {
+		pairs = append(pairs, ColorPair{Reference: formatPixelColor(colors[0:4]), Actual: formatPixelColor(colors[4:8]), Pixels: pixels})
+	}
+	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i].Pixels != pairs[j].Pixels {
+			return pairs[i].Pixels > pairs[j].Pixels
+		}
+		if pairs[i].Reference != pairs[j].Reference {
+			return pairs[i].Reference < pairs[j].Reference
+		}
+		return pairs[i].Actual < pairs[j].Actual
+	})
+	if len(pairs) > 3 {
+		return pairs[:3]
+	}
+	return pairs
+}
+
+func formatPixelColor(channels []uint8) string {
+	if channels[3] == 255 {
+		return fmt.Sprintf("#%02X%02X%02X", channels[0], channels[1], channels[2])
+	}
+	return fmt.Sprintf("#%02X%02X%02X%02X", channels[0], channels[1], channels[2], channels[3])
 }
