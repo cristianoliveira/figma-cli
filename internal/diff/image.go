@@ -23,14 +23,15 @@ type Region struct {
 }
 
 type ImageComparison struct {
-	Width         int      `json:"width"`
-	Height        int      `json:"height"`
-	ChangedPixels int      `json:"changedPixels"`
-	ChangedRatio  float64  `json:"changedRatio"`
-	RMSE          float64  `json:"rmse"`
-	Bounds        *Bounds  `json:"bounds,omitempty"`
-	Regions       []Region `json:"regions,omitempty"`
-	Mask          string   `json:"mask"`
+	Width          int      `json:"width"`
+	Height         int      `json:"height"`
+	ChangedPixels  int      `json:"changedPixels"`
+	ChangedRatio   float64  `json:"changedRatio"`
+	RMSE           float64  `json:"rmse"`
+	ComparedRegion *Bounds  `json:"comparedRegion,omitempty"`
+	Bounds         *Bounds  `json:"bounds,omitempty"`
+	Regions        []Region `json:"regions,omitempty"`
+	Mask           string   `json:"mask"`
 }
 
 func CompareImages(referencePath, actualPath, maskPath string, threshold uint8) (ImageComparison, error) {
@@ -85,9 +86,17 @@ func CompareImagesInRegion(referencePath, actualPath, maskPath string, threshold
 		return ImageComparison{}, fmt.Errorf("write mask: %w", err)
 	}
 	result := ImageComparison{Width: width, Height: height, ChangedPixels: changed, ChangedRatio: float64(changed) / float64(width*height), RMSE: math.Sqrt(squaredError/float64(width*height*4)) / 255, Mask: maskPath}
+	if region != nil {
+		comparedRegion := area
+		result.ComparedRegion = &comparedRegion
+	}
 	if changed > 0 {
-		result.Bounds = &Bounds{X: minX, Y: minY, Width: maxX - minX + 1, Height: maxY - minY + 1}
+		result.Bounds = &Bounds{X: area.X + minX, Y: area.Y + minY, Width: maxX - minX + 1, Height: maxY - minY + 1}
 		result.Regions = findRegions(changedPixels, width, height)
+		for index := range result.Regions {
+			result.Regions[index].Bounds.X += area.X
+			result.Regions[index].Bounds.Y += area.Y
+		}
 	}
 	return result, nil
 }

@@ -54,7 +54,10 @@ func TestCompareImagesInRegionMeasuresOnlySelectedArea(t *testing.T) {
 	assert.Equal(t, 2, result.Width)
 	assert.Equal(t, 2, result.Height)
 	assert.Equal(t, 1, result.ChangedPixels)
-	assert.Equal(t, &Bounds{X: 1, Y: 1, Width: 1, Height: 1}, result.Bounds)
+	assert.Equal(t, &Bounds{X: 2, Y: 0, Width: 2, Height: 2}, result.ComparedRegion)
+	assert.Equal(t, &Bounds{X: 3, Y: 1, Width: 1, Height: 1}, result.Bounds)
+	require.Len(t, result.Regions, 1)
+	assert.Equal(t, Bounds{X: 3, Y: 1, Width: 1, Height: 1}, result.Regions[0].Bounds)
 }
 
 func TestCompareImagesRejectsDifferentDimensions(t *testing.T) {
