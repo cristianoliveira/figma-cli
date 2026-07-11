@@ -18,8 +18,11 @@ type Bounds struct {
 }
 
 type Region struct {
-	Bounds        Bounds `json:"bounds"`
-	ChangedPixels int    `json:"changedPixels"`
+	Bounds        Bounds  `json:"bounds"`
+	ChangedPixels int     `json:"changedPixels"`
+	ChangedRatio  float64 `json:"changedRatio"`
+	RMSE          float64 `json:"rmse"`
+	EdgeRMSE      float64 `json:"edgeRmse"`
 }
 
 type ImageComparison struct {

@@ -47,6 +47,10 @@ func TestImageDiffScenarios(t *testing.T) {
 			require.NoError(t, json.Unmarshal(output, &comparison))
 			assert.Equal(t, test.changed, comparison.ChangedPixels)
 			assert.Len(t, comparison.Regions, test.regionCount)
+			if test.regionCount > 0 {
+				assert.Greater(t, comparison.Regions[0].ChangedRatio, 0.0)
+				assert.Greater(t, comparison.Regions[0].RMSE, 0.0)
+			}
 			if test.expectedCompared > 0 {
 				assert.Equal(t, test.expectedCompared, comparison.ComparedPixels)
 			}

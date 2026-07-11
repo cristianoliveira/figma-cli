@@ -71,6 +71,16 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 			if len(result.Regions) > 20 {
 				result.Regions = result.Regions[:20]
 			}
+			for index := range result.Regions {
+				metrics, metricsErr := diff.MeasureImageRegion(args[0], args[1], result.Regions[index].Bounds, threshold, ignored)
+				if metricsErr != nil {
+					return metricsErr
+				}
+				result.Regions[index].ChangedPixels = metrics.ChangedPixels
+				result.Regions[index].ChangedRatio = metrics.ChangedRatio
+				result.Regions[index].RMSE = metrics.RMSE
+				result.Regions[index].EdgeRMSE = metrics.EdgeRMSE
+			}
 			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
 			if maxRMSE >= 0 && result.RMSE > maxRMSE {
 				return fmt.Errorf("image diff validation failed: RMSE %.6f exceeds maximum %.6f", result.RMSE, maxRMSE)

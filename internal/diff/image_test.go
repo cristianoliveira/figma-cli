@@ -60,6 +60,24 @@ func TestCompareImagesInRegionMeasuresOnlySelectedArea(t *testing.T) {
 	assert.Equal(t, Bounds{X: 3, Y: 1, Width: 1, Height: 1}, result.Regions[0].Bounds)
 }
 
+func TestMeasureImageRegionReportsLocalMetrics(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 4, 2)))
+	changed := image.NewRGBA(image.Rect(0, 0, 4, 2))
+	changed.Set(2, 0, color.White)
+	writeTestPNG(t, actual, changed)
+
+	metrics, err := MeasureImageRegion(reference, actual, Bounds{X: 2, Y: 0, Width: 2, Height: 2}, 0, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, metrics.ChangedPixels)
+	assert.InDelta(t, 0.25, metrics.ChangedRatio, 0.000001)
+	assert.Greater(t, metrics.RMSE, 0.0)
+	assert.Greater(t, metrics.EdgeRMSE, 0.0)
+}
+
 func TestCompareImagesIgnoresSelectedRegions(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")
