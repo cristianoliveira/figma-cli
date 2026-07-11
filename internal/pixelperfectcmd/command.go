@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,6 +25,16 @@ func newCommand(compare imageComparer) *cobra.Command {
 			threshold, _ := cmd.Flags().GetUint8("threshold")
 			if output == "" {
 				return fmt.Errorf("--output is required")
+			}
+			overlay, _ := cmd.Flags().GetString("overlay")
+			if samePath(output, args[0]) || samePath(output, args[1]) {
+				return fmt.Errorf("--output must not overwrite an input image")
+			}
+			if overlay != "" && (samePath(overlay, args[0]) || samePath(overlay, args[1])) {
+				return fmt.Errorf("--overlay must not overwrite an input image")
+			}
+			if overlay != "" && samePath(overlay, output) {
+				return fmt.Errorf("--overlay must differ from --output")
 			}
 			offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
 			if offsetRadius < 0 {
@@ -73,7 +84,6 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			overlay, _ := cmd.Flags().GetString("overlay")
 			if overlay != "" {
 				if err := diff.WriteImageOverlay(args[0], args[1], overlay, region, ignored); err != nil {
 					return err
@@ -188,6 +198,15 @@ func parseImageRegion(value string) (*diff.Bounds, error) {
 		values[index] = value
 	}
 	return &diff.Bounds{X: values[0], Y: values[1], Width: values[2], Height: values[3]}, nil
+}
+
+func samePath(first, second string) bool {
+	firstAbsolute, firstErr := filepath.Abs(first)
+	secondAbsolute, secondErr := filepath.Abs(second)
+	if firstErr != nil || secondErr != nil {
+		return filepath.Clean(first) == filepath.Clean(second)
+	}
+	return filepath.Clean(firstAbsolute) == filepath.Clean(secondAbsolute)
 }
 
 func writeJSON(command *cobra.Command, value any) error {

@@ -224,6 +224,34 @@ func TestPixelPerfectRejectsRegionsOutsideImage(t *testing.T) {
 	}
 }
 
+func TestPixelPerfectRejectsArtifactPathCollisions(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	reference := filepath.Join(fixtures, "reference.png")
+	actual := filepath.Join(fixtures, "two-regions.png")
+	tests := []struct {
+		name, expected string
+		args           func(*testing.T) []string
+	}{
+		{name: "mask overwrites reference", expected: "--output must not overwrite an input image", args: func(*testing.T) []string { return []string{reference, actual, "--output", reference} }},
+		{name: "mask overwrites actual", expected: "--output must not overwrite an input image", args: func(*testing.T) []string { return []string{reference, actual, "--output", actual} }},
+		{name: "overlay overwrites mask", expected: "--overlay must differ from --output", args: func(t *testing.T) []string {
+			artifact := filepath.Join(t.TempDir(), "artifact.png")
+			return []string{reference, actual, "--output", artifact, "--overlay", artifact}
+		}},
+		{name: "overlay overwrites reference", expected: "--overlay must not overwrite an input image", args: func(t *testing.T) []string {
+			return []string{reference, actual, "--output", filepath.Join(t.TempDir(), "mask.png"), "--overlay", reference}
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			output, err := exec.Command(binary, test.args(t)...).CombinedOutput()
+			require.Error(t, err)
+			assert.Contains(t, string(output), test.expected)
+		})
+	}
+}
+
 func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")

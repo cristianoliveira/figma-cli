@@ -57,6 +57,28 @@ func TestParseImageRegion(t *testing.T) {
 	assert.Equal(t, &diff.Bounds{X: 10, Y: 20, Width: 300, Height: 400}, region)
 }
 
+func TestDiffImageCommandRejectsArtifactPathCollisions(t *testing.T) {
+	tests := []struct {
+		name, output, overlay, expected string
+	}{
+		{name: "output is reference", output: "reference.png", expected: "--output must not overwrite an input image"},
+		{name: "output is actual", output: "actual.png", expected: "--output must not overwrite an input image"},
+		{name: "overlay is reference", output: "mask.png", overlay: "reference.png", expected: "--overlay must not overwrite an input image"},
+		{name: "overlay is output", output: "mask.png", overlay: "./mask.png", expected: "--overlay must differ from --output"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args := []string{"reference.png", "actual.png", "--output", test.output}
+			if test.overlay != "" {
+				args = append(args, "--overlay", test.overlay)
+			}
+			result := executeCommand(newCommand(diff.CompareImagesWithIgnoredRegions), args...)
+
+			assert.EqualError(t, result.Err, test.expected)
+		})
+	}
+}
+
 func TestDiffImageCommandRejectsEmptyIgnoredRegions(t *testing.T) {
 	for _, region := range []string{"0,0,0,1", "0,0,1,0", "0,0,-1,1", "0,0,1,-1"} {
 		t.Run(region, func(t *testing.T) {
