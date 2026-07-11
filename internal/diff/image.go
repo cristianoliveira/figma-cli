@@ -23,17 +23,18 @@ type Region struct {
 }
 
 type ImageComparison struct {
-	Width          int      `json:"width"`
-	Height         int      `json:"height"`
-	ChangedPixels  int      `json:"changedPixels"`
-	ComparedPixels int      `json:"comparedPixels"`
-	ChangedRatio   float64  `json:"changedRatio"`
-	RMSE           float64  `json:"rmse"`
-	ComparedRegion *Bounds  `json:"comparedRegion,omitempty"`
-	Bounds         *Bounds  `json:"bounds,omitempty"`
-	Regions        []Region `json:"regions,omitempty"`
-	Mask           string   `json:"mask"`
-	Overlay        string   `json:"overlay,omitempty"`
+	Width           int              `json:"width"`
+	Height          int              `json:"height"`
+	ChangedPixels   int              `json:"changedPixels"`
+	ComparedPixels  int              `json:"comparedPixels"`
+	ChangedRatio    float64          `json:"changedRatio"`
+	RMSE            float64          `json:"rmse"`
+	ComparedRegion  *Bounds          `json:"comparedRegion,omitempty"`
+	Bounds          *Bounds          `json:"bounds,omitempty"`
+	Regions         []Region         `json:"regions,omitempty"`
+	Mask            string           `json:"mask"`
+	Overlay         string           `json:"overlay,omitempty"`
+	SuggestedOffset *SuggestedOffset `json:"suggestedOffset,omitempty"`
 }
 
 func CompareImages(referencePath, actualPath, maskPath string, threshold uint8) (ImageComparison, error) {

@@ -48,6 +48,14 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 				}
 				result.Overlay = overlay
 			}
+			offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
+			if offsetRadius > 0 {
+				suggestedOffset, offsetErr := diff.SuggestImageOffset(args[0], args[1], offsetRadius, region, ignored)
+				if offsetErr != nil {
+					return offsetErr
+				}
+				result.SuggestedOffset = &suggestedOffset
+			}
 			regionGap, _ := cmd.Flags().GetInt("region-gap")
 			result.Regions = groupImageRegions(result.Regions, regionGap)
 			minRegionPixels, _ := cmd.Flags().GetInt("min-region-pixels")
@@ -71,6 +79,7 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 	command.Flags().String("region", "", "compare only x,y,width,height")
 	command.Flags().StringArray("ignore-region", nil, "exclude x,y,width,height; repeat for multiple areas")
 	command.Flags().String("overlay", "", "path for directional overlay (reference red, actual green)")
+	command.Flags().Int("suggest-offset", 0, "report best translation within this pixel radius without applying it")
 	command.Flags().Int("region-gap", 0, "group mismatch regions separated by at most this many pixels")
 	command.Flags().Int("min-region-pixels", 1, "omit disconnected regions smaller than this many changed pixels")
 	command.Flags().Float64("max-rmse", -1, "fail when normalized RMSE exceeds this value")

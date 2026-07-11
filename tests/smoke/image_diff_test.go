@@ -16,17 +16,19 @@ func TestImageDiffScenarios(t *testing.T) {
 	binary := buildCLI(t)
 	fixtures := filepath.Join("fixtures", "image-diff")
 	tests := []struct {
-		name        string
-		actual      string
-		flags       []string
-		changed     int
-		regionCount int
+		name          string
+		actual        string
+		flags         []string
+		changed       int
+		regionCount   int
+		expectsOffset bool
 	}{
 		{name: "identical images", actual: "identical.png"},
 		{name: "disconnected changes", actual: "two-regions.png", changed: 2, regionCount: 2},
 		{name: "tiny regions can be omitted", actual: "two-regions.png", flags: []string{"--min-region-pixels", "2"}, changed: 2},
 		{name: "nearby regions can be grouped", actual: "two-regions.png", flags: []string{"--region-gap", "4"}, changed: 2, regionCount: 1},
 		{name: "known dynamic area can be ignored", actual: "two-regions.png", flags: []string{"--ignore-region", "0,0,1,1"}, changed: 1, regionCount: 1},
+		{name: "translation can be reported", actual: "two-regions.png", flags: []string{"--suggest-offset", "1"}, changed: 2, regionCount: 2, expectsOffset: true},
 		{name: "threshold ignores subtle rendering noise", actual: "subtle-change.png", flags: []string{"--threshold", "5"}},
 	}
 	for _, test := range tests {
@@ -43,6 +45,9 @@ func TestImageDiffScenarios(t *testing.T) {
 			require.NoError(t, json.Unmarshal(output, &comparison))
 			assert.Equal(t, test.changed, comparison.ChangedPixels)
 			assert.Len(t, comparison.Regions, test.regionCount)
+			if test.expectsOffset {
+				assert.NotNil(t, comparison.SuggestedOffset)
+			}
 			_, err = os.Stat(mask)
 			require.NoError(t, err)
 			_, err = os.Stat(overlay)
