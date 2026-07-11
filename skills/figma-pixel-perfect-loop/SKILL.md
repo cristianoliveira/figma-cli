@@ -58,8 +58,12 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
        --threshold 8 \
        --output output/visual-diff/region-mask.png
      ```
-   - Region masks are crop-sized; `comparedRegion`, mismatch `bounds`, and disconnected region bounds remain absolute full-image coordinates.
-   - Keep screenshots, masks, and JSON metrics under `output/visual-diff/`.
+   - Region masks and overlays are crop-sized; `comparedRegion`, mismatch `bounds`, and disconnected region bounds remain absolute full-image coordinates.
+   - Add `--overlay <path>` when direction matters: red means stronger/present in Figma, green means stronger/present in implementation.
+   - Use `--region-gap` to group nearby glyph clusters, `--min-region-pixels` to omit tiny clusters, and repeat `--ignore-region` for known dynamic or irrelevant areas.
+   - Use `--suggest-offset <radius>` to report likely translation. Never apply it silently; original metrics remain authoritative.
+   - Read metrics diagnostically: `edgeRmse` emphasizes geometry, `luminanceRmse` brightness, `rgbRmse` color, and `alphaRmse` transparency/effects.
+   - Keep screenshots, masks, overlays, and JSON metrics under `output/visual-diff/`.
 
 4. **Refine outside-in, one region per loop**
    1. canvas and sidebar
@@ -77,6 +81,32 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
    - An increased score is feedback, not failure: inspect the mask, check coordinate alignment and crop boundaries, then correct the largest discrepancy.
    - Do not claim pixel-perfect based only on DOM content or a whole-page metric.
 
+## Stable Playwright Capture
+
+Before every screenshot:
+
+1. Set viewport to Figma export dimensions and `deviceScaleFactor: 1`.
+2. Wait for `document.fonts.ready`; verify expected font families loaded rather than accepting fallback fonts.
+3. Disable CSS animations, transitions, carets, and blinking cursors.
+4. Use the same page background and transparency treatment as Figma export.
+5. Capture a page region with explicit effect padding when shadows extend beyond element bounds; locator screenshots commonly clip them.
+6. Keep browser engine, OS, font files, zoom, and screenshot method fixed across iterations.
+7. Record viewport, scale factor, browser version, and capture bounds with artifacts.
+
+Example readiness step:
+
+```js
+await page.setViewportSize({ width: frameWidth, height: frameHeight });
+await page.evaluate(async () => { await document.fonts.ready; });
+await page.addStyleTag({ content: `
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    caret-color: transparent !important;
+  }
+` });
+```
+
 ## Guardrails
 
 - Use the Figma frame's native dimensions for both images. Do not resize either image before comparison: a rescaled screenshot changes antialiasing and invalidates RMSE.
@@ -92,6 +122,7 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
 
 - Reference and implementation screenshots have identical dimensions without image resampling, including equivalent shadow/effect padding.
 - Every important region has a recorded `--region` comparison and mask PNG.
+- Capture metadata fixes viewport, device scale, browser, font readiness, background, and effect padding.
 - Each text region records Figma and DOM bounds; multiline copy, links, and control labels have matching line-box height and baseline before final raster comparison.
 - CSS values trace back to Figma inspect/CSS output or exported assets.
 - Region metrics are recorded and improving or explicitly explained.

@@ -262,9 +262,15 @@ figma diff image reference.png implementation.png \
 # Ignore minor raster noise and fail deterministic validation gates
 figma diff image reference.png implementation.png --output diff.png \
   --threshold 8 --max-rmse 0.03 --max-changed-ratio 0.02
+
+# Diagnose direction, alignment, noisy clusters, and known dynamic areas
+figma diff image reference.png implementation.png --output diff.png \
+  --overlay overlay.png --suggest-offset 5 \
+  --region-gap 8 --min-region-pixels 12 \
+  --ignore-region 0,0,100,40
 ```
 
-Inputs must be equal-sized PNGs. JSON reports normalized RMSE, changed-pixel ratio, overall bounds, and up to 20 largest disconnected regions. `--region` uses `x,y,width,height`; the mask is crop-sized while reported bounds use full-image coordinates. Use threshold and validation flags for agent loops or CI.
+Inputs must be equal-sized PNGs. JSON reports normalized overall, RGB, luminance, alpha, and edge RMSE; changed-pixel ratio; overall bounds; and up to 20 largest disconnected regions. `--region` uses `x,y,width,height`; masks and overlays are crop-sized while reported bounds use full-image coordinates. Red overlay pixels are stronger in the reference; green pixels are stronger in the implementation. Suggested offsets are diagnostic and never silently applied. Repeat `--ignore-region` for known dynamic areas. Use threshold and validation flags for agent loops or CI.
 
 ### `figma diff text` — Copy changes between versions
 
