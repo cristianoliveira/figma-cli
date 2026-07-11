@@ -20,6 +20,7 @@ The tool is built with a focus on being **LLM-friendly**, **URL-based**, and **c
 - **Design Inspection**: Explore layers, components, styles, and text content
 - **Asset Export**: Export images, SVGs, and other design assets
 - **Plugin Simulation**: Simulate Figma plugin behavior for local testing
+- **Standalone Visual Diff**: [`pixel-perfect`](cmd/pixel-perfect/README.md) compares PNG screenshots without requiring Figma
 
 ## Installation
 
@@ -40,6 +41,9 @@ go build -o figma ./cmd/figma
 
 ```bash
 go install github.com/cristianoliveira/figma-cli/cmd/figma@latest
+
+# Generic screenshot comparison CLI
+go install github.com/cristianoliveira/figma-cli/cmd/pixel-perfect@latest
 ```
 
 ### Using Nix (Development)
