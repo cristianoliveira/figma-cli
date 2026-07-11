@@ -2,6 +2,7 @@ package smoke
 
 import (
 	"encoding/json"
+	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -88,6 +89,131 @@ func TestImageDiffScenarios(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestPixelPerfectBoundaryAndCompositingScenarios(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	tests := []struct {
+		name, reference, actual string
+		flags                   []string
+		changed, compared       int
+		assertResult            func(*testing.T, diff.ImageComparison)
+	}{
+		{name: "difference equal to threshold is ignored", reference: "reference.png", actual: "threshold-equal.png", flags: []string{"--threshold", "5"}, compared: 12},
+		{name: "difference above threshold is detected", reference: "reference.png", actual: "threshold-exceeded.png", flags: []string{"--threshold", "5"}, changed: 12, compared: 12},
+		{name: "alpha-only changes affect alpha metric", reference: "reference.png", actual: "alpha-only-change.png", changed: 12, compared: 12, assertResult: func(t *testing.T, result diff.ImageComparison) { assert.Greater(t, result.AlphaRMSE, 0.0) }},
+		{name: "fully excluded comparison is valid", reference: "reference.png", actual: "two-regions.png", flags: []string{"--mask", filepath.Join(fixtures, "all-excluded-mask.png")}},
+		{name: "translation direction is exact", reference: "offset-reference.png", actual: "offset-right-one.png", flags: []string{"--suggest-offset", "2"}, changed: 2, compared: 12, assertResult: func(t *testing.T, result diff.ImageComparison) {
+			require.NotNil(t, result.SuggestedOffset)
+			assert.Equal(t, -1, result.SuggestedOffset.X)
+			assert.Equal(t, 0, result.SuggestedOffset.Y)
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mask := filepath.Join(t.TempDir(), "mask.png")
+			args := []string{filepath.Join(fixtures, test.reference), filepath.Join(fixtures, test.actual), "--output", mask}
+			args = append(args, test.flags...)
+			output, err := exec.Command(binary, args...).CombinedOutput()
+			require.NoError(t, err, string(output))
+			var comparison diff.ImageComparison
+			require.NoError(t, json.Unmarshal(output, &comparison))
+			assert.Equal(t, test.changed, comparison.ChangedPixels)
+			assert.Equal(t, test.compared, comparison.ComparedPixels)
+			assertPNGDimensions(t, mask, 4, 3)
+			if test.assertResult != nil {
+				test.assertResult(t, comparison)
+			}
+		})
+	}
+}
+
+func TestPixelPerfectRejectsWrongSizeComparisonMask(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"),
+		"--output", mask, "--mask", filepath.Join(fixtures, "wrong-size-mask.png"),
+	).CombinedOutput()
+
+	require.Error(t, err)
+	assert.Contains(t, string(output), "comparison mask dimensions differ")
+	_, statErr := os.Stat(mask)
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func TestPixelPerfectRealUIScreenshot(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	overlay := filepath.Join(t.TempDir(), "overlay.png")
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "real-ui-reference.png"),
+		filepath.Join(fixtures, "real-ui-implementation.png"),
+		"--output", mask,
+		"--overlay", overlay,
+		"--region-gap", "8",
+		"--min-region-pixels", "12",
+	).CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal(output, &comparison))
+	assert.Equal(t, 575, comparison.Width)
+	assert.Equal(t, 477, comparison.Height)
+	assert.Equal(t, 575*477, comparison.ComparedPixels)
+	assert.Greater(t, comparison.ChangedPixels, 1_000)
+	assert.Greater(t, comparison.RMSE, 0.0)
+	assert.Greater(t, comparison.EdgeRMSE, 0.0)
+	assert.NotEmpty(t, comparison.Regions)
+	assert.LessOrEqual(t, len(comparison.Regions), 20)
+	assertPNGDimensions(t, mask, 575, 477)
+	assertPNGDimensions(t, overlay, 575, 477)
+}
+
+func TestPixelPerfectRealUIValidationGate(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "real-ui-reference.png"),
+		filepath.Join(fixtures, "real-ui-implementation.png"),
+		"--output", mask,
+		"--max-changed-ratio", "0.001",
+	).CombinedOutput()
+
+	require.Error(t, err)
+	assert.Contains(t, string(output), "error: image diff validation failed: changed ratio")
+	assertPNGDimensions(t, mask, 575, 477)
+}
+
+func TestPixelPerfectRejectsRealUIWithUnequalDimensions(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "real-ui-reference.png"),
+		filepath.Join(fixtures, "unequal-dimensions.png"),
+		"--output", mask,
+	).CombinedOutput()
+
+	require.Error(t, err)
+	assert.Contains(t, string(output), "dimensions")
+	_, statErr := os.Stat(mask)
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func assertPNGDimensions(t *testing.T, path string, width, height int) {
+	t.Helper()
+	file, err := os.Open(path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	config, err := png.DecodeConfig(file)
+	require.NoError(t, err)
+	assert.Equal(t, width, config.Width)
+	assert.Equal(t, height, config.Height)
 }
 
 func buildCommand(t *testing.T, name string) string {
