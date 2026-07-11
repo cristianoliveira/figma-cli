@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type imageComparer func(referencePath, actualPath, maskPath string, threshold uint8, region *diff.Bounds, ignored []diff.Bounds) (diff.ImageComparison, error)
+type imageComparer func(referencePath, actualPath, maskPath string, threshold uint8, perceptualThreshold float64, region *diff.Bounds, ignored []diff.Bounds) (diff.ImageComparison, error)
 
 func newCommand(compare imageComparer) *cobra.Command {
 	command := &cobra.Command{
@@ -48,6 +48,10 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if minRegionPixels < 1 {
 				return fmt.Errorf("--min-region-pixels must be positive")
 			}
+			perceptualThreshold, _ := cmd.Flags().GetFloat64("perceptual-threshold")
+			if perceptualThreshold < 0 || perceptualThreshold > 1 || math.IsNaN(perceptualThreshold) || math.IsInf(perceptualThreshold, 0) {
+				return fmt.Errorf("--perceptual-threshold must be between 0 and 1")
+			}
 			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
 			if maxRMSE != -1 && (maxRMSE < 0 || math.IsNaN(maxRMSE) || math.IsInf(maxRMSE, 0)) {
 				return fmt.Errorf("--max-rmse must be -1 or a finite non-negative number")
@@ -80,7 +84,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 				}
 				ignored = append(ignored, maskedRegions...)
 			}
-			result, err := compare(args[0], args[1], output, threshold, region, ignored)
+			result, err := compare(args[0], args[1], output, threshold, perceptualThreshold, region, ignored)
 			if err != nil {
 				return err
 			}
@@ -127,6 +131,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 	}
 	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask")
 	command.Flags().Uint8("threshold", 0, "ignore per-channel differences at or below this value (0-255)")
+	command.Flags().Float64("perceptual-threshold", diff.DefaultPerceptualThreshold, "OKLab HyAB distance above which a pixel is perceptually changed (0-1)")
 	command.Flags().String("region", "", "compare only x,y,width,height")
 	command.Flags().StringArray("ignore-region", nil, "exclude x,y,width,height; repeat for multiple areas")
 	command.Flags().String("mask", "", "full-size PNG selecting compared pixels (visible non-black includes)")
@@ -217,7 +222,7 @@ func writeJSON(command *cobra.Command, value any) error {
 
 // NewCommand creates the standalone image comparison command.
 func NewCommand() *cobra.Command {
-	command := newCommand(diff.CompareImagesWithIgnoredRegions)
+	command := newCommand(diff.CompareImagesWithThresholds)
 	command.Use = "pixel-perfect <reference.png> <actual.png>"
 	return command
 }

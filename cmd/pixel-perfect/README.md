@@ -117,7 +117,7 @@ pixel-perfect reference.png implementation.png \
 - `alphaRmse`: transparency and effect difference.
 - `edgeRmse`: local visible-luminance gradient difference; useful for geometry.
 - `perceptualRmse`: OKLab HyAB color distance after alpha compositing; useful for human-visible color change.
-- `perceptualChangedPixels` and `perceptualChangedRatio`: pixels above the reported `perceptualThreshold`; raw changed-pixel evidence remains unchanged.
+- `perceptualChangedPixels` and `perceptualChangedRatio`: pixels above the reported `perceptualThreshold`; configure it with `--perceptual-threshold` (default `0.1`, range `0..1`). Raw changed-pixel evidence and `--threshold` semantics remain unchanged.
 - `changedRatio`: thresholded changed pixels divided by compared pixels.
 - `bounds`: smallest absolute rectangle containing all changed pixels.
 - `changedRows`: sorted absolute row indexes containing changed pixels; useful as compact localization evidence.

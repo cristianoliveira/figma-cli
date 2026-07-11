@@ -60,6 +60,10 @@ func CompareImagesInRegion(referencePath, actualPath, maskPath string, threshold
 }
 
 func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string, threshold uint8, region *Bounds, ignored []Bounds) (ImageComparison, error) {
+	return CompareImagesWithThresholds(referencePath, actualPath, maskPath, threshold, DefaultPerceptualThreshold, region, ignored)
+}
+
+func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, threshold uint8, perceptualThreshold float64, region *Bounds, ignored []Bounds) (ImageComparison, error) {
 	reference, err := decodePNG(referencePath)
 	if err != nil {
 		return ImageComparison{}, fmt.Errorf("decode reference: %w", err)
@@ -106,7 +110,7 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 			alphaSquaredError += float64(delta[3]) * float64(delta[3])
 			perceptualDelta := perceptualColorDistance(r, a)
 			perceptualSquaredError += perceptualDelta * perceptualDelta
-			if perceptualDelta > DefaultPerceptualThreshold {
+			if perceptualDelta > perceptualThreshold {
 				perceptualChanged++
 			}
 			hasTransparency = hasTransparency || r.A != 255 || a.A != 255
@@ -131,7 +135,7 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 	}
 	result := ImageComparison{
 		Width: width, Height: height, ChangedPixels: changed, ComparedPixels: compared, Mask: maskPath,
-		PerceptualChangedPixels: perceptualChanged, PerceptualThreshold: DefaultPerceptualThreshold,
+		PerceptualChangedPixels: perceptualChanged, PerceptualThreshold: perceptualThreshold,
 	}
 	if compared > 0 {
 		result.ChangedRatio = float64(changed) / float64(compared)

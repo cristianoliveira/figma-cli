@@ -203,7 +203,7 @@ func TestPixelPerfectHelpDocumentsStandaloneContract(t *testing.T) {
 	require.NoError(t, err, string(output))
 	help := string(output)
 	assert.Contains(t, help, "pixel-perfect <reference.png> <actual.png>")
-	for _, flag := range []string{"--output", "--overlay", "--region", "--ignore-region", "--mask", "--threshold", "--suggest-offset", "--max-rmse", "--max-changed-ratio"} {
+	for _, flag := range []string{"--output", "--overlay", "--region", "--ignore-region", "--mask", "--threshold", "--perceptual-threshold", "--suggest-offset", "--max-rmse", "--max-changed-ratio"} {
 		assert.Contains(t, help, flag)
 	}
 }
@@ -272,6 +272,8 @@ func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
 		{name: "negative offset radius", flags: []string{"--suggest-offset", "-1"}, expected: "--suggest-offset must be non-negative"},
 		{name: "negative region gap", flags: []string{"--region-gap", "-1"}, expected: "--region-gap must be non-negative"},
 		{name: "zero minimum region pixels", flags: []string{"--min-region-pixels", "0"}, expected: "--min-region-pixels must be positive"},
+		{name: "negative perceptual threshold", flags: []string{"--perceptual-threshold", "-0.1"}, expected: "--perceptual-threshold must be between 0 and 1"},
+		{name: "perceptual threshold above one", flags: []string{"--perceptual-threshold", "1.1"}, expected: "--perceptual-threshold must be between 0 and 1"},
 		{name: "NaN RMSE limit", flags: []string{"--max-rmse", "NaN"}, expected: "--max-rmse must be -1 or a finite non-negative number"},
 		{name: "invalid negative RMSE limit", flags: []string{"--max-rmse", "-2"}, expected: "--max-rmse must be -1 or a finite non-negative number"},
 		{name: "changed ratio above one", flags: []string{"--max-changed-ratio", "1.1"}, expected: "--max-changed-ratio must be -1 or between 0 and 1"},
