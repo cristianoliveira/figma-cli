@@ -83,6 +83,47 @@ func TestPixelPerfectReportsMixedForCompetingMismatchSignals(t *testing.T) {
 	assert.Less(t, region.EdgeRMSE, region.RMSE*0.5)
 }
 
+func TestPixelPerfectGroupingCanTurnClearSignalsIntoMixedDiagnosis(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	base := image.NewRGBA(image.Rect(0, 0, 205, 100))
+	changed := image.NewRGBA(base.Bounds())
+	for y := 0; y < 100; y++ {
+		for x := 0; x < 100; x++ {
+			changed.SetRGBA(x, y, color.RGBA{R: 160, A: 255})
+		}
+		for x := 105; x < 205; x++ {
+			changed.SetRGBA(x, y, color.RGBA{G: 160, A: 255})
+		}
+	}
+	writeSmokePNG(t, reference, base)
+	writeSmokePNG(t, actual, changed)
+
+	compare := func(t *testing.T, flags ...string) diff.ImageComparison {
+		t.Helper()
+		args := []string{reference, actual, "--output", filepath.Join(t.TempDir(), "mask.png")}
+		args = append(args, flags...)
+		output, err := exec.Command(binary, args...).CombinedOutput()
+		require.NoError(t, err, string(output))
+		var comparison diff.ImageComparison
+		require.NoError(t, json.Unmarshal(output, &comparison))
+		return comparison
+	}
+
+	separate := compare(t)
+	require.Len(t, separate.Regions, 2)
+	assert.Equal(t, "solid-fill", separate.Regions[0].Classification)
+	assert.Equal(t, "solid-fill", separate.Regions[1].Classification)
+
+	grouped := compare(t, "--region-gap", "5")
+	require.Len(t, grouped.Regions, 1)
+	assert.Equal(t, "mixed", grouped.Regions[0].Classification)
+	assert.Equal(t, 20_000, grouped.Regions[0].ChangedPixels)
+	require.Len(t, grouped.Regions[0].DominantColorPairs, 2)
+}
+
 func TestPixelPerfectExposesClassificationBoundarySensitivity(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	for _, test := range []struct {
