@@ -40,6 +40,7 @@ type ImageComparison struct {
 	EdgeRMSE        float64          `json:"edgeRmse"`
 	ComparedRegion  *Bounds          `json:"comparedRegion,omitempty"`
 	Bounds          *Bounds          `json:"bounds,omitempty"`
+	ChangedRows     []int            `json:"changedRows,omitempty"`
 	Regions         []Region         `json:"regions,omitempty"`
 	Mask            string           `json:"mask"`
 	Overlay         string           `json:"overlay,omitempty"`
@@ -78,6 +79,7 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 	width, height := area.Width, area.Height
 	mask := image.NewNRGBA(image.Rect(0, 0, width, height))
 	changedPixels := make([]bool, width*height)
+	changedRows := make([]bool, height)
 	changed, compared, minX, minY, maxX, maxY := 0, 0, width, height, -1, -1
 	var rgbSquaredError, luminanceSquaredError, alphaSquaredError float64
 	hasTransparency := false
@@ -104,6 +106,7 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 			}
 			changed++
 			changedPixels[y*width+x] = true
+			changedRows[y] = true
 			minX, minY, maxX, maxY = min(minX, x), min(minY, y), max(maxX, x), max(maxY, y)
 			mask.SetNRGBA(x, y, color.NRGBA{R: 255, A: maxDelta})
 		}
@@ -132,6 +135,11 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 	}
 	if changed > 0 {
 		result.Bounds = &Bounds{X: area.X + minX, Y: area.Y + minY, Width: maxX - minX + 1, Height: maxY - minY + 1}
+		for row, hasChanges := range changedRows {
+			if hasChanges {
+				result.ChangedRows = append(result.ChangedRows, area.Y+row)
+			}
+		}
 		result.Regions = findRegions(changedPixels, width, height)
 		for index := range result.Regions {
 			result.Regions[index].Bounds.X += area.X

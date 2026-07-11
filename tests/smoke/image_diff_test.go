@@ -24,6 +24,8 @@ func TestPixelPerfectStandaloneCLI(t *testing.T) {
 	var comparison diff.ImageComparison
 	require.NoError(t, json.Unmarshal(output, &comparison))
 	assert.Equal(t, 2, comparison.ChangedPixels)
+	assert.Equal(t, &diff.Bounds{X: 0, Y: 0, Width: 4, Height: 3}, comparison.Bounds)
+	assert.Equal(t, []int{0, 2}, comparison.ChangedRows)
 	require.Len(t, comparison.Regions, 2)
 	assert.NotEmpty(t, comparison.Regions[0].Classification)
 }

@@ -31,6 +31,7 @@ func TestCompareImagesWritesMaskAndMeasuresChangedArea(t *testing.T) {
 	assert.Equal(t, 2, result.ChangedPixels)
 	assert.InDelta(t, 1.0/3.0, result.ChangedRatio, 0.0001)
 	assert.Equal(t, &Bounds{X: 1, Y: 0, Width: 2, Height: 2}, result.Bounds)
+	assert.Equal(t, []int{0, 1}, result.ChangedRows)
 	require.Len(t, result.Regions, 2)
 	assert.Equal(t, Region{Bounds: Bounds{X: 1, Y: 0, Width: 1, Height: 1}, ChangedPixels: 1}, result.Regions[0])
 	assert.Equal(t, Region{Bounds: Bounds{X: 2, Y: 1, Width: 1, Height: 1}, ChangedPixels: 1}, result.Regions[1])
@@ -56,6 +57,7 @@ func TestCompareImagesInRegionMeasuresOnlySelectedArea(t *testing.T) {
 	assert.Equal(t, 1, result.ChangedPixels)
 	assert.Equal(t, &Bounds{X: 2, Y: 0, Width: 2, Height: 2}, result.ComparedRegion)
 	assert.Equal(t, &Bounds{X: 3, Y: 1, Width: 1, Height: 1}, result.Bounds)
+	assert.Equal(t, []int{1}, result.ChangedRows)
 	require.Len(t, result.Regions, 1)
 	assert.Equal(t, Bounds{X: 3, Y: 1, Width: 1, Height: 1}, result.Regions[0].Bounds)
 }

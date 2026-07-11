@@ -84,6 +84,8 @@ pixel-perfect reference.png implementation.png \
   "luminanceRmse": 0.061,
   "alphaRmse": 0.012,
   "edgeRmse": 0.048,
+  "bounds": {"x": 12, "y": 80, "width": 520, "height": 310},
+  "changedRows": [80, 81, 120, 121],
   "regions": [
     {
       "bounds": {"x": 522, "y": 282, "width": 200, "height": 48},
@@ -111,6 +113,8 @@ pixel-perfect reference.png implementation.png \
 - `alphaRmse`: transparency and effect difference.
 - `edgeRmse`: local visible-luminance gradient difference; useful for geometry.
 - `changedRatio`: thresholded changed pixels divided by compared pixels.
+- `bounds`: smallest absolute rectangle containing all changed pixels.
+- `changedRows`: sorted absolute row indexes containing changed pixels; useful as compact localization evidence.
 
 ### Region classifications
 
