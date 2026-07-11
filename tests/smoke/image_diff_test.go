@@ -2,6 +2,7 @@ package smoke
 
 import (
 	"encoding/json"
+	"fmt"
 	"image/png"
 	"os"
 	"os/exec"
@@ -271,6 +272,46 @@ func TestPixelPerfectRealUIScreenshot(t *testing.T) {
 	assert.LessOrEqual(t, len(comparison.Regions), 20)
 	assertPNGDimensions(t, mask, 575, 477)
 	assertPNGDimensions(t, overlay, 575, 477)
+}
+
+func TestPixelPerfectValidationGateBoundaries(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	reference := filepath.Join(fixtures, "reference.png")
+	actual := filepath.Join(fixtures, "two-regions.png")
+	baselineMask := filepath.Join(t.TempDir(), "baseline.png")
+	baselineOutput, err := exec.Command(binary, reference, actual, "--output", baselineMask).CombinedOutput()
+	require.NoError(t, err, string(baselineOutput))
+	var baseline diff.ImageComparison
+	require.NoError(t, json.Unmarshal(baselineOutput, &baseline))
+
+	tests := []struct {
+		name, flag string
+		limit      float64
+		passes     bool
+		expected   string
+	}{
+		{name: "RMSE accepts exact boundary", flag: "--max-rmse", limit: baseline.RMSE, passes: true},
+		{name: "RMSE rejects below boundary", flag: "--max-rmse", limit: baseline.RMSE / 2, expected: "RMSE"},
+		{name: "changed ratio accepts exact boundary", flag: "--max-changed-ratio", limit: baseline.ChangedRatio, passes: true},
+		{name: "changed ratio rejects below boundary", flag: "--max-changed-ratio", limit: baseline.ChangedRatio / 2, expected: "changed ratio"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mask := filepath.Join(t.TempDir(), "mask.png")
+			output, err := exec.Command(binary, reference, actual, "--output", mask, test.flag, fmt.Sprintf("%.17g", test.limit)).CombinedOutput()
+			if test.passes {
+				require.NoError(t, err, string(output))
+				var comparison diff.ImageComparison
+				require.NoError(t, json.Unmarshal(output, &comparison))
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, string(output), "image diff validation failed")
+			assert.Contains(t, string(output), test.expected)
+			assertPNGDimensions(t, mask, 4, 3)
+		})
+	}
 }
 
 func TestPixelPerfectRealUIValidationGate(t *testing.T) {
