@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -47,8 +48,13 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 				}
 				result.Overlay = overlay
 			}
+			regionGap, _ := cmd.Flags().GetInt("region-gap")
+			result.Regions = groupImageRegions(result.Regions, regionGap)
 			minRegionPixels, _ := cmd.Flags().GetInt("min-region-pixels")
 			result.Regions = filterImageRegions(result.Regions, minRegionPixels)
+			if len(result.Regions) > 20 {
+				result.Regions = result.Regions[:20]
+			}
 			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
 			if maxRMSE >= 0 && result.RMSE > maxRMSE {
 				return fmt.Errorf("image diff validation failed: RMSE %.6f exceeds maximum %.6f", result.RMSE, maxRMSE)
@@ -65,10 +71,43 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 	command.Flags().String("region", "", "compare only x,y,width,height")
 	command.Flags().StringArray("ignore-region", nil, "exclude x,y,width,height; repeat for multiple areas")
 	command.Flags().String("overlay", "", "path for directional overlay (reference red, actual green)")
+	command.Flags().Int("region-gap", 0, "group mismatch regions separated by at most this many pixels")
 	command.Flags().Int("min-region-pixels", 1, "omit disconnected regions smaller than this many changed pixels")
 	command.Flags().Float64("max-rmse", -1, "fail when normalized RMSE exceeds this value")
 	command.Flags().Float64("max-changed-ratio", -1, "fail when changed-pixel ratio exceeds this value")
 	return command
+}
+
+func groupImageRegions(regions []diff.Region, gap int) []diff.Region {
+	grouped := append([]diff.Region(nil), regions...)
+	for merged := true; merged; {
+		merged = false
+		for i := 0; i < len(grouped) && !merged; i++ {
+			for j := i + 1; j < len(grouped); j++ {
+				if !regionsWithinGap(grouped[i].Bounds, grouped[j].Bounds, gap) {
+					continue
+				}
+				grouped[i] = mergeImageRegions(grouped[i], grouped[j])
+				grouped = append(grouped[:j], grouped[j+1:]...)
+				merged = true
+				break
+			}
+		}
+	}
+	sort.SliceStable(grouped, func(i, j int) bool { return grouped[i].ChangedPixels > grouped[j].ChangedPixels })
+	return grouped
+}
+
+func regionsWithinGap(first, second diff.Bounds, gap int) bool {
+	return first.X <= second.X+second.Width+gap && second.X <= first.X+first.Width+gap &&
+		first.Y <= second.Y+second.Height+gap && second.Y <= first.Y+first.Height+gap
+}
+
+func mergeImageRegions(first, second diff.Region) diff.Region {
+	left, top := min(first.Bounds.X, second.Bounds.X), min(first.Bounds.Y, second.Bounds.Y)
+	right := max(first.Bounds.X+first.Bounds.Width, second.Bounds.X+second.Bounds.Width)
+	bottom := max(first.Bounds.Y+first.Bounds.Height, second.Bounds.Y+second.Bounds.Height)
+	return diff.Region{Bounds: diff.Bounds{X: left, Y: top, Width: right - left, Height: bottom - top}, ChangedPixels: first.ChangedPixels + second.ChangedPixels}
 }
 
 func filterImageRegions(regions []diff.Region, minimumPixels int) []diff.Region {

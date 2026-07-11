@@ -189,9 +189,6 @@ func findRegions(changed []bool, width, height int) []Region {
 		regions = append(regions, Region{Bounds: Bounds{X: minX, Y: minY, Width: maxX - minX + 1, Height: maxY - minY + 1}, ChangedPixels: count})
 	}
 	sort.SliceStable(regions, func(i, j int) bool { return regions[i].ChangedPixels > regions[j].ChangedPixels })
-	if len(regions) > 20 {
-		return regions[:20]
-	}
 	return regions
 }
 
