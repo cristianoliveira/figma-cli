@@ -35,12 +35,13 @@ pixel-perfect reference.png implementation.png \
   --threshold 8 \
   --output button-mask.png \
   --max-rmse 0.03 \
-  --max-changed-ratio 0.02
+  --max-changed-ratio 0.02 \
+  --max-perceptual-changed-ratio 0.01
 ```
 
 - `--region x,y,width,height` compares one area while retaining absolute coordinates in JSON.
 - `--threshold` ignores channel differences at or below the supplied value.
-- `--max-rmse` and `--max-changed-ratio` make the process exit non-zero when a limit is exceeded.
+- `--max-rmse`, `--max-changed-ratio`, and `--max-perceptual-changed-ratio` make the process exit non-zero when a limit is exceeded.
 
 ## Diagnosis
 

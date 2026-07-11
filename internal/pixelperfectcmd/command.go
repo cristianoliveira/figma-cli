@@ -60,6 +60,10 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if maxChangedRatio != -1 && (maxChangedRatio < 0 || maxChangedRatio > 1 || math.IsNaN(maxChangedRatio) || math.IsInf(maxChangedRatio, 0)) {
 				return fmt.Errorf("--max-changed-ratio must be -1 or between 0 and 1")
 			}
+			maxPerceptualChangedRatio, _ := cmd.Flags().GetFloat64("max-perceptual-changed-ratio")
+			if maxPerceptualChangedRatio != -1 && (maxPerceptualChangedRatio < 0 || maxPerceptualChangedRatio > 1 || math.IsNaN(maxPerceptualChangedRatio) || math.IsInf(maxPerceptualChangedRatio, 0)) {
+				return fmt.Errorf("--max-perceptual-changed-ratio must be -1 or between 0 and 1")
+			}
 			region, err := parseImageRegion(cmd.Flags().Lookup("region").Value.String())
 			if err != nil {
 				return err
@@ -126,6 +130,9 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if maxChangedRatio >= 0 && result.ChangedRatio > maxChangedRatio {
 				return fmt.Errorf("image diff validation failed: changed ratio %.6f exceeds maximum %.6f", result.ChangedRatio, maxChangedRatio)
 			}
+			if maxPerceptualChangedRatio >= 0 && result.PerceptualChangedRatio > maxPerceptualChangedRatio {
+				return fmt.Errorf("image diff validation failed: perceptual changed ratio %.6f exceeds maximum %.6f", result.PerceptualChangedRatio, maxPerceptualChangedRatio)
+			}
 			return writeJSON(cmd, result)
 		},
 	}
@@ -141,6 +148,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().Int("min-region-pixels", 1, "omit disconnected regions smaller than this many changed pixels")
 	command.Flags().Float64("max-rmse", -1, "fail when normalized RMSE exceeds this value")
 	command.Flags().Float64("max-changed-ratio", -1, "fail when changed-pixel ratio exceeds this value")
+	command.Flags().Float64("max-perceptual-changed-ratio", -1, "fail when perceptual changed-pixel ratio exceeds this value")
 	return command
 }
 

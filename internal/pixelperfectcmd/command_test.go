@@ -103,6 +103,7 @@ func TestDiffImageCommandRejectsInvalidAnalysisLimits(t *testing.T) {
 		{name: "invalid negative RMSE limit", flag: "--max-rmse", value: "-2", expected: "--max-rmse must be -1 or a finite non-negative number"},
 		{name: "changed ratio above one", flag: "--max-changed-ratio", value: "1.1", expected: "--max-changed-ratio must be -1 or between 0 and 1"},
 		{name: "invalid negative changed ratio", flag: "--max-changed-ratio", value: "-2", expected: "--max-changed-ratio must be -1 or between 0 and 1"},
+		{name: "perceptual changed ratio above one", flag: "--max-perceptual-changed-ratio", value: "1.1", expected: "--max-perceptual-changed-ratio must be -1 or between 0 and 1"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

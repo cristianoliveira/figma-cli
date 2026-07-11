@@ -203,7 +203,7 @@ func TestPixelPerfectHelpDocumentsStandaloneContract(t *testing.T) {
 	require.NoError(t, err, string(output))
 	help := string(output)
 	assert.Contains(t, help, "pixel-perfect <reference.png> <actual.png>")
-	for _, flag := range []string{"--output", "--overlay", "--region", "--ignore-region", "--mask", "--threshold", "--perceptual-threshold", "--suggest-offset", "--max-rmse", "--max-changed-ratio"} {
+	for _, flag := range []string{"--output", "--overlay", "--region", "--ignore-region", "--mask", "--threshold", "--perceptual-threshold", "--suggest-offset", "--max-rmse", "--max-changed-ratio", "--max-perceptual-changed-ratio"} {
 		assert.Contains(t, help, flag)
 	}
 }
@@ -278,6 +278,7 @@ func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
 		{name: "invalid negative RMSE limit", flags: []string{"--max-rmse", "-2"}, expected: "--max-rmse must be -1 or a finite non-negative number"},
 		{name: "changed ratio above one", flags: []string{"--max-changed-ratio", "1.1"}, expected: "--max-changed-ratio must be -1 or between 0 and 1"},
 		{name: "invalid negative changed ratio", flags: []string{"--max-changed-ratio", "-2"}, expected: "--max-changed-ratio must be -1 or between 0 and 1"},
+		{name: "perceptual changed ratio above one", flags: []string{"--max-perceptual-changed-ratio", "1.1"}, expected: "--max-perceptual-changed-ratio must be -1 or between 0 and 1"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -401,6 +402,8 @@ func TestPixelPerfectValidationGateBoundaries(t *testing.T) {
 		{name: "RMSE rejects below boundary", flag: "--max-rmse", limit: baseline.RMSE / 2, expected: "RMSE"},
 		{name: "changed ratio accepts exact boundary", flag: "--max-changed-ratio", limit: baseline.ChangedRatio, passes: true},
 		{name: "changed ratio rejects below boundary", flag: "--max-changed-ratio", limit: baseline.ChangedRatio / 2, expected: "changed ratio"},
+		{name: "perceptual ratio accepts exact boundary", flag: "--max-perceptual-changed-ratio", limit: baseline.PerceptualChangedRatio, passes: true},
+		{name: "perceptual ratio rejects below boundary", flag: "--max-perceptual-changed-ratio", limit: baseline.PerceptualChangedRatio / 2, expected: "perceptual changed ratio"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
