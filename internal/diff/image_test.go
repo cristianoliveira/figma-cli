@@ -1,0 +1,59 @@
+package diff
+
+import (
+	"image"
+	"image/color"
+	"image/png"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestCompareImagesWritesMaskAndMeasuresChangedArea(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	mask := filepath.Join(dir, "diff.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 3, 2)))
+	changed := image.NewRGBA(image.Rect(0, 0, 3, 2))
+	changed.Set(1, 0, color.RGBA{R: 255, A: 255})
+	changed.Set(2, 1, color.RGBA{B: 255, A: 255})
+	writeTestPNG(t, actual, changed)
+
+	result, err := CompareImages(reference, actual, mask, 0)
+
+	require.NoError(t, err)
+	assert.Equal(t, 3, result.Width)
+	assert.Equal(t, 2, result.Height)
+	assert.Equal(t, 2, result.ChangedPixels)
+	assert.InDelta(t, 1.0/3.0, result.ChangedRatio, 0.0001)
+	assert.Equal(t, &Bounds{X: 1, Y: 0, Width: 2, Height: 2}, result.Bounds)
+	require.Len(t, result.Regions, 2)
+	assert.Equal(t, Region{Bounds: Bounds{X: 1, Y: 0, Width: 1, Height: 1}, ChangedPixels: 1}, result.Regions[0])
+	assert.Equal(t, Region{Bounds: Bounds{X: 2, Y: 1, Width: 1, Height: 1}, ChangedPixels: 1}, result.Regions[1])
+	_, err = os.Stat(mask)
+	require.NoError(t, err)
+}
+
+func TestCompareImagesRejectsDifferentDimensions(t *testing.T) {
+	dir := t.TempDir()
+	a := filepath.Join(dir, "a.png")
+	b := filepath.Join(dir, "b.png")
+	writeTestPNG(t, a, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+	writeTestPNG(t, b, image.NewRGBA(image.Rect(0, 0, 3, 2)))
+
+	_, err := CompareImages(a, b, filepath.Join(dir, "diff.png"), 0)
+
+	assert.EqualError(t, err, "image dimensions differ: reference is 2x2, actual is 3x2")
+}
+
+func writeTestPNG(t *testing.T, path string, img image.Image) {
+	t.Helper()
+	file, err := os.Create(path)
+	require.NoError(t, err)
+	require.NoError(t, png.Encode(file, img))
+	require.NoError(t, file.Close())
+}
