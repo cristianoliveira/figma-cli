@@ -60,6 +60,27 @@ func TestCompareImagesInRegionMeasuresOnlySelectedArea(t *testing.T) {
 	assert.Equal(t, Bounds{X: 3, Y: 1, Width: 1, Height: 1}, result.Regions[0].Bounds)
 }
 
+func TestCompareImagesUsesRGBRMSEForOpaqueRegions(t *testing.T) {
+	dir := t.TempDir()
+	reference := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	actual := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	for y := 0; y < 2; y++ {
+		for x := 0; x < 2; x++ {
+			reference.Set(x, y, color.Black)
+			actual.Set(x, y, color.Black)
+		}
+	}
+	actual.Set(0, 0, color.White)
+	referencePath, actualPath := filepath.Join(dir, "reference.png"), filepath.Join(dir, "actual.png")
+	writeTestPNG(t, referencePath, reference)
+	writeTestPNG(t, actualPath, actual)
+
+	result, err := CompareImages(referencePath, actualPath, filepath.Join(dir, "mask.png"), 0)
+
+	require.NoError(t, err)
+	assert.InDelta(t, 0.5, result.RMSE, 0.000001)
+}
+
 func TestCompareImagesRejectsDifferentDimensions(t *testing.T) {
 	dir := t.TempDir()
 	a := filepath.Join(dir, "a.png")

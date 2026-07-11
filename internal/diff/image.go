@@ -63,16 +63,19 @@ func CompareImagesInRegion(referencePath, actualPath, maskPath string, threshold
 	mask := image.NewNRGBA(image.Rect(0, 0, width, height))
 	changedPixels := make([]bool, width*height)
 	changed, minX, minY, maxX, maxY := 0, width, height, -1, -1
-	var squaredError float64
+	var rgbSquaredError, alphaSquaredError float64
+	hasTransparency := false
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			r := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+area.X+x, reference.Bounds().Min.Y+area.Y+y)).(color.NRGBA)
 			a := color.NRGBAModel.Convert(actual.At(actual.Bounds().Min.X+area.X+x, actual.Bounds().Min.Y+area.Y+y)).(color.NRGBA)
 			delta := [4]uint8{absDiff(r.R, a.R), absDiff(r.G, a.G), absDiff(r.B, a.B), absDiff(r.A, a.A)}
 			maxDelta := max(delta[0], delta[1], delta[2], delta[3])
-			for _, value := range delta {
-				squaredError += float64(value) * float64(value)
+			for _, value := range delta[:3] {
+				rgbSquaredError += float64(value) * float64(value)
 			}
+			alphaSquaredError += float64(delta[3]) * float64(delta[3])
+			hasTransparency = hasTransparency || r.A != 255 || a.A != 255
 			if maxDelta <= threshold {
 				continue
 			}
@@ -85,7 +88,13 @@ func CompareImagesInRegion(referencePath, actualPath, maskPath string, threshold
 	if err := encodePNG(maskPath, mask); err != nil {
 		return ImageComparison{}, fmt.Errorf("write mask: %w", err)
 	}
-	result := ImageComparison{Width: width, Height: height, ChangedPixels: changed, ChangedRatio: float64(changed) / float64(width*height), RMSE: math.Sqrt(squaredError/float64(width*height*4)) / 255, Mask: maskPath}
+	channelCount := 3
+	squaredError := rgbSquaredError
+	if hasTransparency {
+		channelCount = 4
+		squaredError += alphaSquaredError
+	}
+	result := ImageComparison{Width: width, Height: height, ChangedPixels: changed, ChangedRatio: float64(changed) / float64(width*height), RMSE: math.Sqrt(squaredError/float64(width*height*channelCount)) / 255, Mask: maskPath}
 	if region != nil {
 		comparedRegion := area
 		result.ComparedRegion = &comparedRegion
