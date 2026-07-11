@@ -38,6 +38,25 @@ func TestCompareImagesWritesMaskAndMeasuresChangedArea(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestCompareImagesInRegionMeasuresOnlySelectedArea(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 4, 2)))
+	changed := image.NewRGBA(image.Rect(0, 0, 4, 2))
+	changed.Set(0, 0, color.White)
+	changed.Set(3, 1, color.White)
+	writeTestPNG(t, actual, changed)
+
+	result, err := CompareImagesInRegion(reference, actual, filepath.Join(dir, "mask.png"), 0, &Bounds{X: 2, Y: 0, Width: 2, Height: 2})
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, result.Width)
+	assert.Equal(t, 2, result.Height)
+	assert.Equal(t, 1, result.ChangedPixels)
+	assert.Equal(t, &Bounds{X: 1, Y: 1, Width: 1, Height: 1}, result.Bounds)
+}
+
 func TestCompareImagesRejectsDifferentDimensions(t *testing.T) {
 	dir := t.TempDir()
 	a := filepath.Join(dir, "a.png")

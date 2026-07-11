@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/diff"
 	"github.com/spf13/cobra"
 )
 
-type imageComparer func(referencePath, actualPath, maskPath string, threshold uint8) (diff.ImageComparison, error)
+type imageComparer func(referencePath, actualPath, maskPath string, threshold uint8, region *diff.Bounds) (diff.ImageComparison, error)
 
 func newDiffImageCommand(compare imageComparer) *cobra.Command {
 	command := &cobra.Command{
@@ -21,7 +23,11 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 			if output == "" {
 				return fmt.Errorf("--output is required")
 			}
-			result, err := compare(args[0], args[1], output, threshold)
+			region, err := parseImageRegion(cmd.Flags().Lookup("region").Value.String())
+			if err != nil {
+				return err
+			}
+			result, err := compare(args[0], args[1], output, threshold, region)
 			if err != nil {
 				return err
 			}
@@ -38,11 +44,31 @@ func newDiffImageCommand(compare imageComparer) *cobra.Command {
 	}
 	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask")
 	command.Flags().Uint8("threshold", 0, "ignore per-channel differences at or below this value (0-255)")
+	command.Flags().String("region", "", "compare only x,y,width,height")
 	command.Flags().Float64("max-rmse", -1, "fail when normalized RMSE exceeds this value")
 	command.Flags().Float64("max-changed-ratio", -1, "fail when changed-pixel ratio exceeds this value")
 	return command
 }
 
+func parseImageRegion(value string) (*diff.Bounds, error) {
+	if value == "" {
+		return nil, nil
+	}
+	parts := strings.Split(value, ",")
+	if len(parts) != 4 {
+		return nil, fmt.Errorf("--region must be x,y,width,height")
+	}
+	values := make([]int, 4)
+	for index, part := range parts {
+		value, err := strconv.Atoi(strings.TrimSpace(part))
+		if err != nil {
+			return nil, fmt.Errorf("--region must contain integers: %w", err)
+		}
+		values[index] = value
+	}
+	return &diff.Bounds{X: values[0], Y: values[1], Width: values[2], Height: values[3]}, nil
+}
+
 func init() {
-	diffCmd.AddCommand(newDiffImageCommand(diff.CompareImages))
+	diffCmd.AddCommand(newDiffImageCommand(diff.CompareImagesInRegion))
 }

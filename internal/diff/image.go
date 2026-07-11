@@ -34,6 +34,10 @@ type ImageComparison struct {
 }
 
 func CompareImages(referencePath, actualPath, maskPath string, threshold uint8) (ImageComparison, error) {
+	return CompareImagesInRegion(referencePath, actualPath, maskPath, threshold, nil)
+}
+
+func CompareImagesInRegion(referencePath, actualPath, maskPath string, threshold uint8, region *Bounds) (ImageComparison, error) {
 	reference, err := decodePNG(referencePath)
 	if err != nil {
 		return ImageComparison{}, fmt.Errorf("decode reference: %w", err)
@@ -46,15 +50,23 @@ func CompareImages(referencePath, actualPath, maskPath string, threshold uint8) 
 		return ImageComparison{}, fmt.Errorf("image dimensions differ: reference is %dx%d, actual is %dx%d", reference.Bounds().Dx(), reference.Bounds().Dy(), actual.Bounds().Dx(), actual.Bounds().Dy())
 	}
 
-	width, height := reference.Bounds().Dx(), reference.Bounds().Dy()
+	imageWidth, imageHeight := reference.Bounds().Dx(), reference.Bounds().Dy()
+	area := Bounds{Width: imageWidth, Height: imageHeight}
+	if region != nil {
+		area = *region
+		if area.X < 0 || area.Y < 0 || area.Width <= 0 || area.Height <= 0 || area.X+area.Width > imageWidth || area.Y+area.Height > imageHeight {
+			return ImageComparison{}, fmt.Errorf("region %d,%d,%d,%d is outside image bounds %dx%d", area.X, area.Y, area.Width, area.Height, imageWidth, imageHeight)
+		}
+	}
+	width, height := area.Width, area.Height
 	mask := image.NewNRGBA(image.Rect(0, 0, width, height))
 	changedPixels := make([]bool, width*height)
 	changed, minX, minY, maxX, maxY := 0, width, height, -1, -1
 	var squaredError float64
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			r := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+x, reference.Bounds().Min.Y+y)).(color.NRGBA)
-			a := color.NRGBAModel.Convert(actual.At(actual.Bounds().Min.X+x, actual.Bounds().Min.Y+y)).(color.NRGBA)
+			r := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+area.X+x, reference.Bounds().Min.Y+area.Y+y)).(color.NRGBA)
+			a := color.NRGBAModel.Convert(actual.At(actual.Bounds().Min.X+area.X+x, actual.Bounds().Min.Y+area.Y+y)).(color.NRGBA)
 			delta := [4]uint8{absDiff(r.R, a.R), absDiff(r.G, a.G), absDiff(r.B, a.B), absDiff(r.A, a.A)}
 			maxDelta := max(delta[0], delta[1], delta[2], delta[3])
 			for _, value := range delta {
