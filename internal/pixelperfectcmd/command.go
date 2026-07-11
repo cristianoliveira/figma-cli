@@ -49,8 +49,8 @@ func newCommand(compare imageComparer) *cobra.Command {
 				return fmt.Errorf("--min-region-pixels must be positive")
 			}
 			perceptualThreshold, _ := cmd.Flags().GetFloat64("perceptual-threshold")
-			if perceptualThreshold < 0 || perceptualThreshold > 1 || math.IsNaN(perceptualThreshold) || math.IsInf(perceptualThreshold, 0) {
-				return fmt.Errorf("--perceptual-threshold must be between 0 and 1")
+			if perceptualThreshold < 0 || math.IsNaN(perceptualThreshold) || math.IsInf(perceptualThreshold, 0) {
+				return fmt.Errorf("--perceptual-threshold must be a finite non-negative number")
 			}
 			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
 			if maxRMSE != -1 && (maxRMSE < 0 || math.IsNaN(maxRMSE) || math.IsInf(maxRMSE, 0)) {
@@ -131,7 +131,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 	}
 	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask")
 	command.Flags().Uint8("threshold", 0, "ignore per-channel differences at or below this value (0-255)")
-	command.Flags().Float64("perceptual-threshold", diff.DefaultPerceptualThreshold, "OKLab HyAB distance above which a pixel is perceptually changed (0-1)")
+	command.Flags().Float64("perceptual-threshold", diff.DefaultPerceptualThreshold, "OKLab HyAB distance above which a pixel is perceptually changed (non-negative)")
 	command.Flags().String("region", "", "compare only x,y,width,height")
 	command.Flags().StringArray("ignore-region", nil, "exclude x,y,width,height; repeat for multiple areas")
 	command.Flags().String("mask", "", "full-size PNG selecting compared pixels (visible non-black includes)")

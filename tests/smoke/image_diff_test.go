@@ -272,8 +272,8 @@ func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
 		{name: "negative offset radius", flags: []string{"--suggest-offset", "-1"}, expected: "--suggest-offset must be non-negative"},
 		{name: "negative region gap", flags: []string{"--region-gap", "-1"}, expected: "--region-gap must be non-negative"},
 		{name: "zero minimum region pixels", flags: []string{"--min-region-pixels", "0"}, expected: "--min-region-pixels must be positive"},
-		{name: "negative perceptual threshold", flags: []string{"--perceptual-threshold", "-0.1"}, expected: "--perceptual-threshold must be between 0 and 1"},
-		{name: "perceptual threshold above one", flags: []string{"--perceptual-threshold", "1.1"}, expected: "--perceptual-threshold must be between 0 and 1"},
+		{name: "negative perceptual threshold", flags: []string{"--perceptual-threshold", "-0.1"}, expected: "--perceptual-threshold must be a finite non-negative number"},
+		{name: "NaN perceptual threshold", flags: []string{"--perceptual-threshold", "NaN"}, expected: "--perceptual-threshold must be a finite non-negative number"},
 		{name: "NaN RMSE limit", flags: []string{"--max-rmse", "NaN"}, expected: "--max-rmse must be -1 or a finite non-negative number"},
 		{name: "invalid negative RMSE limit", flags: []string{"--max-rmse", "-2"}, expected: "--max-rmse must be -1 or a finite non-negative number"},
 		{name: "changed ratio above one", flags: []string{"--max-changed-ratio", "1.1"}, expected: "--max-changed-ratio must be -1 or between 0 and 1"},
@@ -361,6 +361,23 @@ func TestPixelPerfectRealUIScreenshot(t *testing.T) {
 	assert.LessOrEqual(t, len(comparison.Regions), 20)
 	assertPNGDimensions(t, mask, 575, 477)
 	assertPNGDimensions(t, overlay, 575, 477)
+}
+
+func TestPixelPerfectAcceptsPerceptualThresholdAboveBlackWhiteDistance(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"),
+		"--output", mask, "--perceptual-threshold", "1.1",
+	).CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal(output, &comparison))
+	assert.Equal(t, 1.1, comparison.PerceptualThreshold)
+	assert.Zero(t, comparison.PerceptualChangedPixels)
+	assert.Equal(t, 2, comparison.ChangedPixels)
 }
 
 func TestPixelPerfectValidationGateBoundaries(t *testing.T) {

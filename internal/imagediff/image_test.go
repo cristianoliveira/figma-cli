@@ -52,10 +52,10 @@ func TestCompareImagesWithThresholdsConfiguresPerceptualEvidence(t *testing.T) {
 	changed.Set(0, 0, color.White)
 	writeTestPNG(t, actual, changed)
 
-	result, err := CompareImagesWithThresholds(reference, actual, filepath.Join(dir, "mask.png"), 0, 1, nil, nil)
+	result, err := CompareImagesWithThresholds(reference, actual, filepath.Join(dir, "mask.png"), 0, 1.1, nil, nil)
 
 	require.NoError(t, err)
-	assert.Equal(t, 1.0, result.PerceptualThreshold)
+	assert.Equal(t, 1.1, result.PerceptualThreshold)
 	assert.Zero(t, result.PerceptualChangedPixels)
 	assert.Zero(t, result.PerceptualChangedRatio)
 	assert.Equal(t, 1, result.ChangedPixels)
