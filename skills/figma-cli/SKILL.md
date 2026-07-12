@@ -138,9 +138,10 @@ Default filenames remain `lowercase-name_nodeid.ext`.
 ```bash
 figma export --format png --id 42:1 "url"
 figma export --format svg --output ./icons/star.svg --id 42:1 "url"
+figma export --format png --id 42:1 --output ./node.png --metadata ./node.export.json "url"
 ```
 
-Formats: `png`, `jpg`, `svg`, `pdf`.
+Formats: `png`, `jpg`, `svg`, `pdf`. Use `--metadata` for visual-diff workflows. The sidecar records `nodeBounds`, measured `exportBounds`, `dimensionDelta`, `paddingEvidence`, and when derivable `logicalCrop` / `exportPadding`. For PNG exports with vector/effect padding, metadata may derive logical crop from a temporary SVG export so `pixel-perfect --reference-metadata` can avoid manual crop math.
 
 ### `figma layout` — Inspect frame structure
 
@@ -211,7 +212,7 @@ Default results contain only `COMPONENT`, `COMPONENT_SET`, and `INSTANCE` nodes.
 ```bash
 figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1"
 figma inspect --id 42:1 "abc123" # explicit scope for a bare file key
-figma inspect --recursive "url?node-id=42-1" # implementation specs for entire selected tree
+figma inspect --recursive "url?node-id=42-1" # implementation specs for entire selected tree with relativeBounds
 figma inspect --handoff "url?node-id=42-1"   # bounded implementation specs + component usage
 figma inspect --handoff --depth 2 --include-hidden "url?node-id=42-1"
 # → default JSON: { "scope": {...}, "result": { type, name, bounds, paints, layout, effects, componentProperties, propertyDefinitions, styleBindings, resolvedStyles, variableBindings, resolvedVariables } }
@@ -219,7 +220,7 @@ figma inspect --handoff --depth 2 --include-hidden "url?node-id=42-1"
 # → handoff JSON: { "scope": {...}, "result": { "nodes": [{...}], "components": [{ "name", "componentId", "count" }] } }
 ```
 
-Use `--handoff` as the design-to-code default: it limits traversal to depth 4, excludes invisible descendants, and summarizes repeated component instances. `--recursive` remains the unbounded flat implementation inventory and cannot be combined with `--handoff`.
+Use `--handoff` as the design-to-code default: it limits traversal to depth 4, excludes invisible descendants, and summarizes repeated component instances. `--recursive` remains the unbounded flat implementation inventory and cannot be combined with `--handoff`. Scoped recursive inspect includes `relativeBounds` measured from the requested scope root while preserving absolute `bounds`; use these for local CSS coordinates instead of manual subtraction.
 
 Raw binding IDs are always preserved. `resolvedStyles` adds style name/type from node metadata. `resolvedVariables` adds variable and collection names when the Variables API is accessible; it is omitted without failing when metadata access is unavailable. Components and instances expose variants, property values, and property definitions. Mixed text exposes style override IDs and typography metadata. Prefer this over a separate handoff/spec command so implementation properties keep one source of truth.
 
@@ -266,6 +267,12 @@ pixel-perfect reference.png implementation.png --output diff.png \
   --threshold 8 --perceptual-threshold 0.1 \
   --max-rmse 0.03 --max-changed-ratio 0.02 \
   --max-perceptual-changed-ratio 0.01
+
+# Figma export metadata can apply logical crop/effect padding automatically
+pixel-perfect reference.png implementation.png --output diff.png \
+  --reference-metadata reference.export.json \
+  --actual-crop 0,0,320,166 \
+  --overlay overlay.png --report report.html
 
 # Diagnose direction, alignment, noisy clusters, and known dynamic areas
 pixel-perfect reference.png implementation.png --output diff.png \

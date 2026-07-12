@@ -207,6 +207,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if visualContextEnabled {
 				provider, _ := cmd.Flags().GetString("visual-context-provider")
 				model, _ := cmd.Flags().GetString("visual-context-model")
+				visualContextPrompt, _ := cmd.Flags().GetString("visual-context-prompt")
 				config, configErr := imagecontext.LoadProviderConfig(provider, model)
 				if errors.Is(configErr, imagecontext.ErrNotConfigured) {
 					outputResult.VisualContext = &imagecontext.Result{Provider: provider, Advisory: true, Disclaimer: fmt.Sprintf("Visual context unavailable: configure %s credentials in the Pi Spectacles config or environment.", provider)}
@@ -223,7 +224,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 				if clientErr != nil {
 					return clientErr
 				}
-				input := imagecontext.Input{ReferencePath: inputs.referencePath, ActualPath: inputs.actualPath, Regions: regions}
+				input := imagecontext.Input{ReferencePath: inputs.referencePath, ActualPath: inputs.actualPath, Regions: regions, Prompt: visualContextPrompt}
 				visualContext, explainErr := client.Describe(context.Background(), input)
 				if explainErr != nil {
 					return explainErr
@@ -253,6 +254,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().Bool("visual-context", false, "add advisory visual descriptions using the configured multimodal model")
 	command.Flags().String("visual-context-provider", "openrouter", "visual context provider: openrouter or openai")
 	command.Flags().String("visual-context-model", "", "override the visual context model")
+	command.Flags().String("visual-context-prompt", "", "extra advisory focus for visual context analysis")
 	return command
 }
 

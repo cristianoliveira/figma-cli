@@ -32,18 +32,20 @@ func TestOpenRouterDescribeSendsImagesAndPreservesRegionIDs(t *testing.T) {
 		assert.Contains(t, prompt, "at most 15 words per field")
 		assert.Contains(t, prompt, "Do not describe causes")
 		assert.Contains(t, prompt, "Do not mention anything outside the supplied region")
+		assert.Contains(t, prompt, "User focus: focus on shadows")
 		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{\"regions\":[{\"region\":\"r1\",\"referenceAppearance\":\"blue rectangle\",\"actualAppearance\":\"blue rectangle\",\"visualContext\":\"lower left\"}]}"}}]}`))
 	}))
 	defer server.Close()
 
 	explainer := NewOpenRouter("key", "model", server.URL)
-	result, err := explainer.Describe(context.Background(), Input{ReferencePath: reference, ActualPath: actual, Regions: []Region{{ID: "r1", Bounds: Bounds{X: 1, Y: 2, Width: 3, Height: 4}}}})
+	result, err := explainer.Describe(context.Background(), Input{ReferencePath: reference, ActualPath: actual, Regions: []Region{{ID: "r1", Bounds: Bounds{X: 1, Y: 2, Width: 3, Height: 4}}}, Prompt: " focus on shadows "})
 
 	require.NoError(t, err)
 	require.Len(t, result.Regions, 1)
 	assert.Equal(t, "r1", result.Regions[0].Region)
 	assert.Equal(t, "model", result.Model)
 	assert.True(t, result.Advisory)
+	assert.Equal(t, " focus on shadows ", result.Prompt)
 }
 
 func TestOpenRouterDescribeRejectsUnknownRegionID(t *testing.T) {

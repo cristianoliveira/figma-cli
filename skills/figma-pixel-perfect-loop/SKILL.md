@@ -26,16 +26,22 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
 
 1. **Establish the baseline**
    - Confirm `figma me` works.
-   - Export selected frame at native size:
+   - Export selected frame at native size with metadata. Prefer metadata over manual crop math:
      ```bash
-     figma export --format png --output output/visual-diff/figma-reference.png --id <frame-id> <file-key>
+     figma export --format png \
+       --output output/visual-diff/figma-reference.png \
+       --metadata output/visual-diff/figma-reference.export.json \
+       --id <frame-id> <file-key>
      ```
-   - Run a whole-frame baseline. `pixel-perfect` rejects unequal dimensions before producing misleading metrics:
+   - Run a whole-frame baseline. Use `--reference-metadata` when the Figma export includes effect padding/logical crop, and generate a self-contained report for review:
      ```bash
      pixel-perfect \
        output/visual-diff/figma-reference.png \
        output/visual-diff/implementation.png \
-       --output output/visual-diff/baseline-mask.png
+       --reference-metadata output/visual-diff/figma-reference.export.json \
+       --output output/visual-diff/baseline-mask.png \
+       --overlay output/visual-diff/baseline-overlay.png \
+       --report output/visual-diff/baseline-report.html
      ```
    - Use returned disconnected `regions` to locate high-impact mismatch clusters. The whole-frame RMSE remains orientation, not verdict.
    - Capture specifications, never guess when Figma can answer:
@@ -43,6 +49,7 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
      figma css --recursive --id <frame-id> <file-key> > .tmp/figma/frame.css
      figma inspect --recursive --id <frame-id> <file-key> > .tmp/figma/frame.json
      ```
+     `inspect --recursive` includes `relativeBounds` scoped to the requested node; use those values for CSS/local coordinates instead of subtracting origins manually.
 
 2. **Match the page coordinate system first**
    - Read frame and child bounds from `frame.json`.
@@ -54,11 +61,16 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
    - Compare the same Figma and implementation region using a direct child frame's bounds relative to the selected parent:
      ```bash
      pixel-perfect figma-reference.png implementation.png \
+       --reference-metadata figma-reference.export.json \
+       --actual-crop <x>,<y>,<width>,<height> \
        --region <x>,<y>,<width>,<height> \
        --threshold 8 \
-       --output output/visual-diff/region-mask.png
+       --output output/visual-diff/region-mask.png \
+       --overlay output/visual-diff/region-overlay.png \
+       --report output/visual-diff/region-report.html
      ```
-   - Region masks and overlays are crop-sized; `comparedRegion`, mismatch `bounds`, and disconnected region bounds remain absolute full-image coordinates.
+   - If no Figma metadata exists, use explicit `--reference-crop` / `--actual-crop`; never crop externally with ImageMagick unless validating the CLI.
+   - Region masks and overlays are crop-sized; crop coordinates are recorded in `inputs.*.crop`, and region `inputBounds` maps cropped coordinates back to original input screenshots.
    - Add `--overlay <path>` when direction matters: red means stronger/present in Figma, green means stronger/present in implementation.
    - Use `--region-gap` to group nearby glyph clusters, `--min-region-pixels` to omit tiny clusters, and repeat `--ignore-region` for known dynamic or irrelevant areas.
    - Use `--suggest-offset <radius>` to report likely translation. Never apply it silently; original metrics remain authoritative.
@@ -85,6 +97,41 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
    - Use `--max-rmse`, `--max-changed-ratio`, and `--max-perceptual-changed-ratio` when the loop needs deterministic pass/fail validation. Keep raw gates when exact raster equality is required; use the perceptual gate for practical human-visible convergence.
    - An increased score is feedback, not failure: inspect the directional overlay, regional classification and dominant color pairs, coordinate alignment, and crop boundaries; then correct the largest discrepancy.
    - Do not claim pixel-perfect based only on DOM content or a whole-page metric.
+
+## Visual Context Usage
+
+Use `--visual-context` to accelerate human/agent review, not to replace deterministic analysis.
+
+Good uses:
+- Summarize what a changed region appears to be: text, icon, shadow, spacing, background, or mixed.
+- Prioritize which mismatch to inspect first when many regions exist.
+- Produce reviewer-friendly notes in `--report` after metrics, overlays, and regions are already generated.
+- Generate hypotheses to verify with Figma inspect/export, DOM bounds, CSS, and pixel metrics.
+
+Bad uses:
+- Do not use visual-context text as final pass/fail evidence.
+- Do not let it override measured `changedRatio`, `rmse`, `perceptualChangedRatio`, overlays, or region bounds.
+- Do not use it to claim exact CSS values, geometry, or typography; verify those with Figma/DOM data.
+
+Recommended command when review needs explanation:
+
+```bash
+pixel-perfect reference.png implementation.png \
+  --reference-metadata reference.export.json \
+  --actual-crop <x>,<y>,<width>,<height> \
+  --region <x>,<y>,<width>,<height> \
+  --threshold 8 \
+  --suggest-offset 5 \
+  --visual-context \
+  --visual-context-prompt "Focus on whether differences are shadow, spacing, or vector shape. Keep it advisory." \
+  --output region-mask.png \
+  --overlay region-overlay.png \
+  --report region-report.html
+```
+
+Use `--visual-context-prompt` to focus the advisory review, for example: "focus on typography baseline", "classify shadow vs geometry", or "summarize only top changed regions". Keep prompts narrow and forbid pass/fail language.
+
+Report visual-context as advisory language: "The visual context suggests this region is likely a shadow/edge mismatch; metrics and overlay show...".
 
 ## Stable Playwright Capture
 
@@ -142,4 +189,4 @@ await page.addStyleTag({ content: `
 - CSS values trace back to Figma inspect/CSS output or exported assets.
 - Raw, perceptual, and antialias region evidence is recorded and improving or explicitly explained.
 - Remaining raw-only antialias differences are attributed to verified font/browser/capture constraints rather than hidden by thresholds.
-- Final response states evidence and remaining differences; never merely says “matches.”
+- Final response states measured evidence and remaining differences; never merely says “matches.” If visual context is used, label it as advisory and pair it with metrics/overlay/Figma/DOM evidence.

@@ -213,6 +213,14 @@ func TestDiffImageCommandHTMLReportIncludesCropAndRegionProvenance(t *testing.T)
 	assert.Contains(t, html, "2,1,1,1")
 }
 
+func TestDiffImageCommandHelpDocumentsVisualContextPrompt(t *testing.T) {
+	command := newCommand(diff.CompareImagesWithThresholds)
+	result := executeCommand(command, "--help")
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, "--visual-context-prompt")
+}
+
 func TestDiffImageCommandRejectsReportPathCollisions(t *testing.T) {
 	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), "reference.png", "actual.png", "--output", "mask.png", "--report", "mask.png")
 

@@ -24,14 +24,16 @@ func TestOpenAIDescribeUsesResponsesVisionAPI(t *testing.T) {
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
 		input := payload["input"].([]any)[0].(map[string]any)["content"].([]any)
 		assert.Equal(t, "input_text", input[0].(map[string]any)["type"])
+		assert.Contains(t, input[0].(map[string]any)["text"], "User focus: focus on typography")
 		assert.Equal(t, "input_image", input[1].(map[string]any)["type"])
 		_, _ = w.Write([]byte(`{"output":[{"type":"message","content":[{"type":"output_text","text":"{\"regions\":[{\"region\":\"r1\",\"visualContext\":\"card\"}]}"}]}]}`))
 	}))
 	defer server.Close()
 
-	result, err := NewOpenAI("key", "model", server.URL).Describe(context.Background(), Input{ReferencePath: imagePath, ActualPath: imagePath, Regions: []Region{{ID: "r1"}}})
+	result, err := NewOpenAI("key", "model", server.URL).Describe(context.Background(), Input{ReferencePath: imagePath, ActualPath: imagePath, Regions: []Region{{ID: "r1"}}, Prompt: "focus on typography"})
 
 	require.NoError(t, err)
 	assert.Equal(t, "openai", result.Provider)
 	assert.Equal(t, "card", result.Regions[0].VisualContext)
+	assert.Equal(t, "focus on typography", result.Prompt)
 }

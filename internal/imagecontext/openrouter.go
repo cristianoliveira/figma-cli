@@ -22,6 +22,7 @@ type Region struct {
 type Input struct {
 	ReferencePath, ActualPath string
 	Regions                   []Region
+	Prompt                    string
 }
 type RegionContext struct {
 	Region              string `json:"region"`
@@ -34,6 +35,7 @@ type Result struct {
 	Model      string          `json:"model,omitempty"`
 	Advisory   bool            `json:"advisory"`
 	Disclaimer string          `json:"disclaimer,omitempty"`
+	Prompt     string          `json:"prompt,omitempty"`
 	Regions    []RegionContext `json:"regions,omitempty"`
 }
 type OpenRouter struct {
@@ -54,7 +56,7 @@ func (o *OpenRouter) Describe(ctx context.Context, input Input) (Result, error) 
 	if err != nil {
 		return Result{}, fmt.Errorf("read actual for visual context: %w", err)
 	}
-	prompt := visualContextPrompt(input.Regions)
+	prompt := visualContextPrompt(input.Regions, input.Prompt)
 	payload := map[string]any{"model": o.model, "stream": false, "messages": []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": prompt}, map[string]any{"type": "image_url", "image_url": map[string]any{"url": ref}}, map[string]any{"type": "image_url", "image_url": map[string]any{"url": actual}}}}}}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.baseURL+"/chat/completions", bytes.NewReader(body))
@@ -95,11 +97,15 @@ func (o *OpenRouter) Describe(ctx context.Context, input Input) (Result, error) 
 	if err != nil {
 		return Result{}, err
 	}
-	return Result{Provider: "openrouter", Model: o.model, Advisory: true, Regions: regions}, nil
+	return Result{Provider: "openrouter", Model: o.model, Advisory: true, Prompt: input.Prompt, Regions: regions}, nil
 }
-func visualContextPrompt(regions []Region) string {
+func visualContextPrompt(regions []Region, customPrompt string) string {
 	encoded, _ := json.Marshal(regions)
-	return `The first image is reference and second is implementation. For each supplied region ID, name the visible object and briefly describe its appearance in each image. Mention only differences clearly visible inside that region. Use at most 15 words per field. Do not describe causes, measure, diagnose geometry, suggest fixes, infer DOM/Figma semantics, or alter metrics. Do not mention anything outside the supplied region. Preserve region IDs exactly. Return JSON only: {"regions":[{"region":"r1","referenceAppearance":"","actualAppearance":"","visualContext":""}]}. Regions: ` + string(encoded)
+	prompt := `The first image is reference and second is implementation. For each supplied region ID, name the visible object and briefly describe its appearance in each image. Mention only differences clearly visible inside that region. Use at most 15 words per field. Do not describe causes, measure, diagnose geometry, suggest fixes, infer DOM/Figma semantics, or alter metrics. Do not mention anything outside the supplied region. Preserve region IDs exactly. Return JSON only: {"regions":[{"region":"r1","referenceAppearance":"","actualAppearance":"","visualContext":""}]}.`
+	if strings.TrimSpace(customPrompt) != "" {
+		prompt += " User focus: " + strings.TrimSpace(customPrompt)
+	}
+	return prompt + " Regions: " + string(encoded)
 }
 
 func parseRegionContexts(content string, expected []Region) ([]RegionContext, error) {

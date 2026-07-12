@@ -29,7 +29,7 @@ func (o *OpenAI) Describe(ctx context.Context, input Input) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("read actual for visual context: %w", err)
 	}
-	prompt := visualContextPrompt(input.Regions)
+	prompt := visualContextPrompt(input.Regions, input.Prompt)
 	payload := map[string]any{"model": o.model, "input": []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "input_text", "text": prompt}, map[string]any{"type": "input_image", "image_url": ref}, map[string]any{"type": "input_image", "image_url": actual}}}}}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.baseURL+"/responses", bytes.NewReader(body))
@@ -75,5 +75,5 @@ func (o *OpenAI) Describe(ctx context.Context, input Input) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	return Result{Provider: "openai", Model: o.model, Advisory: true, Regions: regions}, nil
+	return Result{Provider: "openai", Model: o.model, Advisory: true, Prompt: input.Prompt, Regions: regions}, nil
 }

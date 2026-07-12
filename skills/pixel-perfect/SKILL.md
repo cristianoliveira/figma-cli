@@ -15,13 +15,14 @@ Measure and localize screenshot differences without silently resizing or alignin
 
 ## Workflow
 
-1. Establish baseline and review directional overlay:
+1. Establish baseline and review directional overlay/report:
    ```bash
    pixel-perfect reference.png implementation.png \
      --output diff-mask.png \
-     --overlay diff-overlay.png
+     --overlay diff-overlay.png \
+     --report diff-report.html
    ```
-2. Reject unequal dimensions. Same dimensions are necessary but do not prove shared coordinates.
+2. Reject unequal dimensions unless you can make the logical regions equal with explicit crops. Prefer `--reference-metadata <figma-export.json>` when comparing a Figma export; otherwise use `--reference-crop` / `--actual-crop`.
 3. Preserve three evidence layers:
    - raw: `changedPixels`, `changedRatio`, `rmse`, `rgbRmse`, `luminanceRmse`, `alphaRmse`, and `edgeRmse`
    - perceptual: `perceptualRmse`, `perceptualChangedPixels`, and `perceptualChangedRatio`
@@ -30,13 +31,16 @@ Measure and localize screenshot differences without silently resizing or alignin
 5. Narrow the next comparison:
    ```bash
    pixel-perfect reference.png implementation.png \
+     --reference-metadata reference.export.json \
+     --actual-crop <x>,<y>,<width>,<height> \
      --region <x>,<y>,<width>,<height> \
      --threshold 8 \
      --perceptual-threshold 0.1 \
      --region-gap 8 \
      --min-region-pixels 12 \
      --output region-mask.png \
-     --overlay region-overlay.png
+     --overlay region-overlay.png \
+     --report region-report.html
    ```
 6. Re-run after one bounded change; retain JSON and PNG artifacts.
 
@@ -51,7 +55,7 @@ Measure and localize screenshot differences without silently resizing or alignin
 | `solid-fill` plus dominant color pair | Inspect fill/background color. |
 | `mixed`, especially after `--region-gap` | Inspect pixels, Figma/DOM facts, and grouped subregions; do not force one diagnosis. |
 
-`--suggest-offset <radius>` reports likely translation but never applies it. Red overlay means stronger/present in reference; green means stronger/present in implementation. Classifications are heuristic; raw evidence is authoritative.
+`--suggest-offset <radius>` reports likely translation but never applies it. Red overlay means stronger/present in reference; green means stronger/present in implementation. Classifications are heuristic; raw evidence is authoritative. With crops, JSON `bounds` are cropped comparison coordinates; `inputBounds` maps regions back to original input screenshots. Use `--visual-context-prompt` only to focus advisory review text, not to create pass/fail evidence.
 
 ## Exclusions and CI
 
@@ -70,6 +74,7 @@ Repeat `--ignore-region` for known dynamic areas. In comparison masks, visible n
 ## Guardrails
 
 - Never resize inputs before comparison.
+- Prefer CLI crops/metadata over external crop tools so `inputs.*.crop`, `inputBounds`, and reports preserve coordinate provenance.
 - Never silently apply suggested translation.
 - Keep viewport, device scale, browser, fonts, background, capture method, and shadow padding stable.
 - Use regional metrics for component progress; whole-image RMSE can be dominated by unrelated background or effects.
