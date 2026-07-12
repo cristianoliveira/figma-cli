@@ -20,10 +20,10 @@ go install github.com/cristianoliveira/figma-cli/cmd/pixel-perfect@latest
 ## Quick start
 
 ```bash
-pixel-perfect reference.png implementation.png \
-  --output diff-mask.png \
-  --overlay diff-overlay.png
+pixel-perfect reference.png implementation.png --threshold 8
 ```
+
+The command prints JSON metrics to stdout and writes a transparent diff mask by default beside the actual image as `<actual>.diff.png`. Use `--output diff-mask.png` to choose a different mask path, and `--overlay diff-overlay.png` for a directional overlay.
 
 Both inputs must be equal-sized PNGs. Unequal dimensions fail instead of producing invalid metrics.
 

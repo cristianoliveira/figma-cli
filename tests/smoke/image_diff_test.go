@@ -30,6 +30,25 @@ func TestPixelPerfectStandaloneCLI(t *testing.T) {
 	assert.NotEmpty(t, comparison.Regions[0].Classification)
 }
 
+func TestPixelPerfectStandaloneCLIDefaultMask(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	workDir := t.TempDir()
+	reference := filepath.Join(workDir, "reference.png")
+	actual := filepath.Join(workDir, "actual.png")
+	require.NoError(t, copyFile(filepath.Join(fixtures, "reference.png"), reference))
+	require.NoError(t, copyFile(filepath.Join(fixtures, "two-regions.png"), actual))
+	output, err := exec.Command(binary, reference, actual, "--threshold", "8").CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal(output, &comparison))
+	assert.Equal(t, 2, comparison.ChangedPixels)
+	assert.Equal(t, filepath.Join(workDir, "actual.diff.png"), comparison.Mask)
+	_, statErr := os.Stat(comparison.Mask)
+	require.NoError(t, statErr)
+}
+
 func TestImageDiffScenarios(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
@@ -247,7 +266,6 @@ func TestPixelPerfectCLIErrorContracts(t *testing.T) {
 		args           func(*testing.T) []string
 	}{
 		{name: "missing arguments", expected: "error: accepts 2 arg(s), received 0", args: func(*testing.T) []string { return nil }},
-		{name: "missing required output", expected: "error: --output is required", args: func(*testing.T) []string { return []string{reference, actual} }},
 		{name: "unknown flag", expected: "error: unknown flag: --unknown", args: func(*testing.T) []string { return []string{reference, actual, "--unknown"} }},
 		{name: "malformed PNG", expected: "error:", args: func(t *testing.T) []string {
 			invalid := filepath.Join(t.TempDir(), "invalid.png")
@@ -524,6 +542,14 @@ func TestPixelPerfectRejectsRealUIWithUnequalDimensions(t *testing.T) {
 	assert.Contains(t, string(output), "dimensions")
 	_, statErr := os.Stat(mask)
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func copyFile(source, destination string) error {
+	data, err := os.ReadFile(source)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(destination, data, 0o600)
 }
 
 func assertPNGDimensions(t *testing.T, path string, width, height int) {

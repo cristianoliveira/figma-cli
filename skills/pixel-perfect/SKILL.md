@@ -14,7 +14,11 @@ Measure and localize screenshot differences without silently resizing or alignin
 
 ## Workflow
 
-1. Establish baseline and review directional overlay/report:
+1. Establish baseline metrics first. The CLI writes a default diff mask beside the actual image as `<actual>.diff.png` and reports that path in JSON `mask`:
+   ```bash
+   pixel-perfect reference.png implementation.png --threshold 8
+   ```
+   For named review artifacts, override the mask path and add overlay/report:
    ```bash
    pixel-perfect reference.png implementation.png \
      --output diff-mask.png \

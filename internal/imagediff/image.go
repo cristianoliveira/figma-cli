@@ -75,7 +75,7 @@ type ImageComparison struct {
 	Bounds                  *Bounds           `json:"bounds,omitempty"`
 	ChangedRows             []int             `json:"changedRows,omitempty"`
 	Regions                 []Region          `json:"regions,omitempty"`
-	Mask                    string            `json:"mask"`
+	Mask                    string            `json:"mask,omitempty"`
 	Overlay                 string            `json:"overlay,omitempty"`
 	SuggestedOffset         *SuggestedOffset  `json:"suggestedOffset,omitempty"`
 	Inputs                  *ImageInputs      `json:"inputs,omitempty"`
@@ -168,8 +168,10 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 			mask.SetNRGBA(x, y, color.NRGBA{R: 255, A: maxDelta})
 		}
 	}
-	if err := encodePNG(maskPath, mask); err != nil {
-		return ImageComparison{}, fmt.Errorf("write mask: %w", err)
+	if maskPath != "" {
+		if err := encodePNG(maskPath, mask); err != nil {
+			return ImageComparison{}, fmt.Errorf("write mask: %w", err)
+		}
 	}
 	channelCount := 3
 	squaredError := rgbSquaredError

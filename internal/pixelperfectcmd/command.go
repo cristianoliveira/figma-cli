@@ -46,22 +46,22 @@ func newCommand(compare imageComparer) *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			output, _ := cmd.Flags().GetString("output")
-			threshold, _ := cmd.Flags().GetUint8("threshold")
 			if output == "" {
-				return fmt.Errorf("--output is required")
+				output = defaultMaskPath(args[1])
 			}
+			threshold, _ := cmd.Flags().GetUint8("threshold")
 			overlay, _ := cmd.Flags().GetString("overlay")
 			report, _ := cmd.Flags().GetString("report")
-			if samePath(output, args[0]) || samePath(output, args[1]) {
+			if output != "" && (samePath(output, args[0]) || samePath(output, args[1])) {
 				return fmt.Errorf("--output must not overwrite an input image")
 			}
 			if overlay != "" && (samePath(overlay, args[0]) || samePath(overlay, args[1])) {
 				return fmt.Errorf("--overlay must not overwrite an input image")
 			}
-			if overlay != "" && samePath(overlay, output) {
+			if overlay != "" && output != "" && samePath(overlay, output) {
 				return fmt.Errorf("--overlay must differ from --output")
 			}
-			if report != "" && (samePath(report, args[0]) || samePath(report, args[1]) || samePath(report, output) || samePath(report, overlay)) {
+			if report != "" && (samePath(report, args[0]) || samePath(report, args[1]) || (output != "" && samePath(report, output)) || samePath(report, overlay)) {
 				return fmt.Errorf("--report must not overwrite an input, mask, or overlay")
 			}
 			offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
@@ -234,7 +234,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 			return writeJSON(cmd, outputResult)
 		},
 	}
-	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask")
+	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask; defaults to <actual>.diff.png")
 	command.Flags().Uint8("threshold", 0, "ignore per-channel differences at or below this value (0-255)")
 	command.Flags().Float64("perceptual-threshold", diff.DefaultPerceptualThreshold, "OKLab HyAB distance above which a pixel is perceptually changed (non-negative)")
 	command.Flags().String("region", "", "compare only x,y,width,height")
@@ -256,6 +256,14 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().String("visual-context-model", "", "override the visual context model")
 	command.Flags().String("visual-context-prompt", "", "extra advisory focus for visual context analysis")
 	return command
+}
+
+func defaultMaskPath(actualPath string) string {
+	extension := filepath.Ext(actualPath)
+	if extension == "" {
+		return actualPath + ".diff.png"
+	}
+	return strings.TrimSuffix(actualPath, extension) + ".diff.png"
 }
 
 func inputBounds(bounds diff.Bounds, inputs *diff.ImageInputs) *diff.InputBounds {
