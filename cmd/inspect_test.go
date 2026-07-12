@@ -69,10 +69,10 @@ func TestInspectCommandAcceptsNodeAliasForExplicitID(t *testing.T) {
 		body := `{"nodes":{"0:147":{"document":{"id":"0:147","name":"Target","type":"FRAME"}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "grnVU2vAihHXwYgHryu2xE", "--node", "0:147")
+	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "exampleFileKey123", "--node", "0:147")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"scope":{"fileKey":"grnVU2vAihHXwYgHryu2xE","nodeIds":["0:147"]},"result":{"id":"0:147","name":"Target","type":"FRAME","bounds":{},"layout":{},"typography":{}}}`, result.Stdout)
+	assert.JSONEq(t, `{"scope":{"fileKey":"exampleFileKey123","nodeIds":["0:147"]},"result":{"id":"0:147","name":"Target","type":"FRAME","bounds":{},"layout":{},"typography":{}}}`, result.Stdout)
 }
 
 func TestInspectCommandRejectsConflictingIDAndNodeAlias(t *testing.T) {

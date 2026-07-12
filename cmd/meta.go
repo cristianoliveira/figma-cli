@@ -20,7 +20,7 @@ Examples:
   # Using file ID:
   figma meta ABCDEFGHIJKLMNOPQRSTUVWXYZ
   # Using Figma URL:
-  figma meta https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=339-27545`,
+  figma meta https://www.figma.com/design/exampleFileKey123/Example-Design?node-id=339-27545`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			input, err := figma.ParseInput(args[0])

@@ -16,15 +16,15 @@ func TestParseInput(t *testing.T) {
 		expectedCommentID string
 		wantErr           bool
 	}{
-		{name: "plain file ID", input: "grnVU2vAihHXwYgHryu2xE", expectedID: "grnVU2vAihHXwYgHryu2xE"},
-		{name: "design URL with node-id", input: "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=339-27545&p=f&m=dev", expectedID: "grnVU2vAihHXwYgHryu2xE", expectedIDs: []string{"339:27545"}},
+		{name: "plain file ID", input: "exampleFileKey123", expectedID: "exampleFileKey123"},
+		{name: "design URL with node-id", input: "https://www.figma.com/design/exampleFileKey123/Example-Design?node-id=339-27545&p=f&m=dev", expectedID: "exampleFileKey123", expectedIDs: []string{"339:27545"}},
 		{name: "comment URL", input: "https://www.figma.com/design/QAhpkgySSOJ6gwJUTB0glb?node-id=4707-15501&m=dev#1838610593", expectedID: "QAhpkgySSOJ6gwJUTB0glb", expectedIDs: []string{"4707:15501"}, expectedCommentID: "1838610593"},
-		{name: "design URL without node-id", input: "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-", expectedID: "grnVU2vAihHXwYgHryu2xE"},
+		{name: "design URL without node-id", input: "https://www.figma.com/design/exampleFileKey123/Example-Design", expectedID: "exampleFileKey123"},
 		{name: "file URL", input: "https://www.figma.com/file/abc123/My-Design", expectedID: "abc123"},
 		{name: "URL without design or file", input: "https://www.figma.com/community/abc", wantErr: true},
-		{name: "multiple node-id params", input: "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=339-27545&node-id=440-12345", expectedID: "grnVU2vAihHXwYgHryu2xE", expectedIDs: []string{"339:27545", "440:12345"}},
-		{name: "node-id with multiple hyphens", input: "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=339-27545-99", expectedID: "grnVU2vAihHXwYgHryu2xE", expectedIDs: []string{"339:27545:99"}},
-		{name: "comma-separated node-ids", input: "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=339-27545,440-12345", expectedID: "grnVU2vAihHXwYgHryu2xE", expectedIDs: []string{"339:27545", "440:12345"}},
+		{name: "multiple node-id params", input: "https://www.figma.com/design/exampleFileKey123/Example-Design?node-id=339-27545&node-id=440-12345", expectedID: "exampleFileKey123", expectedIDs: []string{"339:27545", "440:12345"}},
+		{name: "node-id with multiple hyphens", input: "https://www.figma.com/design/exampleFileKey123/Example-Design?node-id=339-27545-99", expectedID: "exampleFileKey123", expectedIDs: []string{"339:27545:99"}},
+		{name: "comma-separated node-ids", input: "https://www.figma.com/design/exampleFileKey123/Example-Design?node-id=339-27545,440-12345", expectedID: "exampleFileKey123", expectedIDs: []string{"339:27545", "440:12345"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -3,7 +3,7 @@
 Target used during feedback loop:
 
 ```bash
-https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=13576-15248&m=dev
+https://www.figma.com/design/exampleFileKey123/Example-Design?node-id=13576-15248&m=dev
 ```
 
 Local implementation:
@@ -41,7 +41,7 @@ The main mistake in this session was guessing the grabber shape as circle/half-t
 Command:
 
 ```bash
-figma find --id 13576:15248 --name "Rectangle Copy 13" grnVU2vAihHXwYgHryu2xE
+figma find --id 13576:15248 --name "Rectangle Copy 13" exampleFileKey123
 ```
 
 Output:
@@ -57,7 +57,7 @@ Output:
 Then:
 
 ```bash
-figma inspect --id 'I13576:15248;0:86' grnVU2vAihHXwYgHryu2xE
+figma inspect --id 'I13576:15248;0:86' exampleFileKey123
 ```
 
 Useful output:
@@ -85,7 +85,7 @@ But the real implementation detail needed was the vector path. That only appeare
 
 ```bash
 figma export --format svg --id 'I13576:15248;0:86' \
-  --output rectangle-copy-13.svg grnVU2vAihHXwYgHryu2xE
+  --output rectangle-copy-13.svg exampleFileKey123
 ```
 
 The SVG showed the truth:
@@ -101,7 +101,7 @@ That path explained the sidebar grabber shape. Before seeing it, I guessed wrong
 Add vector path details to inspect output for VECTOR nodes:
 
 ```bash
-figma inspect --id 'I13576:15248;0:86' grnVU2vAihHXwYgHryu2xE
+figma inspect --id 'I13576:15248;0:86' exampleFileKey123
 ```
 
 Expected addition:
@@ -196,7 +196,7 @@ For scoped inspect/find commands, include relative bounds:
 Developer verification command:
 
 ```bash
-figma inspect --recursive --id 13576:15248 grnVU2vAihHXwYgHryu2xE \
+figma inspect --recursive --id 13576:15248 exampleFileKey123 \
   | jq '.results[] | select(.name=="grabber left") | .relativeBounds'
 ```
 
@@ -226,7 +226,7 @@ The extra pixels are effect/shadow padding. I lost time comparing `320x166` DOM 
 Make export output optionally return metadata:
 
 ```bash
-figma export --format png --json --id 'I13576:15248;0:86' grnVU2vAihHXwYgHryu2xE
+figma export --format png --json --id 'I13576:15248;0:86' exampleFileKey123
 ```
 
 Suggested JSON:
@@ -262,7 +262,7 @@ The CLI lists them, but does not say which ones define structure.
 Add a handoff grouping mode:
 
 ```bash
-figma inspect --handoff --id 13576:15248 grnVU2vAihHXwYgHryu2xE
+figma inspect --handoff --id 13576:15248 exampleFileKey123
 ```
 
 Suggested output:
@@ -541,16 +541,16 @@ Developers can replay a similar loop:
 ```bash
 mkdir -p output/debug-sidebar
 
-figma inspect --recursive --id 13576:15248 grnVU2vAihHXwYgHryu2xE \
+figma inspect --recursive --id 13576:15248 exampleFileKey123 \
   > output/debug-sidebar/sidebar.json
 
 figma export --format png --id 13576:15248 \
   --output output/debug-sidebar/sidebar-reference.png \
-  grnVU2vAihHXwYgHryu2xE
+  exampleFileKey123
 
 figma export --format svg --id 'I13576:15248;0:86' \
   --output output/debug-sidebar/rectangle-copy-13.svg \
-  grnVU2vAihHXwYgHryu2xE
+  exampleFileKey123
 
 # Crop reference to logical sidebar bounds when export includes shadow padding.
 magick output/debug-sidebar/sidebar-reference.png \

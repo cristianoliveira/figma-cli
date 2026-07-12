@@ -69,7 +69,7 @@ figma team https://www.figma.com/files/team/123456789/Wire
 figma team 123456789
 
 # From a file URL (look up the team)
-figma team --file https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-
+figma team --file https://www.figma.com/design/exampleFileKey123/Example-Design
 ```
 
 ## Output examples

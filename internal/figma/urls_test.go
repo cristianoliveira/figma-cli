@@ -28,10 +28,10 @@ func TestBuildMeURL(t *testing.T) {
 }
 
 func TestBuildVersionsURL(t *testing.T) {
-	got, err := BuildVersionsURL("grnVU2vAihHXwYgHryu2xE", VersionsQuery{})
+	got, err := BuildVersionsURL("exampleFileKey123", VersionsQuery{})
 
 	require.NoError(t, err)
-	assert.Equal(t, "https://api.figma.com/v1/files/grnVU2vAihHXwYgHryu2xE/versions", got)
+	assert.Equal(t, "https://api.figma.com/v1/files/exampleFileKey123/versions", got)
 }
 
 func TestBuildVersionsURLWithPageSize(t *testing.T) {

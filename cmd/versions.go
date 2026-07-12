@@ -142,9 +142,9 @@ Each response includes a pagination block with nextAfter / prevBefore cursors;
 pass nextAfter to --after to fetch the next (older) page.
 
 Examples:
-  figma versions grnVU2vAihHXwYgHryu2xE
-  figma versions --page-size 50 https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=4-1082
-  figma versions --after 2374505616843859677 grnVU2vAihHXwYgHryu2xE`,
+  figma versions exampleFileKey123
+  figma versions --page-size 50 https://www.figma.com/design/exampleFileKey123/Example-Design?node-id=4-1082
+  figma versions --after 2374505616843859677 exampleFileKey123`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		input, err := figma.ParseInput(args[0])

@@ -88,7 +88,7 @@ figma [command] [options] <figma-url>
 
 ```bash
 # Fetch file metadata
-figma meta "https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/-Cells--Drive?node-id=2270-190221"
+figma meta "https://www.figma.com/design/<file-key>/<file-name>?node-id=1-2"
 
 # List components within a specific node tree
 figma components --id 123:456 "https://www.figma.com/file/abc123/My-Design"
@@ -120,13 +120,13 @@ All commands produce JSON output for easy parsing:
 ```json
 {
   "file": {
-    "key": "grnVU2vAihHXwYgHryu2xE",
-    "name": "-Cells--Drive",
+    "key": "<file-key>",
+    "name": "Example Design",
     "lastModified": "2025-01-23T08:33:00Z"
   },
   "node": {
-    "id": "2270:190221",
-    "name": "Global files list",
+    "id": "1:2",
+    "name": "Example Frame",
     "type": "FRAME",
     "children": [...]
   }

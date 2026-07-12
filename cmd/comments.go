@@ -35,8 +35,8 @@ func newCommentsCommand(loadClient func() (*figma.Client, error)) *cobra.Command
 
 Requires FIGMA_ACCESS_TOKEN environment variable set with a personal access token.
 Examples:
-  figma comments grnVU2vAihHXwYgHryu2xE
-  figma comments https://www.figma.com/design/grnVU2vAihHXwYgHryu2xE/Drive--Cells-?node-id=4-1082&p=f&m=dev
+  figma comments exampleFileKey123
+  figma comments https://www.figma.com/design/exampleFileKey123/Example-Design?node-id=4-1082&p=f&m=dev
   figma comments --id 20089:685897 <file-url>
 
 A node ID from the URL or --id scopes comments to that node and its descendants.
