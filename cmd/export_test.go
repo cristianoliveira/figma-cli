@@ -70,6 +70,54 @@ func TestExportCommandRequestsRasterScale(t *testing.T) {
 	assert.JSONEq(t, `{"path":"`+outputPath+`","format":"png","node":"42:1","scale":2}`, result.Stdout)
 }
 
+func TestExportCommandDerivesRasterScaleFromWidth(t *testing.T) {
+	var exportQuery string
+	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		body := "image"
+		switch {
+		case strings.Contains(request.URL.Path, "/v1/files/"):
+			body = `{"nodes":{"42:1":{"document":{"id":"42:1","absoluteBoundingBox":{"width":390,"height":200}}}}}`
+		case strings.Contains(request.URL.Path, "/v1/images/"):
+			exportQuery = request.URL.RawQuery
+			body = `{"images":{"42:1":"https://cdn.example/image"}}`
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})
+	client := &figma.Client{HTTP: &http.Client{Transport: transport}}
+	outputPath := t.TempDir() + "/button.png"
+
+	result := executeCommand(
+		newExportCommand(func() (*figma.Client, error) { return client, nil }, nil),
+		"https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "png", "--width", "780", "--output", outputPath, "--json",
+	)
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, exportQuery, "scale=2")
+	assert.JSONEq(t, `{"path":"`+outputPath+`","format":"png","node":"42:1","scale":2,"requestedWidth":780}`, result.Stdout)
+}
+
+func TestExportCommandRejectsWidthWithScale(t *testing.T) {
+	loaded := false
+	result := executeCommand(newExportCommand(func() (*figma.Client, error) {
+		loaded = true
+		return nil, nil
+	}, nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "png", "--width", "780", "--scale", "2")
+
+	assert.EqualError(t, result.Err, "--width cannot be combined with --scale")
+	assert.False(t, loaded)
+}
+
+func TestExportCommandRejectsWidthForVectorFormats(t *testing.T) {
+	loaded := false
+	result := executeCommand(newExportCommand(func() (*figma.Client, error) {
+		loaded = true
+		return nil, nil
+	}, nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "svg", "--width", "780")
+
+	assert.EqualError(t, result.Err, "--width is only supported for png and jpg exports")
+	assert.False(t, loaded)
+}
+
 func TestExportCommandRejectsScaleForVectorFormats(t *testing.T) {
 	loaded := false
 	result := executeCommand(newExportCommand(func() (*figma.Client, error) {

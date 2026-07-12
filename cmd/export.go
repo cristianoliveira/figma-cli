@@ -19,6 +19,11 @@ import (
 
 var exportCmd = newExportCommand(cli.LoadClient, nil)
 
+const (
+	exportFormatPNG = "png"
+	exportFormatJPG = "jpg"
+)
+
 func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *http.Client) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "export [figma-url-with-node-id]",
@@ -30,8 +35,17 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 				return err
 			}
 			scale, _ := cmd.Flags().GetFloat64("scale")
-			if err := validateExportScale(format, scale); err != nil {
+			requestedWidth, _ := cmd.Flags().GetFloat64("width")
+			if cmd.Flags().Changed("width") && cmd.Flags().Changed("scale") {
+				return fmt.Errorf("--width cannot be combined with --scale")
+			}
+			if err := validateExportWidth(format, requestedWidth); err != nil {
 				return err
+			}
+			if requestedWidth == 0 {
+				if err := validateExportScale(format, scale); err != nil {
+					return err
+				}
 			}
 			outputPath, _ := cmd.Flags().GetString("output")
 			metadataPath, _ := cmd.Flags().GetString("metadata")
@@ -61,6 +75,16 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 				return err
 			}
 			client = client.WithContext(cmd.Context())
+			if requestedWidth > 0 {
+				computedScale, err := exportScaleForWidth(client, input.FileID, resolvedNodeID, requestedWidth)
+				if err != nil {
+					return err
+				}
+				scale = computedScale
+				if err := validateExportScale(format, scale); err != nil {
+					return err
+				}
+			}
 			apiURL, err := figma.BuildExportURL(input.FileID, []string{resolvedNodeID}, format, scale)
 			if err != nil {
 				return err
@@ -77,8 +101,11 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 				return err
 			}
 			metadata := map[string]any{"format": format, "node": resolvedNodeID, "scale": scale}
+			if requestedWidth > 0 {
+				metadata["requestedWidth"] = requestedWidth
+			}
 			if metadataPath != "" {
-				if err := writeExportMetadata(client, input.FileID, resolvedNodeID, format, scale, outputPath, metadataPath); err != nil {
+				if err := writeExportMetadata(client, input.FileID, resolvedNodeID, format, scale, requestedWidth, outputPath, metadataPath); err != nil {
 					return fmt.Errorf("exported %s but failed to write metadata: %w", outputPath, err)
 				}
 				metadata["metadata"] = metadataPath
@@ -93,6 +120,7 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 	addNodeIDFlag(command, "node ID to export; defaults to URL node-id")
 	command.Flags().StringP("output", "o", "", "output file path; defaults to <file-key>_<node-id>.<format>")
 	command.Flags().Float64("scale", 1, "raster export scale for png/jpg (0.01-4)")
+	command.Flags().Float64("width", 0, "target raster export width in pixels; derives scale (png/jpg)")
 	command.Flags().String("metadata", "", "write export metadata sidecar JSON to this path")
 	return command
 }
@@ -102,6 +130,7 @@ type exportMetadata struct {
 	NodeID          string         `json:"nodeId"`
 	Format          string         `json:"format"`
 	Scale           float64        `json:"scale"`
+	RequestedWidth  *float64       `json:"requestedWidth,omitempty"`
 	NodeBounds      exportBounds   `json:"nodeBounds"`
 	ExportBounds    exportSize     `json:"exportBounds"`
 	DimensionDelta  exportSize     `json:"dimensionDelta"`
@@ -130,17 +159,46 @@ type exportPadding struct {
 	Bottom float64 `json:"bottom"`
 }
 
+func validateExportWidth(format string, width float64) error {
+	if width == 0 {
+		return nil
+	}
+	if math.IsNaN(width) || math.IsInf(width, 0) || width <= 0 {
+		return fmt.Errorf("--width must be a finite positive number")
+	}
+	if format != exportFormatPNG && format != exportFormatJPG {
+		return fmt.Errorf("--width is only supported for png and jpg exports")
+	}
+	return nil
+}
+
 func validateExportScale(format string, scale float64) error {
 	if math.IsNaN(scale) || math.IsInf(scale, 0) || scale < 0.01 || scale > 4 {
 		return fmt.Errorf("--scale must be a finite number between 0.01 and 4")
 	}
-	if scale != 1 && format != "png" && format != "jpg" {
+	if scale != 1 && format != exportFormatPNG && format != exportFormatJPG {
 		return fmt.Errorf("--scale is only supported for png and jpg exports")
 	}
 	return nil
 }
 
-func writeExportMetadata(client *figma.Client, fileID, nodeID, format string, scale float64, outputPath, metadataPath string) error {
+func exportScaleForWidth(client *figma.Client, fileID, nodeID string, requestedWidth float64) (float64, error) {
+	details, err := figma.FetchNodeDetails(client, fileID, []string{nodeID})
+	if err != nil {
+		return 0, err
+	}
+	if len(details.Documents) == 0 {
+		return 0, fmt.Errorf("node %s was not returned by Figma", nodeID)
+	}
+	node, _ := details.Documents[0].(map[string]any)
+	bounds := exportBoundsFromValue(node["absoluteBoundingBox"])
+	if bounds.Width <= 0 {
+		return 0, fmt.Errorf("node %s has no usable width for --width", nodeID)
+	}
+	return requestedWidth / bounds.Width, nil
+}
+
+func writeExportMetadata(client *figma.Client, fileID, nodeID, format string, scale, requestedWidth float64, outputPath, metadataPath string) error {
 	details, err := figma.FetchNodeDetails(client, fileID, []string{nodeID})
 	if err != nil {
 		return err
@@ -160,6 +218,7 @@ func writeExportMetadata(client *figma.Client, fileID, nodeID, format string, sc
 		NodeID:          nodeID,
 		Format:          format,
 		Scale:           scale,
+		RequestedWidth:  optionalRequestedWidth(requestedWidth),
 		NodeBounds:      nodeBounds,
 		ExportBounds:    exportBounds,
 		DimensionDelta:  exportSize{Width: exportBounds.Width - nodeBounds.Width, Height: exportBounds.Height - nodeBounds.Height},
@@ -175,6 +234,13 @@ func writeExportMetadata(client *figma.Client, fileID, nodeID, format string, sc
 	return os.WriteFile(metadataPath, append(encoded, '\n'), 0o600)
 }
 
+func optionalRequestedWidth(width float64) *float64 {
+	if width == 0 {
+		return nil
+	}
+	return &width
+}
+
 func exportBoundsFromValue(value any) exportBounds {
 	object, _ := value.(map[string]any)
 	return exportBounds{
@@ -186,7 +252,7 @@ func exportBoundsFromValue(value any) exportBounds {
 }
 
 func measureExportBounds(path, format string) (exportSize, error) {
-	if format == "png" {
+	if format == exportFormatPNG {
 		file, err := os.Open(path)
 		if err != nil {
 			return exportSize{}, err

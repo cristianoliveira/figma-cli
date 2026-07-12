@@ -24,6 +24,7 @@ Answer one concrete design question with structured, frontend-ready Figma data.
    - layer search: `figma find --name <name> <url>`
    - components: `figma components <url>`
    - assets: `figma assets --output <dir> <url>`
+   - screenshot-aligned raster export: `figma export --format png --width <pixels> --output <path> <url>`
    - tokens or colors: `figma tokens <file>` / `figma colors <url>`
    - comments: `figma comments <url>`
    - history: `figma versions <url>`, `figma changes`, or `figma diff text`
@@ -40,6 +41,7 @@ Read [command reference](references/commands.md) only when exact flags, output s
 - Reject unsupported multiple node IDs; never silently choose one.
 - User-facing node IDs use `1-2`; API-facing IDs use `1:2`.
 - Preserve stable JSON envelopes. CSS, tokens, exports, and downloaded assets may produce deterministic text/files.
+- For PNG/JPG exports, use either `--scale` or target `--width`; the latter derives valid Figma scale from node bounds. Do not combine them.
 - Layer names are not unique; return every match with node ID.
 - Exact comment ID lookup takes precedence over node filtering.
 - Never edit Figma or claim CLI can mutate design files.
