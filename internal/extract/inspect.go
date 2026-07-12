@@ -81,11 +81,23 @@ func FindNodeByID(value any, targetID string) map[string]any {
 
 // InspectTree returns full implementation specs in Figma tree order.
 func InspectTree(value any) []InspectOutput {
+	return inspectTree(value, -1, 0)
+}
+
+// InspectTreeToDepth returns implementation specs through maxDepth descendants; root depth is zero.
+func InspectTreeToDepth(value any, maxDepth int) []InspectOutput {
+	return inspectTree(value, maxDepth, 0)
+}
+
+func inspectTree(value any, maxDepth, depth int) []InspectOutput {
 	object, ok := value.(map[string]any)
 	if !ok {
 		return nil
 	}
 	outputs := []InspectOutput{NodeToInspectOutput(object)}
+	if maxDepth >= 0 && depth >= maxDepth {
+		return outputs
+	}
 	children, _ := object["children"].([]any)
 	var previousSibling map[string]any
 	for _, child := range children {
@@ -93,7 +105,7 @@ func InspectTree(value any) []InspectOutput {
 		if !ok {
 			continue
 		}
-		childOutputs := InspectTree(childObject)
+		childOutputs := inspectTree(childObject, maxDepth, depth+1)
 		if len(childOutputs) == 0 {
 			continue
 		}
@@ -128,12 +140,21 @@ func measurableInspectSibling(object map[string]any) bool {
 
 // InspectTreeRelativeToScope returns implementation specs with bounds relative to the scoped root.
 func InspectTreeRelativeToScope(value any, scopeID string) []InspectOutput {
+	return inspectTreeRelativeToScope(value, scopeID, -1)
+}
+
+// InspectTreeRelativeToScopeToDepth bounds traversal while retaining scoped coordinates.
+func InspectTreeRelativeToScopeToDepth(value any, scopeID string, maxDepth int) []InspectOutput {
+	return inspectTreeRelativeToScope(value, scopeID, maxDepth)
+}
+
+func inspectTreeRelativeToScope(value any, scopeID string, maxDepth int) []InspectOutput {
 	object, ok := value.(map[string]any)
 	if !ok {
 		return nil
 	}
 	scopeBounds := boundsFromValue(object["absoluteBoundingBox"])
-	outputs := InspectTree(value)
+	outputs := inspectTree(value, maxDepth, 0)
 	for index := range outputs {
 		outputs[index].RelativeBounds = relativeBounds(outputs[index].Bounds, scopeBounds, scopeID)
 	}

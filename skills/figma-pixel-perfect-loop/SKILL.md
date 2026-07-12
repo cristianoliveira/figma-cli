@@ -42,10 +42,10 @@ Recreate Figma web UI as real, accessible DOM and improve measured similarity on
 4. **Measure one region**
    - Run `pixel-perfect` baseline, then narrow to one direct child region.
    - For component work—especially when shared Figma URL targets specific component or frame rather than whole page—render real production component in isolated page, route, story, or preview. Compare there first, then verify it once in full page for integration regressions.
-   - Prefer `--reference-metadata`; calculate crops from Figma bounds.
+   - Prefer exporting exact target node by node-scoped URL/`--id`; use `--reference-metadata` when effect padding still requires logical cropping. Do not export parent frame and manually subtract canvas coordinates when target node can be exported directly.
    - Use `pixel-perfect --reference-crop` / `--actual-crop` for all comparison crops. Do not use ImageMagick crop chains: `+repage`/virtual-canvas offsets can silently change later crop geometry. Native CLI crops decode raster pixels directly and preserve `inputs.*.crop` provenance.
    - If a `pixel-perfect` skill is available, load it for comparison flags and metric diagnosis. Otherwise, inspect `pixel-perfect --help` and use deterministic metrics, masks, and overlays directly.
-   - For exact color or boundary questions, use the pixel-perfect skill/CLI (`probe` for one point, `scan` for a row/column) instead of external image tools.
+   - For exact color or boundary questions, use pixel-perfect `probe`/`scan`; visual-context prose is not pixel, color, or geometry measurement evidence.
    - Keep screenshot, mask, overlay, report, and JSON evidence under `output/visual-diff/`.
 
 5. **Change one cause**
@@ -117,7 +117,7 @@ Never define success as zero changed pixels unless user explicitly requires exac
 - Never resize comparison images or silently apply suggested alignment.
 - Never eyeball crop coordinates or use ImageMagick as the primary crop pipeline. Use Figma metadata or explicit `pixel-perfect` crop flags; use ImageMagick only as an independent diagnostic cross-check.
 - Whole-frame RMSE is baseline, not proof of regional progress.
-- Raster classification and visual context are advisory; verify exact CSS with Figma and DOM data.
+- Raster classification and visual context are advisory. Verify pixel dimensions and exact colors with Figma/DOM facts and pixel-perfect probe/scan.
 - Preserve responsive behavior after calibrating reference viewport.
 
 ## Routing Checks
