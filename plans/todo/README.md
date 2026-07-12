@@ -6,11 +6,10 @@ Completed coordinate and workflow foundations live in [`../done/`](../done/), in
 
 ## Recommended remaining order
 
-1. [Figma vector path inspection](figma-vector-path-inspection.md)
-2. [Figma component-role hints](figma-component-role-hints.md)
-3. [Pixel-perfect shape-mismatch evidence](pixel-perfect-shape-mismatch.md)
-4. [Pixel-perfect actionable issue ranking](pixel-perfect-actionable-issue-ranking.md)
-5. [Transparent-crop suggestions](pixel-perfect-transparent-crop-suggestions.md)
+1. [Figma component-role hints](figma-component-role-hints.md)
+2. [Pixel-perfect shape-mismatch evidence](pixel-perfect-shape-mismatch.md)
+3. [Pixel-perfect actionable issue ranking](pixel-perfect-actionable-issue-ranking.md)
+4. [Transparent-crop suggestions](pixel-perfect-transparent-crop-suggestions.md)
 
 ## Task-plan pattern
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/cristianoliveira/figma-cli/internal/annotations"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
@@ -34,6 +35,7 @@ func newInspectCommandWithVariables(
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			handoff, _ := cmd.Flags().GetBool("handoff")
 			annotationsOutput, _ := cmd.Flags().GetString("annotations-output")
+			includeVectorPaths, _ := cmd.Flags().GetBool("include-vector-paths")
 			depth, _ := cmd.Flags().GetInt("depth")
 			includeHidden, _ := cmd.Flags().GetBool("include-hidden")
 			if handoff && recursive {
@@ -41,6 +43,9 @@ func newInspectCommandWithVariables(
 			}
 			if annotationsOutput != "" && !recursive {
 				return fmt.Errorf("--annotations-output requires --recursive")
+			}
+			if includeVectorPaths && recursive && !cmd.Flags().Changed("depth") {
+				return fmt.Errorf("--include-vector-paths with --recursive requires explicit --depth")
 			}
 			if depth < 0 {
 				return fmt.Errorf("--depth must be zero or greater")
@@ -58,7 +63,16 @@ func newInspectCommandWithVariables(
 				return err
 			}
 			client = client.WithContext(cmd.Context())
-			details, err := figma.FetchNodeDetails(client, input.FileID, []string{nodeID})
+			var details figma.NodeDetails
+			if includeVectorPaths {
+				geometryDepth := "1"
+				if recursive {
+					geometryDepth = strconv.Itoa(depth)
+				}
+				details, err = figma.FetchNodeDetailsWithVectorPaths(client, input.FileID, []string{nodeID}, geometryDepth)
+			} else {
+				details, err = figma.FetchNodeDetails(client, input.FileID, []string{nodeID})
+			}
 			if err != nil {
 				return err
 			}
@@ -106,6 +120,7 @@ func newInspectCommandWithVariables(
 	command.Flags().Int("depth", 4, "maximum descendant depth for --handoff or --recursive; recursive stays unbounded unless set")
 	command.Flags().Bool("include-hidden", false, "include invisible descendants in --handoff or --annotations-output")
 	command.Flags().String("annotations-output", "", "write generic screenshot-relative coordinate annotations; requires --recursive")
+	command.Flags().Bool("include-vector-paths", false, "request and include exact Figma fill/stroke geometry; recursive use requires explicit --depth")
 	return command
 }
 

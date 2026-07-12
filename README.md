@@ -99,6 +99,9 @@ figma texts "https://www.figma.com/design/xyz456/Another-Design?node-id=123-456"
 # Export one frame as PNG
 figma export --format png "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
 
+# Inspect exact vector contours without exporting/parsing SVG
+figma inspect --include-vector-paths "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
+
 # Export generic coordinate annotations for pixel-perfect region context
 figma inspect --recursive --annotations-output frame.annotations.json \
   "https://www.figma.com/design/abc123/My-Design?node-id=123-456"

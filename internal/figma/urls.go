@@ -32,6 +32,15 @@ func BuildFileURL(fileID string, nodeIDs []string, versionID string, depth strin
 
 // BuildNodesURL builds the API URL for fetching specific nodes from a Figma file.
 func BuildNodesURL(fileID string, nodeIDs []string) (string, error) {
+	return buildNodesURL(fileID, nodeIDs, false, "")
+}
+
+// BuildNodesURLWithVectorPaths opts into bounded Figma vector geometry payloads.
+func BuildNodesURLWithVectorPaths(fileID string, nodeIDs []string, depth string) (string, error) {
+	return buildNodesURL(fileID, nodeIDs, true, depth)
+}
+
+func buildNodesURL(fileID string, nodeIDs []string, vectorPaths bool, depth string) (string, error) {
 	raw := fmt.Sprintf("%s/files/%s/nodes", baseURL, fileID)
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -40,6 +49,12 @@ func BuildNodesURL(fileID string, nodeIDs []string) (string, error) {
 	q := u.Query()
 	if len(nodeIDs) > 0 {
 		q.Set("ids", strings.Join(nodeIDs, ","))
+	}
+	if vectorPaths {
+		q.Set("geometry", "paths")
+	}
+	if depth != "" {
+		q.Set("depth", depth)
 	}
 	u.RawQuery = q.Encode()
 	return u.String(), nil

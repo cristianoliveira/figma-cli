@@ -16,6 +16,13 @@ type VariableBinding struct {
 	CollectionName string `json:"collectionName,omitempty"`
 }
 
+// VectorPath preserves one exact Figma geometry path and its fill rule.
+type VectorPath struct {
+	Path        string   `json:"path"`
+	WindingRule string   `json:"windingRule"`
+	OverrideID  *float64 `json:"overrideId,omitempty"`
+}
+
 type relativeBoundsOutput struct {
 	X          float64 `json:"x"`
 	Y          float64 `json:"y"`
@@ -55,6 +62,11 @@ type InspectOutput struct {
 	ResolvedStyles      map[string]StyleBinding      `json:"resolvedStyles,omitempty"`
 	VariableBindings    map[string][]string          `json:"variableBindings,omitempty"`
 	ResolvedVariables   map[string][]VariableBinding `json:"resolvedVariables,omitempty"`
+	FillGeometry        []VectorPath                 `json:"fillGeometry,omitempty"`
+	StrokeGeometry      []VectorPath                 `json:"strokeGeometry,omitempty"`
+	RelativeTransform   any                          `json:"relativeTransform,omitempty"`
+	VectorSize          map[string]any               `json:"vectorSize,omitempty"`
+	FillOverrideTable   map[string]any               `json:"fillOverrideTable,omitempty"`
 }
 
 // FindNodeByID searches a document tree for the node with targetID.
@@ -204,7 +216,29 @@ func NodeToInspectOutput(object map[string]any) InspectOutput {
 		BackgroundColor:     bgColor,
 		StyleBindings:       styleBindingsFromValue(object["styles"]),
 		VariableBindings:    variableBindingsFromValue(object["boundVariables"]),
+		FillGeometry:        vectorPaths(object["fillGeometry"]),
+		StrokeGeometry:      vectorPaths(object["strokeGeometry"]),
+		RelativeTransform:   object["relativeTransform"],
+		VectorSize:          mapValue(object["size"]),
+		FillOverrideTable:   mapValue(object["fillOverrideTable"]),
 	}
+}
+
+func vectorPaths(value any) []VectorPath {
+	values, _ := value.([]any)
+	paths := make([]VectorPath, 0, len(values))
+	for _, value := range values {
+		object, ok := value.(map[string]any)
+		if !ok {
+			continue
+		}
+		path := VectorPath{Path: StringValue(object["path"]), WindingRule: StringValue(object["windingRule"])}
+		if overrideID, ok := object["overrideID"].(float64); ok {
+			path.OverrideID = &overrideID
+		}
+		paths = append(paths, path)
+	}
+	return paths
 }
 
 // ResolveInspectStyleBindings enriches raw style IDs without removing them.

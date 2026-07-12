@@ -41,10 +41,25 @@ func FetchNodeDocuments(client *Client, fileID string, nodeIDs []string) ([]any,
 
 // FetchNodeDetails fetches requested node subtrees with their style metadata.
 func FetchNodeDetails(client *Client, fileID string, nodeIDs []string) (NodeDetails, error) {
+	return fetchNodeDetails(client, fileID, nodeIDs, false, "")
+}
+
+// FetchNodeDetailsWithVectorPaths explicitly requests exact, depth-bounded fill and stroke geometry.
+func FetchNodeDetailsWithVectorPaths(client *Client, fileID string, nodeIDs []string, depth string) (NodeDetails, error) {
+	return fetchNodeDetails(client, fileID, nodeIDs, true, depth)
+}
+
+func fetchNodeDetails(client *Client, fileID string, nodeIDs []string, vectorPaths bool, depth string) (NodeDetails, error) {
 	if len(nodeIDs) == 0 {
 		return NodeDetails{}, fmt.Errorf("at least one node ID is required")
 	}
-	u, err := BuildNodesURL(fileID, nodeIDs)
+	var u string
+	var err error
+	if vectorPaths {
+		u, err = BuildNodesURLWithVectorPaths(fileID, nodeIDs, depth)
+	} else {
+		u, err = BuildNodesURL(fileID, nodeIDs)
+	}
 	if err != nil {
 		return NodeDetails{}, err
 	}

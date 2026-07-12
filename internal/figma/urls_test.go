@@ -14,6 +14,13 @@ func TestBuildNodesURLWithNodeIDs(t *testing.T) {
 	assert.Equal(t, "https://api.figma.com/v1/files/file123/nodes?ids=1%3A2%2C3%3A4", got)
 }
 
+func TestBuildNodesURLWithVectorPaths(t *testing.T) {
+	got, err := BuildNodesURLWithVectorPaths("file123", []string{"1:2;3:4"}, "2")
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.figma.com/v1/files/file123/nodes?depth=2&geometry=paths&ids=1%3A2%3B3%3A4", got)
+}
+
 func TestBuildFileURLWithoutNodeIDs(t *testing.T) {
 	got, err := BuildFileURL("file123", nil, "", "")
 

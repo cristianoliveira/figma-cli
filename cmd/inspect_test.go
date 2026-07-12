@@ -30,6 +30,25 @@ func TestInspectCommandEmitsStableScopedContract(t *testing.T) {
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{},"layout":{},"typography":{},"styleBindings":{"fill":"S:fill"},"resolvedStyles":{"fill":{"id":"S:fill","name":"Brand/Primary","type":"FILL"}}}}`, stdout.String())
 }
 
+func TestInspectCommandIncludesVectorPathsOnExplicitRequest(t *testing.T) {
+	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		assert.Equal(t, "paths", request.URL.Query().Get("geometry"))
+		assert.Equal(t, "1", request.URL.Query().Get("depth"))
+		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Wave","type":"VECTOR","fillGeometry":[{"path":"M0 0 C1 2 3 4 5 6 Z","windingRule":"NONZERO"}],"size":{"x":5,"y":6}}}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}}
+	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--include-vector-paths")
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, `"path": "M0 0 C1 2 3 4 5 6 Z"`)
+	assert.Contains(t, result.Stdout, `"vectorSize"`)
+}
+
+func TestInspectCommandRequiresDepthForRecursiveVectorPaths(t *testing.T) {
+	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return nil, errors.New("must not load") }), "abc", "--id", "1:1", "--recursive", "--include-vector-paths")
+	assert.EqualError(t, result.Err, "--include-vector-paths with --recursive requires explicit --depth")
+}
+
 func TestInspectCommandRecursivelyEmitsImplementationSpecs(t *testing.T) {
 	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","absoluteBoundingBox":{"x":100,"y":200,"width":50,"height":40},"componentPropertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"children":[{"id":"42:2","name":"Label","type":"TEXT","characters":"Save","absoluteBoundingBox":{"x":112.5,"y":205.25,"width":20,"height":10}}]}}}}`
