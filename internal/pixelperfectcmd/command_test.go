@@ -2,6 +2,7 @@ package pixelperfectcmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"image"
 	"image/png"
 	"os"
@@ -27,6 +28,77 @@ func TestDiffImageCommandProducesMaskAndJSONMetrics(t *testing.T) {
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"width":2,"height":2,"changedPixels":0,"comparedPixels":4,"changedRatio":0,"rmse":0,"rgbRmse":0,"luminanceRmse":0,"alphaRmse":0,"edgeRmse":0,"perceptualRmse":0,"perceptualChangedPixels":0,"perceptualChangedRatio":0,"perceptualThreshold":0.1,"antialiasedPixels":0,"evidence":{"rawOnlyPixels":0,"perceptualOnlyPixels":0,"rawAndPerceptualPixels":0},"mask":"`+mask+`"}`, result.Stdout)
+}
+
+func TestDiffImageCommandAppliesIndependentInputCrops(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	mask := filepath.Join(dir, "mask.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 4, 2)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--reference-crop", "1,0,2,2", "--actual-crop", "0,0,2,2", "--output", mask)
+
+	require.NoError(t, result.Err)
+	assert.JSONEq(t, `{"width":2,"height":2,"changedPixels":0,"comparedPixels":4,"changedRatio":0,"rmse":0,"rgbRmse":0,"luminanceRmse":0,"alphaRmse":0,"edgeRmse":0,"perceptualRmse":0,"perceptualChangedPixels":0,"perceptualChangedRatio":0,"perceptualThreshold":0.1,"antialiasedPixels":0,"evidence":{"rawOnlyPixels":0,"perceptualOnlyPixels":0,"rawAndPerceptualPixels":0},"inputs":{"reference":{"width":4,"height":2,"crop":{"x":1,"y":0,"width":2,"height":2}},"actual":{"width":2,"height":2,"crop":{"x":0,"y":0,"width":2,"height":2}}},"mask":"`+mask+`"}`, result.Stdout)
+}
+
+func TestDiffImageCommandAddsInputBoundsToRegionsWhenCropped(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	mask := filepath.Join(dir, "mask.png")
+	referenceImage := image.NewRGBA(image.Rect(0, 0, 4, 2))
+	actualImage := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	actualImage.Set(1, 1, image.White)
+	writeTestPNG(t, reference, referenceImage)
+	writeTestPNG(t, actual, actualImage)
+
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--reference-crop", "1,0,2,2", "--actual-crop", "0,0,2,2", "--output", mask)
+
+	require.NoError(t, result.Err)
+	region := extractFirstRegion(t, result.Stdout)
+	assert.Equal(t, diff.Bounds{X: 1, Y: 1, Width: 1, Height: 1}, region.Bounds)
+	assert.Equal(t, &diff.InputBounds{
+		Reference: diff.Bounds{X: 2, Y: 1, Width: 1, Height: 1},
+		Actual:    diff.Bounds{X: 1, Y: 1, Width: 1, Height: 1},
+	}, region.InputBounds)
+}
+
+func TestDiffImageCommandRejectsInvalidCrops(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 4, 2)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+
+	tests := []struct {
+		name, flag, crop, expected string
+	}{
+		{name: "negative", flag: "--reference-crop", crop: "-1,0,2,2", expected: "invalid --reference-crop: crop -1,0,2,2 is outside image bounds 4x2"},
+		{name: "zero", flag: "--reference-crop", crop: "0,0,0,2", expected: "invalid --reference-crop: width and height must be positive"},
+		{name: "out of bounds", flag: "--actual-crop", crop: "1,0,2,2", expected: "invalid --actual-crop: crop 1,0,2,2 is outside image bounds 2x2"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, test.flag, test.crop, "--output", filepath.Join(dir, test.name+".png"))
+
+			assert.EqualError(t, result.Err, test.expected)
+		})
+	}
+}
+
+func TestDiffImageCommandRejectsCroppedDimensionMismatch(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 4, 2)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 4, 2)))
+
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--reference-crop", "0,0,2,2", "--actual-crop", "0,0,3,2", "--output", filepath.Join(dir, "mask.png"))
+
+	assert.EqualError(t, result.Err, "cropped image dimensions differ: reference is 2x2, actual is 3x2")
 }
 
 func TestDiffImageCommandAddsDisclaimerWhenVisualContextIsNotConfigured(t *testing.T) {
@@ -143,6 +215,14 @@ func TestDiffImageCommandFailsValidationThreshold(t *testing.T) {
 	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--output", mask, "--max-changed-ratio", "0.1")
 
 	assert.EqualError(t, result.Err, "image diff validation failed: changed ratio 0.250000 exceeds maximum 0.100000")
+}
+
+func extractFirstRegion(t *testing.T, output string) diff.Region {
+	t.Helper()
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal([]byte(output), &comparison))
+	require.NotEmpty(t, comparison.Regions)
+	return comparison.Regions[0]
 }
 
 func writeTestPNG(t *testing.T, path string, img image.Image) {

@@ -17,24 +17,41 @@ type Bounds struct {
 	Height int `json:"height"`
 }
 
+type InputBounds struct {
+	Reference Bounds `json:"reference"`
+	Actual    Bounds `json:"actual"`
+}
+
 type Region struct {
-	Bounds                  Bounds      `json:"bounds"`
-	ChangedPixels           int         `json:"changedPixels"`
-	ChangedRatio            float64     `json:"changedRatio"`
-	RMSE                    float64     `json:"rmse"`
-	EdgeRMSE                float64     `json:"edgeRmse"`
-	PerceptualRMSE          float64     `json:"perceptualRmse"`
-	PerceptualChangedPixels int         `json:"perceptualChangedPixels"`
-	PerceptualChangedRatio  float64     `json:"perceptualChangedRatio"`
-	AntialiasedPixels       int         `json:"antialiasedPixels"`
-	DominantColorPairs      []ColorPair `json:"dominantColorPairs,omitempty"`
-	Classification          string      `json:"classification"`
+	Bounds                  Bounds       `json:"bounds"`
+	InputBounds             *InputBounds `json:"inputBounds,omitempty"`
+	ChangedPixels           int          `json:"changedPixels"`
+	ChangedRatio            float64      `json:"changedRatio"`
+	RMSE                    float64      `json:"rmse"`
+	EdgeRMSE                float64      `json:"edgeRmse"`
+	PerceptualRMSE          float64      `json:"perceptualRmse"`
+	PerceptualChangedPixels int          `json:"perceptualChangedPixels"`
+	PerceptualChangedRatio  float64      `json:"perceptualChangedRatio"`
+	AntialiasedPixels       int          `json:"antialiasedPixels"`
+	DominantColorPairs      []ColorPair  `json:"dominantColorPairs,omitempty"`
+	Classification          string       `json:"classification"`
 }
 
 type EvidenceBreakdown struct {
 	RawOnlyPixels          int `json:"rawOnlyPixels"`
 	PerceptualOnlyPixels   int `json:"perceptualOnlyPixels"`
 	RawAndPerceptualPixels int `json:"rawAndPerceptualPixels"`
+}
+
+type ImageInput struct {
+	Width  int     `json:"width"`
+	Height int     `json:"height"`
+	Crop   *Bounds `json:"crop,omitempty"`
+}
+
+type ImageInputs struct {
+	Reference ImageInput `json:"reference"`
+	Actual    ImageInput `json:"actual"`
 }
 
 type ImageComparison struct {
@@ -61,6 +78,7 @@ type ImageComparison struct {
 	Mask                    string            `json:"mask"`
 	Overlay                 string            `json:"overlay,omitempty"`
 	SuggestedOffset         *SuggestedOffset  `json:"suggestedOffset,omitempty"`
+	Inputs                  *ImageInputs      `json:"inputs,omitempty"`
 }
 
 func CompareImages(referencePath, actualPath, maskPath string, threshold uint8) (ImageComparison, error) {
@@ -192,6 +210,31 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 		}
 	}
 	return result, nil
+}
+
+func PNGDimensions(path string) (int, int, error) {
+	img, err := decodePNG(path)
+	if err != nil {
+		return 0, 0, err
+	}
+	return img.Bounds().Dx(), img.Bounds().Dy(), nil
+}
+
+func WriteCroppedPNG(inputPath, outputPath string, crop Bounds) error {
+	img, err := decodePNG(inputPath)
+	if err != nil {
+		return err
+	}
+	if crop.X < 0 || crop.Y < 0 || crop.Width <= 0 || crop.Height <= 0 || crop.X+crop.Width > img.Bounds().Dx() || crop.Y+crop.Height > img.Bounds().Dy() {
+		return fmt.Errorf("crop %d,%d,%d,%d is outside image bounds %dx%d", crop.X, crop.Y, crop.Width, crop.Height, img.Bounds().Dx(), img.Bounds().Dy())
+	}
+	cropped := image.NewNRGBA(image.Rect(0, 0, crop.Width, crop.Height))
+	for y := 0; y < crop.Height; y++ {
+		for x := 0; x < crop.Width; x++ {
+			cropped.Set(x, y, img.At(img.Bounds().Min.X+crop.X+x, img.Bounds().Min.Y+crop.Y+y))
+		}
+	}
+	return encodePNG(outputPath, cropped)
 }
 
 func decodePNG(path string) (image.Image, error) {

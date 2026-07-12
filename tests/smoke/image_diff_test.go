@@ -134,6 +134,76 @@ func TestPixelPerfectBoundaryAndCompositingScenarios(t *testing.T) {
 	}
 }
 
+func TestPixelPerfectAppliesExplicitCropFixtures(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "crop-reference.png"), filepath.Join(fixtures, "crop-actual.png"),
+		"--reference-crop", "1,0,2,2",
+		"--actual-crop", "0,0,2,2",
+		"--output", mask,
+	).CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal(output, &comparison))
+	assert.Equal(t, 2, comparison.Width)
+	assert.Equal(t, 2, comparison.Height)
+	assert.Equal(t, 0, comparison.ChangedPixels)
+	assert.Empty(t, comparison.Regions)
+	require.NotNil(t, comparison.Inputs)
+	assert.Equal(t, diff.ImageInput{Width: 4, Height: 2, Crop: &diff.Bounds{X: 1, Y: 0, Width: 2, Height: 2}}, comparison.Inputs.Reference)
+	assert.Equal(t, diff.ImageInput{Width: 2, Height: 2, Crop: &diff.Bounds{X: 0, Y: 0, Width: 2, Height: 2}}, comparison.Inputs.Actual)
+	assertPNGDimensions(t, mask, 2, 2)
+}
+
+func TestPixelPerfectExplicitCropReportsOriginalInputBounds(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "crop-reference.png"), filepath.Join(fixtures, "crop-actual-changed.png"),
+		"--reference-crop", "1,0,2,2",
+		"--actual-crop", "0,0,2,2",
+		"--output", mask,
+	).CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal(output, &comparison))
+	require.Len(t, comparison.Regions, 1)
+	assert.Equal(t, diff.Bounds{X: 1, Y: 1, Width: 1, Height: 1}, comparison.Regions[0].Bounds)
+	assert.Equal(t, &diff.InputBounds{
+		Reference: diff.Bounds{X: 2, Y: 1, Width: 1, Height: 1},
+		Actual:    diff.Bounds{X: 1, Y: 1, Width: 1, Height: 1},
+	}, comparison.Regions[0].InputBounds)
+}
+
+func TestPixelPerfectExplicitCropFixtureErrors(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	reference := filepath.Join(fixtures, "crop-reference.png")
+	actual := filepath.Join(fixtures, "crop-actual.png")
+	tests := []struct {
+		name, expected string
+		flags          []string
+	}{
+		{name: "out of bounds", flags: []string{"--actual-crop", "1,0,2,2"}, expected: "invalid --actual-crop: crop 1,0,2,2 is outside image bounds 2x2"},
+		{name: "dimension mismatch", flags: []string{"--reference-crop", "1,0,2,2", "--actual-crop", "0,0,1,2"}, expected: "cropped image dimensions differ: reference is 2x2, actual is 1x2"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args := []string{reference, actual, "--output", filepath.Join(t.TempDir(), "mask.png")}
+			args = append(args, test.flags...)
+			output, err := exec.Command(binary, args...).CombinedOutput()
+
+			require.Error(t, err)
+			assert.Contains(t, string(output), test.expected)
+		})
+	}
+}
+
 func TestPixelPerfectOmitsOffsetWhenMaskExcludesAllPixels(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
@@ -204,7 +274,7 @@ func TestPixelPerfectHelpDocumentsStandaloneContract(t *testing.T) {
 	require.NoError(t, err, string(output))
 	help := string(output)
 	assert.Contains(t, help, "pixel-perfect <reference.png> <actual.png>")
-	for _, flag := range []string{"--output", "--overlay", "--region", "--ignore-region", "--mask", "--threshold", "--perceptual-threshold", "--suggest-offset", "--max-rmse", "--max-changed-ratio", "--max-perceptual-changed-ratio"} {
+	for _, flag := range []string{"--output", "--overlay", "--region", "--reference-crop", "--actual-crop", "--ignore-region", "--mask", "--threshold", "--perceptual-threshold", "--suggest-offset", "--max-rmse", "--max-changed-ratio", "--max-perceptual-changed-ratio"} {
 		assert.Contains(t, help, flag)
 	}
 }
