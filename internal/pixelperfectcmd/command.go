@@ -340,8 +340,7 @@ func newProbeCommand() *cobra.Command {
 		Short: "Inspect colors at one pixel in two equal-sized PNGs",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pointValues, _ := cmd.Flags().GetStringArray("at")
-			points, err := parseProbePoints(pointValues)
+			points, err := probePointsFromFlags(cmd)
 			if err != nil {
 				return err
 			}
@@ -369,9 +368,12 @@ func newProbeCommand() *cobra.Command {
 		},
 	}
 	command.Flags().StringArray("at", nil, "pixel coordinate to inspect: x,y in comparison/cropped coordinates; repeat for multiple points")
+	command.Flags().String("from", "", "inclusive line start: x,y in comparison/cropped coordinates")
+	command.Flags().String("to", "", "inclusive line end: x,y in comparison/cropped coordinates")
+	command.Flags().Int("step", 1, "sample every Nth point along --from/--to line")
+	command.Flags().Int("radius", 0, "include square pixel neighborhood around every selected point")
 	addTabularFormatFlag(command)
 	addInputPreparationFlags(command)
-	_ = command.MarkFlagRequired("at")
 	return command
 }
 
@@ -480,10 +482,43 @@ func lineWithCropOrigin(axis string, index int, crop *diff.Bounds) scanLinePosit
 	return position
 }
 
-func parseProbePoints(values []string) ([]probePoint, error) {
-	if len(values) == 0 {
-		return nil, fmt.Errorf("at least one --at point is required")
+func probePointsFromFlags(command *cobra.Command) ([]probePoint, error) {
+	step, _ := command.Flags().GetInt("step")
+	if step < 1 {
+		return nil, fmt.Errorf("--step must be positive")
 	}
+	radius, _ := command.Flags().GetInt("radius")
+	if radius < 0 {
+		return nil, fmt.Errorf("--radius must be non-negative")
+	}
+	values, _ := command.Flags().GetStringArray("at")
+	points, err := parseProbePoints(values)
+	if err != nil {
+		return nil, err
+	}
+	fromValue, _ := command.Flags().GetString("from")
+	toValue, _ := command.Flags().GetString("to")
+	if (fromValue == "") != (toValue == "") {
+		return nil, fmt.Errorf("--from and --to must be provided together")
+	}
+	if fromValue != "" {
+		from, err := parseProbePoint(fromValue)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --from: %w", err)
+		}
+		to, err := parseProbePoint(toValue)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --to: %w", err)
+		}
+		points = append(points, steppedProbeLine(from, to, step)...)
+	}
+	if len(points) == 0 {
+		return nil, fmt.Errorf("provide at least one --at point or --from/--to line")
+	}
+	return expandProbeRadius(points, radius), nil
+}
+
+func parseProbePoints(values []string) ([]probePoint, error) {
 	points := make([]probePoint, 0, len(values))
 	for _, value := range values {
 		point, err := parseProbePoint(value)
@@ -493,6 +528,65 @@ func parseProbePoints(values []string) ([]probePoint, error) {
 		points = append(points, point)
 	}
 	return points, nil
+}
+
+func steppedProbeLine(from, to probePoint, step int) []probePoint {
+	line := rasterProbeLine(from, to)
+	points := make([]probePoint, 0, (len(line)+step-1)/step+1)
+	for index := 0; index < len(line); index += step {
+		points = append(points, line[index])
+	}
+	if points[len(points)-1] != to {
+		points = append(points, to)
+	}
+	return points
+}
+
+func rasterProbeLine(from, to probePoint) []probePoint {
+	x, y := from.X, from.Y
+	dx, dy := absInt(to.X-from.X), -absInt(to.Y-from.Y)
+	stepX, stepY := -1, -1
+	if x < to.X {
+		stepX = 1
+	}
+	if y < to.Y {
+		stepY = 1
+	}
+	err := dx + dy
+	points := make([]probePoint, 0, max(dx, -dy)+1)
+	for {
+		points = append(points, probePoint{X: x, Y: y})
+		if x == to.X && y == to.Y {
+			return points
+		}
+		twiceError := 2 * err
+		if twiceError >= dy {
+			err += dy
+			x += stepX
+		}
+		if twiceError <= dx {
+			err += dx
+			y += stepY
+		}
+	}
+}
+
+func expandProbeRadius(points []probePoint, radius int) []probePoint {
+	seen := make(map[probePoint]struct{})
+	expanded := make([]probePoint, 0, len(points)*(radius*2+1)*(radius*2+1))
+	for _, point := range points {
+		for y := max(0, point.Y-radius); y <= point.Y+radius; y++ {
+			for x := max(0, point.X-radius); x <= point.X+radius; x++ {
+				candidate := probePoint{X: x, Y: y}
+				if _, exists := seen[candidate]; exists {
+					continue
+				}
+				seen[candidate] = struct{}{}
+				expanded = append(expanded, candidate)
+			}
+		}
+	}
+	return expanded
 }
 
 func parseProbePoint(value string) (probePoint, error) {

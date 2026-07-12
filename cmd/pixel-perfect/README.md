@@ -31,9 +31,10 @@ Both inputs must be equal-sized PNGs. Unequal dimensions fail instead of produci
 
 ```bash
 pixel-perfect probe reference.png implementation.png --at 316,300 --at 320,300
+pixel-perfect probe reference.png implementation.png --from 91,144 --to 243,296 --step 4 --radius 1
 ```
 
-`probe` inspects one or more pixels in both equal-sized PNGs and prints CSV by default: `x,y,ref,act,delta,input_ref,input_act`. Use `--format json` for stable `points[]` JSON with RGBA and per-channel delta values. Use probe when debugging exact colors, edge transitions, or when an agent would otherwise reach for ImageMagick pixel sampling. Each point must be in bounds. It accepts the same input-preparation flags as diff: `--reference-crop`, `--actual-crop`, and `--reference-metadata`; coordinates are in comparison/cropped space. When crops are used, `input_ref` / `input_act` or JSON `inputPoint` maps each probed point back to original reference/actual coordinates.
+`probe` inspects one or more pixels in both equal-sized PNGs and prints CSV by default: `x,y,ref,act,delta,input_ref,input_act`. Use repeatable `--at` for known sparse points or inclusive `--from x,y --to x,y` for an arbitrary straight line. `--step N` samples every Nth rasterized line point while preserving the endpoint; `--radius N` expands each selected point into a deduplicated square neighborhood. Use `--format json` for stable `points[]` JSON with RGBA and per-channel delta values. Use probe when debugging exact colors, edge transitions, or when an agent would otherwise reach for ImageMagick pixel sampling. Each point must be in bounds. It accepts the same input-preparation flags as diff: `--reference-crop`, `--actual-crop`, and `--reference-metadata`; coordinates are in comparison/cropped space. When crops are used, `input_ref` / `input_act` or JSON `inputPoint` maps each probed point back to original reference/actual coordinates.
 
 For repeated boundary checks, scan one row or column into compact color runs:
 

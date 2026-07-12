@@ -34,6 +34,46 @@ func TestProbeCommandReportsPointColorsAndDelta(t *testing.T) {
 	assert.Equal(t, "x,y,ref,act,delta,input_ref,input_act\n1,0,#FFFFFF,#F4F4F4,11,,\n", result.Stdout)
 }
 
+func TestProbeCommandSamplesInclusiveLineWithStep(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 5, 5)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 5, 5)))
+
+	result := executeCommand(NewCommand(), "probe", reference, actual, "--from", "0,0", "--to", "4,4", "--step", "2")
+
+	require.NoError(t, result.Err)
+	assert.Equal(t, "x,y,ref,act,delta,input_ref,input_act\n0,0,#000000,#000000,0,,\n2,2,#000000,#000000,0,,\n4,4,#000000,#000000,0,,\n", result.Stdout)
+}
+
+func TestProbeCommandExpandsAndDeduplicatesRadius(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 5, 3)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 5, 3)))
+
+	result := executeCommand(NewCommand(), "probe", reference, actual, "--at", "2,1", "--from", "1,1", "--to", "3,1", "--radius", "1", "--format", "json")
+
+	require.NoError(t, result.Err)
+	var output probeOutput
+	require.NoError(t, json.Unmarshal([]byte(result.Stdout), &output))
+	assert.Len(t, output.Points, 15)
+}
+
+func TestProbeCommandRejectsIncompleteLineAndInvalidOptions(t *testing.T) {
+	command := NewCommand()
+	fromOnly := executeCommand(command, "probe", "ref.png", "actual.png", "--from", "0,0")
+	assert.ErrorContains(t, fromOnly.Err, "--from and --to must be provided together")
+
+	invalidStep := executeCommand(NewCommand(), "probe", "ref.png", "actual.png", "--from", "0,0", "--to", "1,1", "--step", "0")
+	assert.ErrorContains(t, invalidStep.Err, "--step must be positive")
+
+	invalidRadius := executeCommand(NewCommand(), "probe", "ref.png", "actual.png", "--at", "0,0", "--radius", "-1")
+	assert.ErrorContains(t, invalidRadius.Err, "--radius must be non-negative")
+}
+
 func TestProbeCommandWritesJSONFormat(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")

@@ -39,6 +39,16 @@ func TestPixelPerfectProbeCLI(t *testing.T) {
 	assert.Equal(t, "x,y,ref,act,delta,input_ref,input_act\n0,0,#FFFFFF,#000000,255,,\n", string(output))
 }
 
+func TestPixelPerfectProbeLineCLI(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	output, err := exec.Command(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--from", "0,0", "--to", "3,2", "--step", "2").CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	assert.Contains(t, string(output), "0,0,#FFFFFF,#000000,255,,")
+	assert.Contains(t, string(output), "3,2,#FFFFFF,#FF0000,255,,")
+}
+
 func TestPixelPerfectScanCLI(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
@@ -56,7 +66,7 @@ func TestPixelPerfectScanCLIErrorContracts(t *testing.T) {
 	output, err := exec.Command(binary, "scan", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--x", "0", "--y", "0").CombinedOutput()
 
 	require.Error(t, err)
-	assert.Contains(t, string(output), "provide exactly one of --x or --y")
+	assert.Contains(t, string(output), "provide exactly one of --x/--column or --y/--row")
 }
 
 func TestPixelPerfectProbeCLIErrorContracts(t *testing.T) {
