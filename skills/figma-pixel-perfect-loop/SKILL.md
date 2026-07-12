@@ -10,7 +10,7 @@ description: >
 
 ## Objective
 
-Recreate Figma UI as real, accessible DOM and improve measured similarity one bounded region at a time.
+Recreate Figma web UI as real, accessible DOM and improve measured similarity one bounded region at a time.
 
 ## Workflow
 
@@ -67,10 +67,10 @@ After baseline, repeat until acceptance gate passes or budget is exhausted:
 3. Form one evidence-backed hypothesis and make smallest related change.
 4. Verify behavior and key DOM facts; capture under same conditions.
 5. Compare same region and affected shared-token consumers.
-6. Keep change only when target improves without meaningful regression; otherwise revert it.
+6. Keep change only when target improves without meaningful regression; otherwise revert it. A meaningful regression fails an accepted metric gate or breaks behavior or accessibility.
 7. Record result and choose next region.
 
-Default budget is 10 iterations per region. User-provided budget or gates take precedence. Do not loop indefinitely.
+Default budget is 10 iterations per region and 30 iterations total. User-provided budget or gates take precedence. Do not loop indefinitely.
 
 ### Accessibility Gate
 
@@ -83,7 +83,8 @@ Before retaining each visual change:
 - Hide decorative images and SVGs from assistive technology; give meaningful images appropriate alternative text.
 - Preserve meaningful heading and landmark structure.
 - Do not communicate meaning by color alone; retain reduced-motion behavior and usable reflow at 200% zoom.
-- Run project accessibility checks and a keyboard smoke test when available.
+- Run automated project accessibility checks when available.
+- For interactive UI, always perform a keyboard smoke test: verify logical Tab order, visible focus, Enter/Space activation, Escape behavior where relevant, and accessible names.
 
 Any visual improvement that breaks semantics, keyboard behavior, focus, or accessible naming is a regression and must be reverted.
 
@@ -91,7 +92,7 @@ Any visual improvement that breaks semantics, keyboard behavior, focus, or acces
 
 Stop successfully when either:
 
-- configured raw/perceptual metric gates pass for important regions; or
+- configured raw/perceptual metric gates pass for important regions—all visible user-facing regions inside selected Figma scope; or
 - Figma and DOM geometry, content, typography, colors, and effects match, while remaining difference is evidenced as capture/font/browser rasterization noise.
 
 Never define success as zero changed pixels unless user explicitly requires exact raster equality in fixed environment.
@@ -109,7 +110,7 @@ Never define success as zero changed pixels unless user explicitly requires exac
 
 - Figma exports are evidence and asset sources, never component implementations.
 - Never render reference screenshot, frame export, crop, base64 capture, canvas copy, or screenshot-wrapped SVG as UI.
-- Build selectable, semantic, accessible, interactive DOM/native components.
+- Build selectable, semantic, accessible, interactive DOM components.
 - Images are allowed only for genuine artwork such as photos, illustrations, logos, and icons—never flattened panels, forms, text, controls, navigation, sections, or screens.
 - Never resize comparison images or silently apply suggested alignment.
 - Never eyeball crop coordinates.
