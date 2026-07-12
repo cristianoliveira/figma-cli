@@ -168,7 +168,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 	changedRows := make([]bool, height)
 	changed, perceptualChanged, antialiased, rawOnly, perceptualOnly, both, compared, minX, minY, maxX, maxY := 0, 0, 0, 0, 0, 0, 0, width, height, -1, -1
 	var rgbSquaredError, luminanceSquaredError, alphaSquaredError, perceptualSquaredError float64
-	hasTransparency := false
+	hasTransparency, hasPixelDifference := false, false
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			absoluteX, absoluteY := area.X+x, area.Y+y
@@ -182,6 +182,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 			if r == a {
 				continue
 			}
+			hasPixelDifference = true
 			delta := [4]uint8{absDiff(r.R, a.R), absDiff(r.G, a.G), absDiff(r.B, a.B), absDiff(r.A, a.A)}
 			maxDelta := max(delta[0], delta[1], delta[2], delta[3])
 			for _, value := range delta[:3] {
@@ -242,7 +243,9 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 		result.RGBRMSE = math.Sqrt(rgbSquaredError/float64(compared*3)) / 255
 		result.LuminanceRMSE = math.Sqrt(luminanceSquaredError/float64(compared)) / 255
 		result.AlphaRMSE = math.Sqrt(alphaSquaredError/float64(compared)) / 255
-		result.EdgeRMSE = imageEdgeRMSE(reference, actual, area, ignoredPixels)
+		if hasPixelDifference {
+			result.EdgeRMSE = imageEdgeRMSE(reference, actual, area, ignoredPixels)
+		}
 		result.PerceptualRMSE = math.Sqrt(perceptualSquaredError / float64(compared))
 		result.PerceptualChangedRatio = float64(perceptualChanged) / float64(compared)
 	}

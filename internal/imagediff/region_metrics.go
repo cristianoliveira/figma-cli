@@ -75,7 +75,7 @@ func measureImageRegion(reference, actual *image.NRGBA, bounds Bounds, threshold
 	changed, perceptualChanged, antialiased, compared, channels := 0, 0, 0, 0, 3
 	colorPairs := make(map[[8]uint8]int)
 	var rgbError, alphaError, perceptualError float64
-	transparent := false
+	transparent, hasPixelDifference := false, false
 	for y := bounds.Y; y < bounds.Y+bounds.Height; y++ {
 		for x := bounds.X; x < bounds.X+bounds.Width; x++ {
 			if ignoredPixels.Contains(x, y) {
@@ -84,6 +84,11 @@ func measureImageRegion(reference, actual *image.NRGBA, bounds Bounds, threshold
 			compared++
 			r := reference.NRGBAAt(x, y)
 			a := actual.NRGBAAt(x, y)
+			transparent = transparent || r.A != 255 || a.A != 255
+			if r == a {
+				continue
+			}
+			hasPixelDifference = true
 			deltas := []uint8{absDiff(r.R, a.R), absDiff(r.G, a.G), absDiff(r.B, a.B), absDiff(r.A, a.A)}
 			if max(deltas[0], deltas[1], deltas[2], deltas[3]) > threshold {
 				changed++
@@ -101,7 +106,6 @@ func measureImageRegion(reference, actual *image.NRGBA, bounds Bounds, threshold
 			if perceptualDelta > perceptualThreshold {
 				perceptualChanged++
 			}
-			transparent = transparent || r.A != 255 || a.A != 255
 		}
 	}
 	if compared == 0 {
@@ -112,9 +116,13 @@ func measureImageRegion(reference, actual *image.NRGBA, bounds Bounds, threshold
 		channels = 4
 		total += alphaError
 	}
+	edgeRMSE := 0.0
+	if hasPixelDifference {
+		edgeRMSE = imageEdgeRMSE(reference, actual, bounds, ignoredPixels)
+	}
 	return RegionMetrics{
 		ChangedPixels: changed, ChangedRatio: float64(changed) / float64(compared),
-		RMSE: math.Sqrt(total/float64(compared*channels)) / 255, EdgeRMSE: imageEdgeRMSE(reference, actual, bounds, ignoredPixels),
+		RMSE: math.Sqrt(total/float64(compared*channels)) / 255, EdgeRMSE: edgeRMSE,
 		PerceptualRMSE: math.Sqrt(perceptualError / float64(compared)), PerceptualChangedPixels: perceptualChanged,
 		PerceptualChangedRatio: float64(perceptualChanged) / float64(compared), AntialiasedPixels: antialiased,
 		DominantColorPairs: dominantColorPairs(colorPairs),
