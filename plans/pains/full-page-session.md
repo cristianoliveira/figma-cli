@@ -10,7 +10,7 @@ This is a session retrospective, not an implementation backlog. Current triage:
 
 - **Build:** scoped frame discovery and bounded pixel-perfect presentation.
 - **Live investigation resolved:** nested instances render correctly in current Figma API exports.
-- **Document instead of build:** perceptual metric calibration.
+- **Documented:** perceptual metric calibration and project-specific CI threshold selection.
 - **Already resolved:** export crop metadata, scoped `find`, computed inspect gaps, and explicit pixel-perfect cropping.
 - **Move to owning tools/workflow:** browser defaults, Vite lifecycle, Playwright session cleanup, and accessibility-first implementation.
 
@@ -41,7 +41,7 @@ The verified App Lock metadata reports a 591×493 export, 575×477 logical crop,
 
 1. **Frame discovery:** design `figma frames [url] --id <page-or-section>`. It should return useful screen-level frames without dumping every nested layout frame. Define direct-versus-recursive semantics and test both before implementation.
 2. **Bounded comparison presentation:** add an explicit summary mode without changing stable full JSON. It should retain dimensions, core ratios, mismatch bounds, top regions, and artifact paths while omitting unbounded row arrays.
-3. **Perceptual guidance:** document raw versus perceptual evidence and provide example profiles/CI thresholds. Do not introduce a universal letter grade without validated calibration data.
+3. **Perceptual guidance:** resolved in `cmd/pixel-perfect/README.md` with raw-versus-perceptual semantics, a repeatable calibration process, and an example CI gate. No universal letter grade was introduced.
 
 ### Workflow follow-ups
 
@@ -78,8 +78,8 @@ The full output includes 200+ line arrays of row numbers. For a 575×477 image t
 ### 7. No auto-crop to match dimensions — resolved explicitly
 `pixel-perfect` accepts `--reference-crop`, `--actual-crop`, and `--reference-metadata`. Automatic largest-common-rectangle detection should not be added: it could silently compare unrelated coordinate spaces and conflicts with the tool's explicit, fail-fast behavior.
 
-### 8. Perceptual threshold is a black box — documentation gap
-`--perceptual-threshold 0.1` needs calibration examples and recommended starting profiles. A universal `--grade` would add subjective authority and hide tradeoffs between raw, edge, and perceptual evidence. Prefer explicit CI thresholds and documented profiles until grades can be validated against human judgments.
+### 8. Perceptual threshold is a black box — resolved with calibration guidance
+`cmd/pixel-perfect/README.md` now explains raw versus perceptual thresholds, makes clear that `0.1` is not a universal just-noticeable-difference boundary, and provides a repeatable process for selecting project-specific CI limits from stable-run noise and a known regression. A subjective universal grade was intentionally not added.
 
 ## CSS / DOM
 

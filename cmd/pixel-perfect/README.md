@@ -311,6 +311,37 @@ pixel-perfect reference.png implementation.png \
 - `bounds`: smallest absolute rectangle containing all changed pixels.
 - `changedRows`: sorted absolute row indexes containing changed pixels; useful as compact localization evidence.
 
+### Choosing thresholds
+
+There is no universal "good" perceptual ratio or RMSE. Results depend on screenshot size, fonts, operating system, browser rasterization, and whether changed pixels belong to important UI. Treat thresholds as project-specific regression limits, not visual-quality grades.
+
+`--threshold` and `--perceptual-threshold` answer different questions:
+
+- `--threshold N` ignores raw per-channel differences at or below `N` before calculating `changedPixels`.
+- `--perceptual-threshold D` counts pixels whose OKLab HyAB distance is greater than `D`. The default `0.1` is a comparison starting point, not a guaranteed just-noticeable-difference boundary.
+- `--max-*` flags define acceptance gates. They do not change measurements.
+
+Calibrate a stable test instead of copying limits from another page:
+
+1. Capture the same accepted implementation several times under the stable-screenshot conditions below.
+2. Record the highest repeat-run `rmse`, `changedRatio`, and `perceptualChangedRatio` as environment noise.
+3. Capture one smallest change that the team considers a real regression.
+4. Choose limits above observed noise and below that regression. Keep enough margin to avoid flaky equality-at-the-boundary failures.
+5. Commit the capture environment and chosen command beside the visual test. Recalibrate when browser, OS, or fonts change.
+
+Example CI gate after calibration:
+
+```bash
+pixel-perfect reference.png actual.png \
+  --threshold 8 \
+  --perceptual-threshold 0.1 \
+  --max-rmse 0.02 \
+  --max-changed-ratio 0.01 \
+  --max-perceptual-changed-ratio 0.005
+```
+
+Those numbers demonstrate flag usage only; they are not defaults or general recommendations. During diagnosis, inspect region bounds, classifications, dominant color pairs, and overlays rather than reducing the result to one score.
+
 ### Region classifications
 
 Classifications are deterministic hints; raw metrics remain authoritative.
