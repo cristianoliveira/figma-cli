@@ -54,6 +54,29 @@ pixel-perfect reference.png implementation.png \
 
 Precedence is `built-in defaults < profile < explicit flags`. Output JSON includes resolved profile values and their source. Unknown fields, unsupported versions, and invalid values fail explicitly. Profiles configure comparison behavior only; input, crop, mask, report, overlay, and output paths remain explicit CLI arguments.
 
+## Coordinate annotations
+
+Optionally enrich mismatch regions with generic structural context:
+
+```bash
+pixel-perfect reference.png implementation.png --annotations annotations.json
+```
+
+```json
+{
+  "version": 1,
+  "coordinateSpace": {"width": 1280, "height": 720},
+  "annotations": [{
+    "id": "sidebar-row",
+    "label": "Selected sidebar row",
+    "bounds": {"x": 20, "y": 76, "width": 248, "height": 56},
+    "metadata": {"source": "figma"}
+  }]
+}
+```
+
+Intersecting annotations appear on each mismatch region with region and annotation intersection ratios. Metadata is opaque: pixel-perfect does not interpret or require Figma-specific fields. Annotations never change metrics, region detection, validation, or exit status. Coordinate-space dimensions must match the prepared comparison image; invalid files fail explicitly.
+
 ## Pixel probe
 
 ```bash

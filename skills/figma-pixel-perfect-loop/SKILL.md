@@ -23,7 +23,9 @@ Recreate Figma web UI as real, accessible DOM and improve measured similarity on
      ```
    - Capture Figma facts instead of guessing:
      ```bash
-     figma inspect --recursive --id <frame-id> <file-key> > .tmp/figma/frame.json
+     figma inspect --recursive --id <frame-id> <file-key> \
+       --annotations-output output/visual-diff/reference.annotations.json \
+       > .tmp/figma/frame.json
      figma css --recursive --id <frame-id> <file-key> > .tmp/figma/frame.css
      ```
 
@@ -40,10 +42,12 @@ Recreate Figma web UI as real, accessible DOM and improve measured similarity on
    - Use `spacingFromPrevious` to verify auto-layout gaps.
 
 4. **Measure one region**
-   - Run `pixel-perfect` baseline, then narrow to one direct child region.
+   - Run `pixel-perfect` baseline with `--annotations output/visual-diff/reference.annotations.json`, then narrow to one direct child region.
+   - Use annotations when raw mismatch coordinates do not reveal which design element owns region. Example: instead of only seeing mismatch at `{x: 24, y: 80, width: 240, height: 48}`, enriched region may identify Figma node `13576:15248`, label `Selected sidebar row`, with 92% region overlap. This tells agent where to inspect Figma tree and which implementation component to search for; it does not prove whether problem is padding, translation, color, typography, or shape.
+   - Treat annotation matches as navigation hints. Start with match having strongest region overlap, inspect its Figma node facts and corresponding DOM/component, then combine that context with offset, edge, color, and bounds evidence before changing code. Parent and child annotations may both match same region; prefer most specific useful node rather than assuming first match is cause.
    - For component work—especially when shared Figma URL targets specific component or frame rather than whole page—render real production component in isolated page, route, story, or preview. Compare there first, then verify it once in full page for integration regressions.
    - Prefer exporting exact target node by node-scoped URL/`--id`; use `--reference-metadata` when effect padding still requires logical cropping. Do not export parent frame and manually subtract canvas coordinates when target node can be exported directly.
-   - Use `pixel-perfect --reference-crop` / `--actual-crop` for all comparison crops. Do not use ImageMagick crop chains: `+repage`/virtual-canvas offsets can silently change later crop geometry. Native CLI crops decode raster pixels directly and preserve `inputs.*.crop` provenance.
+   - Use `pixel-perfect --reference-crop` / `--actual-crop` for all comparison crops. Do not use ImageMagick crop chains: `+repage`/virtual-canvas offsets can silently change later crop geometry. Native CLI crops decode raster pixels directly and preserve `inputs.*.crop` provenance. Annotation coordinate space must match prepared reference dimensions; regenerate annotations for selected scope instead of editing coordinates by hand.
    - If a `pixel-perfect` skill is available, load it for comparison flags and metric diagnosis. Otherwise, inspect `pixel-perfect --help` and use deterministic metrics, masks, and overlays directly.
    - For exact color or boundary questions, use pixel-perfect `probe`/`scan`, never media description or visual-context prose. Multimodal descriptions may orient review but are not pixel, color, or geometry measurement tools.
    - Keep screenshot, mask, overlay, report, and JSON evidence under `output/visual-diff/`.
@@ -117,6 +121,7 @@ Never define success as zero changed pixels unless user explicitly requires exac
 - Never resize comparison images or silently apply suggested alignment.
 - Never eyeball crop coordinates or use ImageMagick as the primary crop pipeline. Use Figma metadata or explicit `pixel-perfect` crop flags; use ImageMagick only as an independent diagnostic cross-check.
 - Whole-frame RMSE is baseline, not proof of regional progress.
+- Annotation matches are optional structural context only. They answer “which known design node overlaps these changed pixels?”—not “what CSS should change?” They identify likely owning Figma nodes but do not explain mismatch or affect acceptance gates. Missing or weak matches must not block comparison; overlapping parent/child matches must not be treated as competing metric evidence.
 - Raster classification, media descriptions, and visual context are advisory. Never use them for pixel dimensions or exact colors; verify with Figma/DOM facts and pixel-perfect probe/scan.
 - Preserve responsive behavior after calibrating reference viewport.
 

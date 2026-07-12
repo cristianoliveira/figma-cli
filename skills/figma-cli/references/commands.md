@@ -199,6 +199,7 @@ Default results contain only `COMPONENT`, `COMPONENT_SET`, and `INSTANCE` nodes.
 figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1"
 figma inspect --id 42:1 "abc123" # explicit scope for a bare file key
 figma inspect --recursive "url?node-id=42-1" # implementation specs for entire selected tree with relativeBounds
+figma inspect --recursive --annotations-output frame.annotations.json "url?node-id=42-1"
 figma inspect --handoff "url?node-id=42-1"   # bounded implementation specs + component usage
 figma inspect --handoff --depth 2 --include-hidden "url?node-id=42-1"
 # → default JSON: { "scope": {...}, "result": { type, name, bounds, paints, layout, effects, componentProperties, propertyDefinitions, styleBindings, resolvedStyles, variableBindings, resolvedVariables } }
@@ -207,6 +208,8 @@ figma inspect --handoff --depth 2 --include-hidden "url?node-id=42-1"
 ```
 
 Use `--handoff` as the design-to-code default: it limits traversal to depth 4, excludes invisible descendants, and summarizes repeated component instances. `--recursive` remains the unbounded flat implementation inventory and cannot be combined with `--handoff`. Scoped recursive inspect includes `relativeBounds` measured from the requested scope root while preserving absolute `bounds`; use these for local CSS coordinates instead of manual subtraction. Recursive inspect also includes `spacingFromPrevious` for measured auto-layout gaps between direct visible non-absolute siblings. It reports `parentId`, `previousId`, `axis`, `measured`, `declared`, and `matchesDeclared`; missing Figma `itemSpacing` is treated as declared `0`. Use it to catch collapsed text heights or missing DOM spacing before chasing raster offsets.
+
+`--annotations-output` requires `--recursive` and writes neutral screenshot-relative bounds for selected scope and descendants. Use output with `pixel-perfect --annotations <path>` to attach Figma node IDs and labels to intersecting mismatch regions. This is optional context: it must not change pixel metrics, gates, or exit status. Explicit `--depth` and `--include-hidden` also control annotation traversal.
 
 Raw binding IDs are always preserved. `resolvedStyles` adds style name/type from node metadata. `resolvedVariables` adds variable and collection names when the Variables API is accessible; it is omitted without failing when metadata access is unavailable. Components and instances expose variants, property values, and property definitions. Mixed text exposes style override IDs and typography metadata. Prefer this over a separate handoff/spec command so implementation properties keep one source of truth.
 

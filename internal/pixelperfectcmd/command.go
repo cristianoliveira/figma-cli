@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cristianoliveira/figma-cli/internal/annotations"
 	"github.com/cristianoliveira/figma-cli/internal/imagecontext"
 	diff "github.com/cristianoliveira/figma-cli/internal/imagediff"
 	outputpkg "github.com/cristianoliveira/figma-cli/internal/output"
@@ -230,6 +231,21 @@ func newCommand(compare imageComparer) *cobra.Command {
 				return err
 			}
 			result.Inputs = inputs.metadata
+			annotationsPath, _ := cmd.Flags().GetString("annotations")
+			var annotationDocument *annotations.Document
+			if annotationsPath != "" {
+				annotationDocument, err = annotations.Load(annotationsPath)
+				if err != nil {
+					return err
+				}
+				imageWidth, imageHeight, dimensionsErr := diff.PNGDimensions(inputs.referencePath)
+				if dimensionsErr != nil {
+					return dimensionsErr
+				}
+				if err := annotationDocument.ValidateDimensions(imageWidth, imageHeight); err != nil {
+					return err
+				}
+			}
 			if overlay != "" {
 				if decoded == nil {
 					decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
@@ -278,6 +294,10 @@ func newCommand(compare imageComparer) *cobra.Command {
 			}
 			for index := range result.Regions {
 				result.Regions[index].InputBounds = inputBounds(result.Regions[index].Bounds, inputs.metadata)
+				if annotationDocument != nil {
+					bounds := result.Regions[index].Bounds
+					result.Regions[index].Annotations = annotationDocument.Intersections(annotations.Bounds{X: bounds.X, Y: bounds.Y, Width: bounds.Width, Height: bounds.Height})
+				}
 				metrics := regionMetrics[index]
 				result.Regions[index].ChangedPixels = metrics.ChangedPixels
 				result.Regions[index].ChangedRatio = metrics.ChangedRatio
@@ -346,6 +366,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 		},
 	}
 	command.Flags().String("profile", "", "load comparison options from a versioned JSON profile; explicit flags override profile values")
+	command.Flags().String("annotations", "", "enrich mismatch regions from a generic coordinate annotation JSON file")
 	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask; defaults to <actual>.diff.png")
 	command.Flags().Uint8("threshold", 0, "ignore per-channel differences at or below this value (0-255)")
 	command.Flags().Float64("perceptual-threshold", diff.DefaultPerceptualThreshold, "OKLab HyAB distance above which a pixel is perceptually changed (non-negative)")

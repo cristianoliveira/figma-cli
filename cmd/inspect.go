@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/cristianoliveira/figma-cli/internal/annotations"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -32,10 +33,14 @@ func newInspectCommandWithVariables(
 			}
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			handoff, _ := cmd.Flags().GetBool("handoff")
+			annotationsOutput, _ := cmd.Flags().GetString("annotations-output")
 			depth, _ := cmd.Flags().GetInt("depth")
 			includeHidden, _ := cmd.Flags().GetBool("include-hidden")
 			if handoff && recursive {
 				return fmt.Errorf("--handoff and --recursive cannot be used together")
+			}
+			if annotationsOutput != "" && !recursive {
+				return fmt.Errorf("--annotations-output requires --recursive")
 			}
 			if depth < 0 {
 				return fmt.Errorf("--depth must be zero or greater")
@@ -64,8 +69,19 @@ func newInspectCommandWithVariables(
 			scope := output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}}
 			if recursive {
 				nodes := extract.InspectTreeRelativeToScope(document, nodeID)
+				annotationDepth := -1
 				if cmd.Flags().Changed("depth") {
 					nodes = extract.InspectTreeRelativeToScopeToDepth(document, nodeID, depth)
+					annotationDepth = depth
+				}
+				if annotationsOutput != "" {
+					documentAnnotations, annotationsErr := extract.ExtractCoordinateAnnotations(document, nodeID, annotationDepth, includeHidden)
+					if annotationsErr != nil {
+						return annotationsErr
+					}
+					if err := annotations.Write(annotationsOutput, documentAnnotations); err != nil {
+						return err
+					}
 				}
 				enrichInspectNodes(nodes, details.Styles, client, input.FileID, fetchVariables)
 				return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, nodes))
@@ -88,7 +104,8 @@ func newInspectCommandWithVariables(
 	command.Flags().Bool("recursive", false, "include implementation specs for all descendant nodes")
 	command.Flags().Bool("handoff", false, "emit bounded implementation specs and component usage")
 	command.Flags().Int("depth", 4, "maximum descendant depth for --handoff or --recursive; recursive stays unbounded unless set")
-	command.Flags().Bool("include-hidden", false, "include invisible descendants in --handoff")
+	command.Flags().Bool("include-hidden", false, "include invisible descendants in --handoff or --annotations-output")
+	command.Flags().String("annotations-output", "", "write generic screenshot-relative coordinate annotations; requires --recursive")
 	return command
 }
 

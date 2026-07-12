@@ -99,6 +99,11 @@ figma texts "https://www.figma.com/design/xyz456/Another-Design?node-id=123-456"
 # Export one frame as PNG
 figma export --format png "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
 
+# Export generic coordinate annotations for pixel-perfect region context
+figma inspect --recursive --annotations-output frame.annotations.json \
+  "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
+pixel-perfect reference.png implementation.png --annotations frame.annotations.json
+
 # Download image, instance, and vector assets from a frame
 figma assets --output ./assets "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
 figma assets --json --output ./assets "https://www.figma.com/design/abc123/My-Design?node-id=123-456"

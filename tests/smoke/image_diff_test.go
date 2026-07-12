@@ -204,6 +204,37 @@ func TestPixelPerfectBoundaryAndCompositingScenarios(t *testing.T) {
 	}
 }
 
+func TestPixelPerfectAnnotationsEnrichRegionsWithoutChangingMetrics(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	dir := t.TempDir()
+	annotations := filepath.Join(dir, "annotations.json")
+	require.NoError(t, os.WriteFile(annotations, []byte(`{"version":1,"coordinateSpace":{"width":4,"height":3},"annotations":[{"id":"changed-area","label":"Changed area","bounds":{"x":0,"y":0,"width":4,"height":3}}]}`), 0o600))
+
+	run := func(name string, args ...string) diff.ImageComparison {
+		output, err := exec.Command(binary, append([]string{
+			filepath.Join(fixtures, "reference.png"),
+			filepath.Join(fixtures, "two-regions.png"),
+			"--output", filepath.Join(dir, name+".png"),
+		}, args...)...).CombinedOutput()
+		require.NoError(t, err, string(output))
+		var result diff.ImageComparison
+		require.NoError(t, json.Unmarshal(output, &result))
+		return result
+	}
+
+	plain := run("plain")
+	enriched := run("enriched", "--annotations", annotations)
+
+	assert.Equal(t, plain.ChangedPixels, enriched.ChangedPixels)
+	assert.Equal(t, plain.RMSE, enriched.RMSE)
+	require.NotEmpty(t, enriched.Regions)
+	for _, region := range enriched.Regions {
+		require.Len(t, region.Annotations, 1)
+		assert.Equal(t, "changed-area", region.Annotations[0].ID)
+	}
+}
+
 func TestPixelPerfectComparisonProfileAndExplicitOverride(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")

@@ -9,6 +9,8 @@ import (
 	"math"
 	"os"
 	"sort"
+
+	"github.com/cristianoliveira/figma-cli/internal/annotations"
 )
 
 type Bounds struct {
@@ -52,18 +54,19 @@ type InputBounds struct {
 }
 
 type Region struct {
-	Bounds                  Bounds       `json:"bounds"`
-	InputBounds             *InputBounds `json:"inputBounds,omitempty"`
-	ChangedPixels           int          `json:"changedPixels"`
-	ChangedRatio            float64      `json:"changedRatio"`
-	RMSE                    float64      `json:"rmse"`
-	EdgeRMSE                float64      `json:"edgeRmse"`
-	PerceptualRMSE          float64      `json:"perceptualRmse"`
-	PerceptualChangedPixels int          `json:"perceptualChangedPixels"`
-	PerceptualChangedRatio  float64      `json:"perceptualChangedRatio"`
-	AntialiasedPixels       int          `json:"antialiasedPixels"`
-	DominantColorPairs      []ColorPair  `json:"dominantColorPairs,omitempty"`
-	Classification          string       `json:"classification"`
+	Bounds                  Bounds              `json:"bounds"`
+	InputBounds             *InputBounds        `json:"inputBounds,omitempty"`
+	ChangedPixels           int                 `json:"changedPixels"`
+	ChangedRatio            float64             `json:"changedRatio"`
+	RMSE                    float64             `json:"rmse"`
+	EdgeRMSE                float64             `json:"edgeRmse"`
+	PerceptualRMSE          float64             `json:"perceptualRmse"`
+	PerceptualChangedPixels int                 `json:"perceptualChangedPixels"`
+	PerceptualChangedRatio  float64             `json:"perceptualChangedRatio"`
+	AntialiasedPixels       int                 `json:"antialiasedPixels"`
+	DominantColorPairs      []ColorPair         `json:"dominantColorPairs,omitempty"`
+	Classification          string              `json:"classification"`
+	Annotations             []annotations.Match `json:"annotations,omitempty"`
 }
 
 type EvidenceBreakdown struct {

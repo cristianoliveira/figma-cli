@@ -18,6 +18,7 @@ Answer one concrete design question with structured, frontend-ready Figma data.
 2. Identify user question and choose smallest command that answers it:
    - implementation handoff: `figma inspect --handoff --depth <n> <url>`
    - bounded recursive node details: `figma inspect --recursive --depth <n> <url>`
+   - pixel-diff coordinate context: `figma inspect --recursive --annotations-output <path> <url>`
    - structure and spacing: `figma layout <url>`
    - generated styles: `figma css <url>`
    - copy: `figma texts <url>`
@@ -44,6 +45,7 @@ Read [command reference](references/commands.md) only when exact flags, output s
 - Preserve stable JSON envelopes. CSS, tokens, exports, and downloaded assets may produce deterministic text/files.
 - For PNG/JPG exports, use either `--scale` or target `--width`; the latter derives valid Figma scale from node bounds. Do not combine them.
 - Export metadata uses pixel-aligned `logicalCrop` and `contentInset` relative to the exported image. Prefer these values over Figma canvas coordinates when preparing screenshot comparisons.
+- For pixel-perfect loops, write generic annotations from same selected frame with `inspect --recursive --annotations-output`. Pass artifact to `pixel-perfect --annotations`; annotations add Figma node IDs/names to mismatch regions without changing metrics. Ensure annotation coordinate-space dimensions match prepared reference image.
 - Layer names are not unique; return every match with node ID.
 - Exact comment ID lookup takes precedence over node filtering.
 - Never edit Figma or claim CLI can mutate design files.
