@@ -122,11 +122,12 @@ Default filenames remain `lowercase-name_nodeid.ext`.
 
 ```bash
 figma export --format png --id 42:1 "url"
+figma export --format png --scale 2 --id 42:1 --output ./node@2x.png "url"
 figma export --format svg --output ./icons/star.svg --id 42:1 "url"
 figma export --format png --id 42:1 --output ./node.png --metadata ./node.export.json "url"
 ```
 
-Formats: `png`, `jpg`, `svg`, `pdf`. Use `--metadata` for visual-diff workflows. The sidecar records `nodeBounds`, measured `exportBounds`, `dimensionDelta`, `paddingEvidence`, and when derivable `logicalCrop` / `exportPadding`. For PNG exports with vector/effect padding, metadata may derive logical crop from a temporary SVG export so `pixel-perfect --reference-metadata` can avoid manual crop math.
+Formats: `png`, `jpg`, `svg`, `pdf`. Use `--scale` only for raster exports (`png`/`jpg`), default `1`, range `0.01-4`. Use `--metadata` for visual-diff workflows. The sidecar records `nodeBounds`, measured `exportBounds`, `scale`, `dimensionDelta`, `paddingEvidence`, and when derivable `logicalCrop` / `exportPadding`. For PNG exports with vector/effect padding, metadata may derive logical crop from a temporary SVG export so `pixel-perfect --reference-metadata` can avoid manual crop math.
 
 ### `figma layout` — Inspect frame structure
 

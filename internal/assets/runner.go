@@ -53,7 +53,7 @@ func ExportAssets(request AssetExportRequest) (AssetExportManifest, error) {
 		HTTPClient: downloadClient,
 		Filename:   request.Filename,
 		FetchURL: func(nodeID, format string) (string, error) {
-			apiURL, err := figma.BuildExportURL(request.FileID, []string{nodeID}, format)
+			apiURL, err := figma.BuildExportURL(request.FileID, []string{nodeID}, format, 1)
 			if err != nil {
 				return "", err
 			}

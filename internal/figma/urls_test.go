@@ -81,20 +81,27 @@ func TestBuildProjectFilesURL(t *testing.T) {
 }
 
 func TestBuildExportURL(t *testing.T) {
-	got, err := BuildExportURL("file123", []string{"1:2"}, "png")
+	got, err := BuildExportURL("file123", []string{"1:2"}, "png", 1)
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.figma.com/v1/images/file123?format=png&ids=1%3A2", got)
 }
 
+func TestBuildExportURLWithScale(t *testing.T) {
+	got, err := BuildExportURL("file123", []string{"1:2"}, "png", 2)
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.figma.com/v1/images/file123?format=png&ids=1%3A2&scale=2", got)
+}
+
 func TestBuildExportURLRequiresNodeID(t *testing.T) {
-	_, err := BuildExportURL("file123", nil, "png")
+	_, err := BuildExportURL("file123", nil, "png", 1)
 
 	assert.Error(t, err)
 }
 
 func TestBuildExportURLRequiresFormat(t *testing.T) {
-	_, err := BuildExportURL("file123", []string{"1:2"}, "")
+	_, err := BuildExportURL("file123", []string{"1:2"}, "", 1)
 
 	assert.Error(t, err)
 }

@@ -34,16 +34,62 @@ func TestExportCommandWritesFileAndJSONContract(t *testing.T) {
 	)
 
 	require.NoError(t, result.Err)
-	expectedJSON, err := json.Marshal(map[string]string{
+	expectedJSON, err := json.Marshal(map[string]any{
 		"path":   outputPath,
 		"format": "svg",
 		"node":   "42:1",
+		"scale":  1.0,
 	})
 	require.NoError(t, err)
 	assert.JSONEq(t, string(expectedJSON), result.Stdout)
 	content, err := os.ReadFile(outputPath)
 	require.NoError(t, err)
 	assert.Equal(t, "image", string(content))
+}
+
+func TestExportCommandRequestsRasterScale(t *testing.T) {
+	var exportQuery string
+	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		body := "image"
+		if strings.Contains(request.URL.Path, "/v1/images/") {
+			exportQuery = request.URL.RawQuery
+			body = `{"images":{"42:1":"https://cdn.example/image"}}`
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})
+	client := &figma.Client{HTTP: &http.Client{Transport: transport}}
+	outputPath := t.TempDir() + "/button.png"
+
+	result := executeCommand(
+		newExportCommand(func() (*figma.Client, error) { return client, nil }, nil),
+		"https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "png", "--scale", "2", "--output", outputPath, "--json",
+	)
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, exportQuery, "scale=2")
+	assert.JSONEq(t, `{"path":"`+outputPath+`","format":"png","node":"42:1","scale":2}`, result.Stdout)
+}
+
+func TestExportCommandRejectsScaleForVectorFormats(t *testing.T) {
+	loaded := false
+	result := executeCommand(newExportCommand(func() (*figma.Client, error) {
+		loaded = true
+		return nil, nil
+	}, nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "svg", "--scale", "2")
+
+	assert.EqualError(t, result.Err, "--scale is only supported for png and jpg exports")
+	assert.False(t, loaded)
+}
+
+func TestExportCommandRejectsInvalidScale(t *testing.T) {
+	loaded := false
+	result := executeCommand(newExportCommand(func() (*figma.Client, error) {
+		loaded = true
+		return nil, nil
+	}, nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "png", "--scale", "0")
+
+	assert.EqualError(t, result.Err, "--scale must be a finite number between 0.01 and 4")
+	assert.False(t, loaded)
 }
 
 func TestExportCommandWritesMetadataSidecar(t *testing.T) {
@@ -69,7 +115,7 @@ func TestExportCommandWritesMetadataSidecar(t *testing.T) {
 	)
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"path":"`+outputPath+`","format":"svg","node":"42:1","metadata":"`+metadataPath+`"}`, result.Stdout)
+	assert.JSONEq(t, `{"path":"`+outputPath+`","format":"svg","node":"42:1","scale":1,"metadata":"`+metadataPath+`"}`, result.Stdout)
 	metadata, err := os.ReadFile(metadataPath)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"version":1,"nodeId":"42:1","format":"svg","scale":1,"nodeBounds":{"x":136,"y":562,"width":320,"height":166},"exportBounds":{"width":336,"height":182},"dimensionDelta":{"width":16,"height":16},"logicalCrop":{"x":8,"y":6,"width":320,"height":166},"exportPadding":{"left":8,"top":6,"right":8,"bottom":10},"paddingEvidence":["DROP_SHADOW radius=8 offsetX=0 offsetY=2"],"output":"`+outputPath+`"}`, string(metadata))

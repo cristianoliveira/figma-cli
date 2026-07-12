@@ -146,7 +146,7 @@ func BuildCommentsURL(fileID string, nodeID string) string {
 }
 
 // BuildExportURL builds the API URL for exporting a node image.
-func BuildExportURL(fileID string, nodeIDs []string, format string) (string, error) {
+func BuildExportURL(fileID string, nodeIDs []string, format string, scale float64) (string, error) {
 	if len(nodeIDs) == 0 {
 		return "", fmt.Errorf("node ID is required")
 	}
@@ -161,6 +161,9 @@ func BuildExportURL(fileID string, nodeIDs []string, format string) (string, err
 	q := u.Query()
 	q.Set("format", format)
 	q.Set("ids", strings.Join(nodeIDs, ","))
+	if scale != 1 {
+		q.Set("scale", strconv.FormatFloat(scale, 'f', -1, 64))
+	}
 	u.RawQuery = q.Encode()
 	return u.String(), nil
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image/png"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -26,6 +27,10 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 		RunE: func(cmd *cobra.Command, args []string) error {
 			format, _ := cmd.Flags().GetString("format")
 			if err := figma.ValidateExportFormat(format); err != nil {
+				return err
+			}
+			scale, _ := cmd.Flags().GetFloat64("scale")
+			if err := validateExportScale(format, scale); err != nil {
 				return err
 			}
 			outputPath, _ := cmd.Flags().GetString("output")
@@ -56,7 +61,7 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 				return err
 			}
 			client = client.WithContext(cmd.Context())
-			apiURL, err := figma.BuildExportURL(input.FileID, []string{resolvedNodeID}, format)
+			apiURL, err := figma.BuildExportURL(input.FileID, []string{resolvedNodeID}, format, scale)
 			if err != nil {
 				return err
 			}
@@ -71,9 +76,9 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if err := assets.DownloadFile(exportDownloadClient, outputPath, assetURL); err != nil {
 				return err
 			}
-			metadata := map[string]any{"format": format, "node": resolvedNodeID}
+			metadata := map[string]any{"format": format, "node": resolvedNodeID, "scale": scale}
 			if metadataPath != "" {
-				if err := writeExportMetadata(client, input.FileID, resolvedNodeID, format, outputPath, metadataPath); err != nil {
+				if err := writeExportMetadata(client, input.FileID, resolvedNodeID, format, scale, outputPath, metadataPath); err != nil {
 					return fmt.Errorf("exported %s but failed to write metadata: %w", outputPath, err)
 				}
 				metadata["metadata"] = metadataPath
@@ -87,6 +92,7 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 	command.Flags().String("format", "png", "export format: png, jpg, svg, or pdf")
 	addNodeIDFlag(command, "node ID to export; defaults to URL node-id")
 	command.Flags().StringP("output", "o", "", "output file path; defaults to <file-key>_<node-id>.<format>")
+	command.Flags().Float64("scale", 1, "raster export scale for png/jpg (0.01-4)")
 	command.Flags().String("metadata", "", "write export metadata sidecar JSON to this path")
 	return command
 }
@@ -95,7 +101,7 @@ type exportMetadata struct {
 	Version         int            `json:"version"`
 	NodeID          string         `json:"nodeId"`
 	Format          string         `json:"format"`
-	Scale           int            `json:"scale"`
+	Scale           float64        `json:"scale"`
 	NodeBounds      exportBounds   `json:"nodeBounds"`
 	ExportBounds    exportSize     `json:"exportBounds"`
 	DimensionDelta  exportSize     `json:"dimensionDelta"`
@@ -124,7 +130,17 @@ type exportPadding struct {
 	Bottom float64 `json:"bottom"`
 }
 
-func writeExportMetadata(client *figma.Client, fileID, nodeID, format, outputPath, metadataPath string) error {
+func validateExportScale(format string, scale float64) error {
+	if math.IsNaN(scale) || math.IsInf(scale, 0) || scale < 0.01 || scale > 4 {
+		return fmt.Errorf("--scale must be a finite number between 0.01 and 4")
+	}
+	if scale != 1 && format != "png" && format != "jpg" {
+		return fmt.Errorf("--scale is only supported for png and jpg exports")
+	}
+	return nil
+}
+
+func writeExportMetadata(client *figma.Client, fileID, nodeID, format string, scale float64, outputPath, metadataPath string) error {
 	details, err := figma.FetchNodeDetails(client, fileID, []string{nodeID})
 	if err != nil {
 		return err
@@ -135,15 +151,15 @@ func writeExportMetadata(client *figma.Client, fileID, nodeID, format, outputPat
 	if err != nil {
 		return err
 	}
-	logicalCrop, padding := measureLogicalCrop(outputPath, format, nodeBounds, exportBounds)
+	logicalCrop, padding := measureLogicalCrop(outputPath, format, nodeBounds, exportBounds, scale)
 	if logicalCrop == nil && format != "svg" {
-		logicalCrop, padding = measureLogicalCropFromSVGExport(client, fileID, nodeID, nodeBounds, exportBounds)
+		logicalCrop, padding = measureLogicalCropFromSVGExport(client, fileID, nodeID, nodeBounds, exportBounds, scale)
 	}
 	metadata := exportMetadata{
 		Version:         1,
 		NodeID:          nodeID,
 		Format:          format,
-		Scale:           1,
+		Scale:           scale,
 		NodeBounds:      nodeBounds,
 		ExportBounds:    exportBounds,
 		DimensionDelta:  exportSize{Width: exportBounds.Width - nodeBounds.Width, Height: exportBounds.Height - nodeBounds.Height},
@@ -216,8 +232,8 @@ func svgAttributeNumber(data []byte, name string) (float64, error) {
 	return strconv.ParseFloat(string(matches[1]), 64)
 }
 
-func measureLogicalCropFromSVGExport(client *figma.Client, fileID, nodeID string, nodeBounds exportBounds, measuredBounds exportSize) (*exportBounds, *exportPadding) {
-	apiURL, err := figma.BuildExportURL(fileID, []string{nodeID}, "svg")
+func measureLogicalCropFromSVGExport(client *figma.Client, fileID, nodeID string, nodeBounds exportBounds, measuredBounds exportSize, scale float64) (*exportBounds, *exportPadding) {
+	apiURL, err := figma.BuildExportURL(fileID, []string{nodeID}, "svg", 1)
 	if err != nil {
 		return nil, nil
 	}
@@ -235,10 +251,10 @@ func measureLogicalCropFromSVGExport(client *figma.Client, fileID, nodeID string
 	if err := assets.DownloadFile(client.HTTP, path, assetURL); err != nil {
 		return nil, nil
 	}
-	return measureLogicalCrop(path, "svg", nodeBounds, measuredBounds)
+	return measureLogicalCrop(path, "svg", nodeBounds, measuredBounds, scale)
 }
 
-func measureLogicalCrop(path, format string, nodeBounds exportBounds, measuredBounds exportSize) (*exportBounds, *exportPadding) {
+func measureLogicalCrop(path, format string, nodeBounds exportBounds, measuredBounds exportSize, scale float64) (*exportBounds, *exportPadding) {
 	if format != "svg" {
 		return nil, nil
 	}
@@ -250,12 +266,14 @@ func measureLogicalCrop(path, format string, nodeBounds exportBounds, measuredBo
 	if !ok {
 		return nil, nil
 	}
-	crop := &exportBounds{X: left, Y: top, Width: nodeBounds.Width, Height: nodeBounds.Height}
+	left *= scale
+	top *= scale
+	crop := &exportBounds{X: left, Y: top, Width: nodeBounds.Width * scale, Height: nodeBounds.Height * scale}
 	padding := &exportPadding{
 		Left:   left,
 		Top:    top,
-		Right:  measuredBounds.Width - left - nodeBounds.Width,
-		Bottom: measuredBounds.Height - top - nodeBounds.Height,
+		Right:  measuredBounds.Width - left - crop.Width,
+		Bottom: measuredBounds.Height - top - crop.Height,
 	}
 	return crop, padding
 }
