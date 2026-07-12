@@ -36,14 +36,7 @@ func TestPixelPerfectProbeCLI(t *testing.T) {
 	output, err := exec.Command(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--at", "0,0").CombinedOutput()
 
 	require.NoError(t, err, string(output))
-	assert.JSONEq(t, `{
-		"points":[{
-			"point":{"x":0,"y":0},
-			"reference":{"rgba":[255,255,255,255],"hex":"#FFFFFF"},
-			"actual":{"rgba":[0,0,0,255],"hex":"#000000"},
-			"delta":{"r":255,"g":255,"b":255,"a":0}
-		}]
-	}`, string(output))
+	assert.Equal(t, "x,y,ref,act,delta,input_ref,input_act\n0,0,#FFFFFF,#000000,255,,\n", string(output))
 }
 
 func TestPixelPerfectScanCLI(t *testing.T) {
@@ -52,9 +45,9 @@ func TestPixelPerfectScanCLI(t *testing.T) {
 	output, err := exec.Command(binary, "scan", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--y", "0").CombinedOutput()
 
 	require.NoError(t, err, string(output))
-	assert.Contains(t, string(output), `"axis": "x"`)
-	assert.Contains(t, string(output), `"hex": "#FFFFFF"`)
-	assert.Contains(t, string(output), `"hex": "#000000"`)
+	assert.Contains(t, string(output), "image,axis,index,start,end,length,hex,input_axis,input_index")
+	assert.Contains(t, string(output), "ref,x,0,0,3,4,#FFFFFF,,")
+	assert.Contains(t, string(output), "act,x,0,0,0,1,#000000,,")
 }
 
 func TestPixelPerfectScanCLIErrorContracts(t *testing.T) {

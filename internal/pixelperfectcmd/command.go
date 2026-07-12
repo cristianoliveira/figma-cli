@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/imagecontext"
 	diff "github.com/cristianoliveira/figma-cli/internal/imagediff"
+	outputpkg "github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/cristianoliveira/figma-cli/internal/pixelperfectreport"
 	"github.com/spf13/cobra"
 )
@@ -349,10 +351,18 @@ func newProbeCommand() *cobra.Command {
 			for index := range output.Points {
 				output.Points[index].InputPoint = inputPoint(output.Points[index].Point, inputs.metadata)
 			}
-			return writeJSON(cmd, output)
+			format, err := tabularFormat(cmd)
+			if err != nil {
+				return err
+			}
+			if format == outputpkg.FormatJSON {
+				return writeJSON(cmd, output)
+			}
+			return writeProbeCSV(cmd, output)
 		},
 	}
 	command.Flags().StringArray("at", nil, "pixel coordinate to inspect: x,y in comparison/cropped coordinates; repeat for multiple points")
+	addTabularFormatFlag(command)
 	addInputPreparationFlags(command)
 	_ = command.MarkFlagRequired("at")
 	return command
@@ -389,13 +399,30 @@ func newScanCommand() *cobra.Command {
 			}
 			output.Inputs = inputs.metadata
 			output.InputLine = inputLine(axis, index, inputs.metadata)
-			return writeJSON(cmd, output)
+			format, err := tabularFormat(cmd)
+			if err != nil {
+				return err
+			}
+			if format == outputpkg.FormatJSON {
+				return writeJSON(cmd, output)
+			}
+			return writeScanCSV(cmd, output)
 		},
 	}
 	command.Flags().Int("x", 0, "scan vertical column at x in comparison/cropped coordinates")
 	command.Flags().Int("y", 0, "scan horizontal row at y in comparison/cropped coordinates")
+	addTabularFormatFlag(command)
 	addInputPreparationFlags(command)
 	return command
+}
+
+func addTabularFormatFlag(command *cobra.Command) {
+	command.Flags().String("format", string(outputpkg.FormatCSV), "output format: csv or json")
+}
+
+func tabularFormat(command *cobra.Command) (outputpkg.Format, error) {
+	value, _ := command.Flags().GetString("format")
+	return outputpkg.ParseFormat(value, outputpkg.FormatCSV, outputpkg.FormatJSON)
 }
 
 func inputPoint(point probePoint, inputs *diff.ImageInputs) *probeInputPoint {
@@ -832,6 +859,68 @@ func samePath(first, second string) bool {
 type outputEnvelope struct {
 	diff.ImageComparison
 	VisualContext *imagecontext.Result `json:"visualContext,omitempty"`
+}
+
+func writeProbeCSV(command *cobra.Command, output probeOutput) error {
+	writer := command.OutOrStdout()
+	if _, err := fmt.Fprintln(writer, "x,y,ref,act,delta,input_ref,input_act"); err != nil {
+		return err
+	}
+	for _, point := range output.Points {
+		inputReference, inputActual := "", ""
+		if point.InputPoint != nil {
+			inputReference = formatProbePoint(point.InputPoint.Reference)
+			inputActual = formatProbePoint(point.InputPoint.Actual)
+		}
+		if _, err := fmt.Fprintf(writer, "%d,%d,%s,%s,%d,%s,%s\n", point.Point.X, point.Point.Y, point.Reference.Hex, point.Actual.Hex, maxAbsDelta(point.Delta), inputReference, inputActual); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeScanCSV(command *cobra.Command, output scanOutput) error {
+	writer := command.OutOrStdout()
+	if _, err := fmt.Fprintln(writer, "image,axis,index,start,end,length,hex,input_axis,input_index"); err != nil {
+		return err
+	}
+	if err := writeScanRunsCSV(writer, "ref", output.Axis, output.Index, output.Reference, output.InputLine, true); err != nil {
+		return err
+	}
+	return writeScanRunsCSV(writer, "act", output.Axis, output.Index, output.Actual, output.InputLine, false)
+}
+
+func writeScanRunsCSV(writer io.Writer, imageName string, axis string, index int, runs []scanRun, inputLine *scanInputLine, reference bool) error {
+	inputAxis, inputIndex := "", ""
+	if inputLine != nil {
+		line := inputLine.Actual
+		if reference {
+			line = inputLine.Reference
+		}
+		inputAxis = line.Axis
+		inputIndex = strconv.Itoa(line.Index)
+	}
+	for _, run := range runs {
+		if _, err := fmt.Fprintf(writer, "%s,%s,%d,%d,%d,%d,%s,%s,%s\n", imageName, axis, index, run.Start, run.End, run.Length, run.Hex, inputAxis, inputIndex); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func formatProbePoint(point probePoint) string {
+	return fmt.Sprintf("%d:%d", point.X, point.Y)
+}
+
+func maxAbsDelta(delta probeDelta) int {
+	return max(max(absInt(delta.R), absInt(delta.G)), max(absInt(delta.B), absInt(delta.A)))
+}
+
+func absInt(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
 }
 
 func writeJSON(command *cobra.Command, value any) error {

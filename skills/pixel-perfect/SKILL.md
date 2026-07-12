@@ -50,13 +50,13 @@ Measure and localize screenshot differences without silently resizing or alignin
    ```bash
    pixel-perfect probe reference.png implementation.png --at <x>,<y> --at <x2>,<y2>
    ```
-   Use probe for color checks and validating what diff-region pixels actually contain. It returns stable `points[]` JSON with RGBA, hex, per-channel delta, and `inputPoint` when crops map back to original files. Reuse `--reference-crop`, `--actual-crop`, or `--reference-metadata` when the diff used cropped inputs; probe coordinates are comparison/cropped coordinates.
+   Use probe for color checks and validating what diff-region pixels actually contain. It returns token-efficient CSV by default; use `--format json` when scripting needs structured `points[]`, RGBA, per-channel delta, and `inputPoint`. Reuse `--reference-crop`, `--actual-crop`, or `--reference-metadata` when the diff used cropped inputs; probe coordinates are comparison/cropped coordinates.
 8. Use scan for edge transitions instead of N probe calls:
    ```bash
    pixel-perfect scan reference.png implementation.png --y <row>
    pixel-perfect scan reference.png implementation.png --x <column>
    ```
-   It returns compact color runs for reference and actual, plus `inputLine` when crops map back to original files. Reuse crop/metadata flags when scanning a cropped comparison; scan indexes are comparison/cropped coordinates.
+   It returns compact CSV color runs for reference and actual; use `--format json` when scripting needs RGBA and `inputLine`. Reuse crop/metadata flags when scanning a cropped comparison; scan indexes are comparison/cropped coordinates.
 
 ## Diagnosis
 
