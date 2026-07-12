@@ -18,13 +18,19 @@ Then add 1px for frame borders. Error-prone and slow.
 Use existing selected-node export directly:
 `figma export --id <id> --output node.png <file-key>` or pass a node-scoped URL. The `--node` alias is also accepted. Skill guidance now explicitly prefers selected-node export over parent-frame coordinate subtraction.
 
-## 3. Probe/scan coordinate system is confusing with crops — ADDRESSED
+## 3. media_describe is unreliable for pixel-level metrics — ADDRESSED IN SKILL
+It said send button = 48px (actual: 40px), border = #E2E2E2 (actual: #DCE0E3).
+Fine for layout discovery, harmful for pixel decisions.
+
+Fix: never use media_describe for measurements. Only use scan/probe.
+
+## 4. Probe/scan coordinate system is confusing with crops — ADDRESSED
 When using `--reference-crop`, probe coordinates are in cropped space
 (not original image). Easy to get wrong and waste iterations.
 
 CSV exposes `input_ref` / `input_act`; JSON exposes `inputPoint` / `inputLine` and input crop metadata. Probe/scan coordinates remain consistently comparison-space while output maps them back to source images.
 
-## 4. The loop is too many tool calls per iteration
+## 5. The loop is too many tool calls per iteration
 Export figma → capture browser → probe/scan → fix code → re-capture.
 That's 4-5 tool calls per pixel-fix cycle. With rate limits and network latency,
 this is ~30-60 seconds per iteration.
@@ -33,7 +39,7 @@ Fix: a combined command like:
 `pixel-perfect compare --figma-url <url> --url <live-url> --selector ".class"`
 that handles export, capture, cropping, diff, and probe in one shot.
 
-## 5. Figma node scoping is hit-or-miss — ADDRESSED
+## 6. Figma node scoping is hit-or-miss — ADDRESSED
 `figma inspect` on component instances returns the instance wrapper,
 not the resolved children. Need `--recursive` or separate calls for each child.
 Made it hard to get full specs for nested components like the input bar icons.

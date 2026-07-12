@@ -22,6 +22,7 @@ var exportCmd = newExportCommand(cli.LoadClient, nil)
 const (
 	exportFormatPNG = "png"
 	exportFormatJPG = "jpg"
+	exportFormatSVG = "svg"
 )
 
 func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *http.Client) *cobra.Command {
@@ -210,7 +211,7 @@ func writeExportMetadata(client *figma.Client, fileID, nodeID, format string, sc
 		return err
 	}
 	logicalCrop, padding := measureLogicalCrop(outputPath, format, nodeBounds, exportBounds, scale)
-	if logicalCrop == nil && format != "svg" {
+	if logicalCrop == nil && format != exportFormatSVG {
 		logicalCrop, padding = measureLogicalCropFromSVGExport(client, fileID, nodeID, nodeBounds, exportBounds, scale)
 	}
 	metadata := exportMetadata{
@@ -267,7 +268,7 @@ func measureExportBounds(path, format string) (exportSize, error) {
 		}
 		return exportSize{Width: float64(config.Width), Height: float64(config.Height)}, nil
 	}
-	if format == "svg" {
+	if format == exportFormatSVG {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return exportSize{}, err
@@ -299,7 +300,7 @@ func svgAttributeNumber(data []byte, name string) (float64, error) {
 }
 
 func measureLogicalCropFromSVGExport(client *figma.Client, fileID, nodeID string, nodeBounds exportBounds, measuredBounds exportSize, scale float64) (*exportBounds, *exportPadding) {
-	apiURL, err := figma.BuildExportURL(fileID, []string{nodeID}, "svg", 1)
+	apiURL, err := figma.BuildExportURL(fileID, []string{nodeID}, exportFormatSVG, 1)
 	if err != nil {
 		return nil, nil
 	}
@@ -317,11 +318,11 @@ func measureLogicalCropFromSVGExport(client *figma.Client, fileID, nodeID string
 	if err := assets.DownloadFile(client.HTTP, path, assetURL); err != nil {
 		return nil, nil
 	}
-	return measureLogicalCrop(path, "svg", nodeBounds, measuredBounds, scale)
+	return measureLogicalCrop(path, exportFormatSVG, nodeBounds, measuredBounds, scale)
 }
 
 func measureLogicalCrop(path, format string, nodeBounds exportBounds, measuredBounds exportSize, scale float64) (*exportBounds, *exportPadding) {
-	if format != "svg" {
+	if format != exportFormatSVG {
 		return nil, nil
 	}
 	data, err := os.ReadFile(path)

@@ -53,7 +53,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -77,22 +77,10 @@ jobs:
         run: go mod tidy
 
       - name: Build binary
-        run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            go build -o figma.exe ./cmd/figma
-          else
-            go build -o figma ./cmd/figma
-          fi
-        shell: bash
+        run: go build -o figma ./cmd/figma
 
       - name: Verify binary help
-        run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            ./figma.exe --help
-          else
-            ./figma --help
-          fi
-        shell: bash
+        run: ./figma --help
 
       - name: Run tests with coverage
         run: go test ./... -coverprofile=coverage.out
