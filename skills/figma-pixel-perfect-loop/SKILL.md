@@ -28,6 +28,17 @@ Recreate Figma web UI as real, accessible DOM and improve measured similarity on
        > .tmp/figma/frame.json
      figma css --recursive --id <frame-id> <file-key> > .tmp/figma/frame.css
      ```
+   - Always pass export metadata when comparing a PNG produced by `figma export`:
+     ```bash
+     pixel-perfect \
+       output/visual-diff/reference.png \
+       output/visual-diff/actual.png \
+       --reference-metadata output/visual-diff/reference.export.json \
+       --annotations output/visual-diff/reference.annotations.json \
+       --output output/visual-diff/mask.png \
+       --overlay output/visual-diff/overlay.png
+     ```
+     Metadata applies the exported node's logical crop and removes effect overflow from comparison coordinates.
 
 2. **Create stable implementation capture**
    - Match native frame dimensions with `deviceScaleFactor: 1`.
@@ -46,8 +57,9 @@ Recreate Figma web UI as real, accessible DOM and improve measured similarity on
    - Use annotations when raw mismatch coordinates do not reveal which design element owns region. Example: instead of only seeing mismatch at `{x: 24, y: 80, width: 240, height: 48}`, enriched region may identify Figma node `13576:15248`, label `Selected sidebar row`, with 92% region overlap. This tells agent where to inspect Figma tree and which implementation component to search for; it does not prove whether problem is padding, translation, color, typography, or shape.
    - Treat annotation matches as navigation hints. Start with match having strongest region overlap, inspect its Figma node facts and corresponding DOM/component, then combine that context with offset, edge, color, and bounds evidence before changing code. Parent and child annotations may both match same region; prefer most specific useful node rather than assuming first match is cause.
    - For component work—especially when shared Figma URL targets specific component or frame rather than whole page—render real production component in isolated page, route, story, or preview. Compare there first, then verify it once in full page for integration regressions.
-   - Prefer exporting exact target node by node-scoped URL/`--id`; use `--reference-metadata` when effect padding still requires logical cropping. Do not export parent frame and manually subtract canvas coordinates when target node can be exported directly.
-   - Use `pixel-perfect --reference-crop` / `--actual-crop` for all comparison crops. Do not use ImageMagick crop chains: `+repage`/virtual-canvas offsets can silently change later crop geometry. Native CLI crops decode raster pixels directly and preserve `inputs.*.crop` provenance. Annotation coordinate space must match prepared reference dimensions; regenerate annotations for selected scope instead of editing coordinates by hand.
+   - Prefer exporting exact target node by node-scoped URL/`--id`. Always use `--reference-metadata` with a `figma export` PNG; use explicit crop flags only when metadata is unavailable or verified invalid. Do not export parent frame and manually subtract canvas coordinates when target node can be exported directly.
+   - A reference/actual dimension mismatch is a signal to verify that `figma export --metadata` and `pixel-perfect --reference-metadata` were used before calculating crops manually.
+   - When metadata is unavailable, use `pixel-perfect --reference-crop` / `--actual-crop` for comparison crops. Do not use ImageMagick crop chains: `+repage`/virtual-canvas offsets can silently change later crop geometry. Native CLI crops decode raster pixels directly and preserve `inputs.*.crop` provenance. Annotation coordinate space must match prepared reference dimensions; regenerate annotations for selected scope instead of editing coordinates by hand.
    - If a `pixel-perfect` skill is available, load it for comparison flags and metric diagnosis. Otherwise, inspect `pixel-perfect --help` and use deterministic metrics, masks, and overlays directly.
    - For exact color or boundary questions, use pixel-perfect `probe`/`scan`, never media description or visual-context prose. Multimodal descriptions may orient review but are not pixel, color, or geometry measurement tools.
    - Keep screenshot, mask, overlay, report, and JSON evidence under `output/visual-diff/`.
