@@ -43,6 +43,7 @@ Recreate Figma UI as real, accessible DOM and improve measured similarity one bo
    - Run `pixel-perfect` baseline, then narrow to one direct child region.
    - Prefer `--reference-metadata`; calculate crops from Figma bounds.
    - If a `pixel-perfect` skill is available, load it for comparison flags and metric diagnosis. Otherwise, inspect `pixel-perfect --help` and use deterministic metrics, masks, and overlays directly.
+   - For exact color or boundary questions, use the pixel-perfect skill/CLI (`probe` for one point, `scan` for a row/column) instead of external image tools.
    - Keep screenshot, mask, overlay, report, and JSON evidence under `output/visual-diff/`.
 
 5. **Change one cause**
