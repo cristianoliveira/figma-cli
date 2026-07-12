@@ -9,17 +9,17 @@ import (
 // (ISC, https://github.com/mapbox/pixelmatch):
 // a ramp pixel has both darker and brighter neighbors, with one endpoint
 // belonging to a stable area in both images.
-func likelyAntialiased(reference, actual image.Image, x, y int, area Bounds, ignored []Bounds) bool {
+func likelyAntialiased(reference, actual image.Image, x, y int, area Bounds, ignored ignoredPixelMap) bool {
 	return antialiasedIn(reference, actual, x, y, area, ignored) || antialiasedIn(actual, reference, x, y, area, ignored)
 }
 
-func antialiasedIn(candidate, other image.Image, x, y int, area Bounds, ignored []Bounds) bool {
+func antialiasedIn(candidate, other image.Image, x, y int, area Bounds, ignored ignoredPixelMap) bool {
 	center := color.NRGBAModel.Convert(candidate.At(x, y)).(color.NRGBA)
 	equal, darkest, brightest := 0, [2]int{}, [2]int{}
 	minDelta, maxDelta := 0.0, 0.0
 	for neighborY := max(area.Y, y-1); neighborY <= min(area.Y+area.Height-1, y+1); neighborY++ {
 		for neighborX := max(area.X, x-1); neighborX <= min(area.X+area.Width-1, x+1); neighborX++ {
-			if neighborX == x && neighborY == y || pointIgnored(neighborX, neighborY, ignored) {
+			if neighborX == x && neighborY == y || ignored.Contains(neighborX, neighborY) {
 				continue
 			}
 			neighbor := color.NRGBAModel.Convert(candidate.At(neighborX, neighborY)).(color.NRGBA)
@@ -43,12 +43,12 @@ func antialiasedIn(candidate, other image.Image, x, y int, area Bounds, ignored 
 		hasStableSiblings(candidate, brightest[0], brightest[1], area, ignored) && hasStableSiblings(other, brightest[0], brightest[1], area, ignored)
 }
 
-func hasStableSiblings(img image.Image, x, y int, area Bounds, ignored []Bounds) bool {
+func hasStableSiblings(img image.Image, x, y int, area Bounds, ignored ignoredPixelMap) bool {
 	center := color.NRGBAModel.Convert(img.At(x, y)).(color.NRGBA)
 	equal := 0
 	for neighborY := max(area.Y, y-1); neighborY <= min(area.Y+area.Height-1, y+1); neighborY++ {
 		for neighborX := max(area.X, x-1); neighborX <= min(area.X+area.Width-1, x+1); neighborX++ {
-			if neighborX == x && neighborY == y || pointIgnored(neighborX, neighborY, ignored) {
+			if neighborX == x && neighborY == y || ignored.Contains(neighborX, neighborY) {
 				continue
 			}
 			if color.NRGBAModel.Convert(img.At(neighborX, neighborY)).(color.NRGBA) == center {

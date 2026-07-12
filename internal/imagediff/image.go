@@ -209,7 +209,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 				continue
 			}
 			changed++
-			if likelyAntialiased(reference, actual, absoluteX, absoluteY, fullImage, ignored) {
+			if likelyAntialiased(reference, actual, absoluteX, absoluteY, fullImage, ignoredPixels) {
 				antialiased++
 			}
 			changedPixels[y*width+x] = true
@@ -361,15 +361,6 @@ func visibleLuminance(pixel color.NRGBA) float64 {
 
 func luminance(pixel color.NRGBA) float64 {
 	return 0.2126*float64(pixel.R) + 0.7152*float64(pixel.G) + 0.0722*float64(pixel.B)
-}
-
-func pointIgnored(x, y int, regions []Bounds) bool {
-	for _, region := range regions {
-		if x >= region.X && x < region.X+region.Width && y >= region.Y && y < region.Y+region.Height {
-			return true
-		}
-	}
-	return false
 }
 
 func findRegions(changed []bool, width, height int) []Region {

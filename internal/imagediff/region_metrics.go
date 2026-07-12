@@ -60,7 +60,7 @@ func MeasureImageRegionWithThresholds(referencePath, actualPath string, bounds B
 			deltas := []uint8{absDiff(r.R, a.R), absDiff(r.G, a.G), absDiff(r.B, a.B), absDiff(r.A, a.A)}
 			if max(deltas[0], deltas[1], deltas[2], deltas[3]) > threshold {
 				changed++
-				if likelyAntialiased(reference, actual, x, y, fullImage, ignored) {
+				if likelyAntialiased(reference, actual, x, y, fullImage, ignoredPixels) {
 					antialiased++
 				}
 				colorPairs[[8]uint8{r.R, r.G, r.B, r.A, a.R, a.G, a.B, a.A}]++

@@ -27,10 +27,11 @@ func WriteImageOverlay(referencePath, actualPath, outputPath string, region *Bou
 			return fmt.Errorf("region %d,%d,%d,%d is outside image bounds %dx%d", area.X, area.Y, area.Width, area.Height, reference.Bounds().Dx(), reference.Bounds().Dy())
 		}
 	}
+	ignoredPixels := newIgnoredPixelMap(reference.Bounds().Dx(), reference.Bounds().Dy(), ignored)
 	overlay := image.NewNRGBA(image.Rect(0, 0, area.Width, area.Height))
 	for y := 0; y < area.Height; y++ {
 		for x := 0; x < area.Width; x++ {
-			if pointIgnored(area.X+x, area.Y+y, ignored) {
+			if ignoredPixels.Contains(area.X+x, area.Y+y) {
 				continue
 			}
 			referencePixel := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+area.X+x, reference.Bounds().Min.Y+area.Y+y)).(color.NRGBA)

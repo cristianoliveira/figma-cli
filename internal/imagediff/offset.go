@@ -45,9 +45,10 @@ func SuggestImageOffset(referencePath, actualPath string, radius int, region *Bo
 		}
 		return candidates[i].X < candidates[j].X
 	})
+	ignoredPixels := newIgnoredPixelMap(reference.Bounds().Dx(), reference.Bounds().Dy(), ignored)
 	best := SuggestedOffset{RMSE: math.Inf(1)}
 	for _, candidate := range candidates {
-		candidate.RMSE = offsetRMSE(reference, actual, area, ignored, candidate.X, candidate.Y)
+		candidate.RMSE = offsetRMSE(reference, actual, area, ignoredPixels, candidate.X, candidate.Y)
 		if candidate.RMSE < best.RMSE {
 			best = candidate
 		}
@@ -55,14 +56,14 @@ func SuggestImageOffset(referencePath, actualPath string, radius int, region *Bo
 	return best, nil
 }
 
-func offsetRMSE(reference, actual interface{ At(int, int) color.Color }, area Bounds, ignored []Bounds, offsetX, offsetY int) float64 {
+func offsetRMSE(reference, actual interface{ At(int, int) color.Color }, area Bounds, ignored ignoredPixelMap, offsetX, offsetY int) float64 {
 	var rgbError, alphaError float64
 	compared := 0
 	transparent := false
 	for y := area.Y; y < area.Y+area.Height; y++ {
 		for x := area.X; x < area.X+area.Width; x++ {
 			actualX, actualY := x-offsetX, y-offsetY
-			if actualX < area.X || actualX >= area.X+area.Width || actualY < area.Y || actualY >= area.Y+area.Height || pointIgnored(x, y, ignored) {
+			if actualX < area.X || actualX >= area.X+area.Width || actualY < area.Y || actualY >= area.Y+area.Height || ignored.Contains(x, y) {
 				continue
 			}
 			r := color.NRGBAModel.Convert(reference.At(x, y)).(color.NRGBA)
