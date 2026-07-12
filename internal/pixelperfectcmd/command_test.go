@@ -32,10 +32,12 @@ func TestProbeCommandReportsPointColorsAndDelta(t *testing.T) {
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{
-		"point":{"x":1,"y":0},
-		"reference":{"rgba":[255,255,255,255],"hex":"#FFFFFF"},
-		"actual":{"rgba":[244,244,244,255],"hex":"#F4F4F4"},
-		"delta":{"r":11,"g":11,"b":11,"a":0}
+		"points":[{
+			"point":{"x":1,"y":0},
+			"reference":{"rgba":[255,255,255,255],"hex":"#FFFFFF"},
+			"actual":{"rgba":[244,244,244,255],"hex":"#F4F4F4"},
+			"delta":{"r":11,"g":11,"b":11,"a":0}
+		}]
 	}`, result.Stdout)
 }
 
@@ -50,9 +52,10 @@ func TestProbeCommandAppliesInputCrops(t *testing.T) {
 	writeTestPNG(t, reference, referenceImage)
 	writeTestPNG(t, actual, actualImage)
 
-	result := executeCommand(NewCommand(), "probe", reference, actual, "--reference-crop", "1,0,2,1", "--actual-crop", "0,0,2,1", "--at", "0,0")
+	result := executeCommand(NewCommand(), "probe", reference, actual, "--reference-crop", "1,0,2,1", "--actual-crop", "0,0,2,1", "--at", "0,0", "--at", "1,0")
 
 	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, `"points"`)
 	assert.Contains(t, result.Stdout, `"hex": "#0A141E"`)
 	assert.Contains(t, result.Stdout, `"hex": "#0B151F"`)
 	assert.Contains(t, result.Stdout, `"crop"`)

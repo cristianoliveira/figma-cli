@@ -30,10 +30,10 @@ Both inputs must be equal-sized PNGs. Unequal dimensions fail instead of produci
 ## Pixel probe
 
 ```bash
-pixel-perfect probe reference.png implementation.png --at 316,300
+pixel-perfect probe reference.png implementation.png --at 316,300 --at 320,300
 ```
 
-`probe` inspects one pixel in both equal-sized PNGs and prints RGBA, hex, and per-channel delta JSON. Use it when debugging exact colors, edge transitions, or when an agent would otherwise reach for ImageMagick pixel sampling. The point must be in bounds. It accepts the same input-preparation flags as diff: `--reference-crop`, `--actual-crop`, and `--reference-metadata`; coordinates are in comparison/cropped space. When crops are used, `inputPoint` maps the probed point back to original reference/actual coordinates.
+`probe` inspects one or more pixels in both equal-sized PNGs and prints stable `points[]` JSON with RGBA, hex, and per-channel delta values. Use it when debugging exact colors, edge transitions, or when an agent would otherwise reach for ImageMagick pixel sampling. Each point must be in bounds. It accepts the same input-preparation flags as diff: `--reference-crop`, `--actual-crop`, and `--reference-metadata`; coordinates are in comparison/cropped space. When crops are used, `inputPoint` maps each probed point back to original reference/actual coordinates.
 
 For repeated boundary checks, scan one row or column into compact color runs:
 

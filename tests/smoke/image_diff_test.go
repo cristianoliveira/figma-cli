@@ -37,10 +37,12 @@ func TestPixelPerfectProbeCLI(t *testing.T) {
 
 	require.NoError(t, err, string(output))
 	assert.JSONEq(t, `{
-		"point":{"x":0,"y":0},
-		"reference":{"rgba":[255,255,255,255],"hex":"#FFFFFF"},
-		"actual":{"rgba":[0,0,0,255],"hex":"#000000"},
-		"delta":{"r":255,"g":255,"b":255,"a":0}
+		"points":[{
+			"point":{"x":0,"y":0},
+			"reference":{"rgba":[255,255,255,255],"hex":"#FFFFFF"},
+			"actual":{"rgba":[0,0,0,255],"hex":"#000000"},
+			"delta":{"r":255,"g":255,"b":255,"a":0}
+		}]
 	}`, string(output))
 }
 

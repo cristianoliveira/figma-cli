@@ -70,12 +70,16 @@ type scanRun struct {
 }
 
 type probeOutput struct {
-	Point      probePoint        `json:"point"`
-	Reference  probeColor        `json:"reference"`
-	Actual     probeColor        `json:"actual"`
-	Delta      probeDelta        `json:"delta"`
-	Inputs     *diff.ImageInputs `json:"inputs,omitempty"`
-	InputPoint *probeInputPoint  `json:"inputPoint,omitempty"`
+	Points []probePointOutput `json:"points"`
+	Inputs *diff.ImageInputs  `json:"inputs,omitempty"`
+}
+
+type probePointOutput struct {
+	Point      probePoint       `json:"point"`
+	Reference  probeColor       `json:"reference"`
+	Actual     probeColor       `json:"actual"`
+	Delta      probeDelta       `json:"delta"`
+	InputPoint *probeInputPoint `json:"inputPoint,omitempty"`
 }
 
 type probeInputPoint struct {
@@ -327,7 +331,8 @@ func newProbeCommand() *cobra.Command {
 		Short: "Inspect colors at one pixel in two equal-sized PNGs",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			point, err := parseProbePoint(cmd.Flags().Lookup("at").Value.String())
+			pointValues, _ := cmd.Flags().GetStringArray("at")
+			points, err := parseProbePoints(pointValues)
 			if err != nil {
 				return err
 			}
@@ -336,16 +341,18 @@ func newProbeCommand() *cobra.Command {
 				return err
 			}
 			defer inputs.cleanup()
-			output, err := probeImages(inputs.referencePath, inputs.actualPath, point)
+			output, err := probeImages(inputs.referencePath, inputs.actualPath, points)
 			if err != nil {
 				return err
 			}
 			output.Inputs = inputs.metadata
-			output.InputPoint = inputPoint(point, inputs.metadata)
+			for index := range output.Points {
+				output.Points[index].InputPoint = inputPoint(output.Points[index].Point, inputs.metadata)
+			}
 			return writeJSON(cmd, output)
 		},
 	}
-	command.Flags().String("at", "", "pixel coordinate to inspect: x,y in comparison/cropped coordinates")
+	command.Flags().StringArray("at", nil, "pixel coordinate to inspect: x,y in comparison/cropped coordinates; repeat for multiple points")
 	addInputPreparationFlags(command)
 	_ = command.MarkFlagRequired("at")
 	return command
@@ -431,6 +438,21 @@ func lineWithCropOrigin(axis string, index int, crop *diff.Bounds) scanLinePosit
 	return position
 }
 
+func parseProbePoints(values []string) ([]probePoint, error) {
+	if len(values) == 0 {
+		return nil, fmt.Errorf("at least one --at point is required")
+	}
+	points := make([]probePoint, 0, len(values))
+	for _, value := range values {
+		point, err := parseProbePoint(value)
+		if err != nil {
+			return nil, err
+		}
+		points = append(points, point)
+	}
+	return points, nil
+}
+
 func parseProbePoint(value string) (probePoint, error) {
 	parts := strings.Split(value, ",")
 	if len(parts) != 2 {
@@ -509,7 +531,7 @@ func scanPNGRuns(path string, axis string, index int, length int) ([]scanRun, er
 	return runs, nil
 }
 
-func probeImages(referencePath, actualPath string, point probePoint) (probeOutput, error) {
+func probeImages(referencePath, actualPath string, points []probePoint) (probeOutput, error) {
 	referenceWidth, referenceHeight, err := diff.PNGDimensions(referencePath)
 	if err != nil {
 		return probeOutput{}, fmt.Errorf("decode reference: %w", err)
@@ -521,28 +543,32 @@ func probeImages(referencePath, actualPath string, point probePoint) (probeOutpu
 	if referenceWidth != actualWidth || referenceHeight != actualHeight {
 		return probeOutput{}, fmt.Errorf("image dimensions differ: reference is %dx%d, actual is %dx%d", referenceWidth, referenceHeight, actualWidth, actualHeight)
 	}
-	if point.X >= referenceWidth || point.Y >= referenceHeight {
-		return probeOutput{}, fmt.Errorf("--at point %d,%d is outside image bounds %dx%d", point.X, point.Y, referenceWidth, referenceHeight)
+	output := probeOutput{Points: make([]probePointOutput, 0, len(points))}
+	for _, point := range points {
+		if point.X >= referenceWidth || point.Y >= referenceHeight {
+			return probeOutput{}, fmt.Errorf("--at point %d,%d is outside image bounds %dx%d", point.X, point.Y, referenceWidth, referenceHeight)
+		}
+		referenceColor, err := probePNGColor(referencePath, point)
+		if err != nil {
+			return probeOutput{}, fmt.Errorf("decode reference: %w", err)
+		}
+		actualColor, err := probePNGColor(actualPath, point)
+		if err != nil {
+			return probeOutput{}, fmt.Errorf("decode actual: %w", err)
+		}
+		output.Points = append(output.Points, probePointOutput{
+			Point:     point,
+			Reference: referenceColor,
+			Actual:    actualColor,
+			Delta: probeDelta{
+				R: int(referenceColor.RGBA[0]) - int(actualColor.RGBA[0]),
+				G: int(referenceColor.RGBA[1]) - int(actualColor.RGBA[1]),
+				B: int(referenceColor.RGBA[2]) - int(actualColor.RGBA[2]),
+				A: int(referenceColor.RGBA[3]) - int(actualColor.RGBA[3]),
+			},
+		})
 	}
-	referenceColor, err := probePNGColor(referencePath, point)
-	if err != nil {
-		return probeOutput{}, fmt.Errorf("decode reference: %w", err)
-	}
-	actualColor, err := probePNGColor(actualPath, point)
-	if err != nil {
-		return probeOutput{}, fmt.Errorf("decode actual: %w", err)
-	}
-	return probeOutput{
-		Point:     point,
-		Reference: referenceColor,
-		Actual:    actualColor,
-		Delta: probeDelta{
-			R: int(referenceColor.RGBA[0]) - int(actualColor.RGBA[0]),
-			G: int(referenceColor.RGBA[1]) - int(actualColor.RGBA[1]),
-			B: int(referenceColor.RGBA[2]) - int(actualColor.RGBA[2]),
-			A: int(referenceColor.RGBA[3]) - int(actualColor.RGBA[3]),
-		},
-	}, nil
+	return output, nil
 }
 
 func probePNGColor(path string, point probePoint) (probeColor, error) {
