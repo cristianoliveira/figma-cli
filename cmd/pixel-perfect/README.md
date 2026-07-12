@@ -33,7 +33,7 @@ Both inputs must be equal-sized PNGs. Unequal dimensions fail instead of produci
 pixel-perfect probe reference.png implementation.png --at 316,300
 ```
 
-`probe` inspects one pixel in both equal-sized PNGs and prints RGBA, hex, and per-channel delta JSON. Use it when debugging exact colors, edge transitions, or when an agent would otherwise reach for ImageMagick pixel sampling. The point must be in bounds.
+`probe` inspects one pixel in both equal-sized PNGs and prints RGBA, hex, and per-channel delta JSON. Use it when debugging exact colors, edge transitions, or when an agent would otherwise reach for ImageMagick pixel sampling. The point must be in bounds. It accepts the same input-preparation flags as diff: `--reference-crop`, `--actual-crop`, and `--reference-metadata`; coordinates are in comparison/cropped space.
 
 For repeated boundary checks, scan one row or column into compact color runs:
 
@@ -42,7 +42,7 @@ pixel-perfect scan reference.png implementation.png --y 300  # horizontal row
 pixel-perfect scan reference.png implementation.png --x 316  # vertical column
 ```
 
-`scan` prints reference and actual runs with `start`, `end`, `length`, `rgba`, and `hex`, making edge transitions visible without N separate probe calls.
+`scan` prints reference and actual runs with `start`, `end`, `length`, `rgba`, and `hex`, making edge transitions visible without N separate probe calls. It accepts `--reference-crop`, `--actual-crop`, and `--reference-metadata`; row/column indexes are in comparison/cropped space.
 
 ## Optional visual context
 

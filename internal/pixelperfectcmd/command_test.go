@@ -39,6 +39,25 @@ func TestProbeCommandReportsPointColorsAndDelta(t *testing.T) {
 	}`, result.Stdout)
 }
 
+func TestProbeCommandAppliesInputCrops(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	referenceImage := image.NewRGBA(image.Rect(0, 0, 3, 1))
+	actualImage := image.NewRGBA(image.Rect(0, 0, 2, 1))
+	referenceImage.SetRGBA(1, 0, color.RGBA{R: 10, G: 20, B: 30, A: 255})
+	actualImage.SetRGBA(0, 0, color.RGBA{R: 11, G: 21, B: 31, A: 255})
+	writeTestPNG(t, reference, referenceImage)
+	writeTestPNG(t, actual, actualImage)
+
+	result := executeCommand(NewCommand(), "probe", reference, actual, "--reference-crop", "1,0,2,1", "--actual-crop", "0,0,2,1", "--at", "0,0")
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, `"hex": "#0A141E"`)
+	assert.Contains(t, result.Stdout, `"hex": "#0B151F"`)
+	assert.Contains(t, result.Stdout, `"crop"`)
+}
+
 func TestProbeCommandRejectsOutOfBoundsPoint(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")
@@ -85,6 +104,27 @@ func TestScanCommandReportsRowColorRuns(t *testing.T) {
 			{"start":2,"end":3,"length":2,"rgba":[233,235,236,255],"hex":"#E9EBEC"}
 		]
 	}`, result.Stdout)
+}
+
+func TestScanCommandAppliesInputCrops(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	referenceImage := image.NewRGBA(image.Rect(0, 0, 3, 1))
+	actualImage := image.NewRGBA(image.Rect(0, 0, 2, 1))
+	referenceImage.SetRGBA(1, 0, color.RGBA{R: 10, G: 20, B: 30, A: 255})
+	referenceImage.SetRGBA(2, 0, color.RGBA{R: 20, G: 30, B: 40, A: 255})
+	actualImage.SetRGBA(0, 0, color.RGBA{R: 11, G: 21, B: 31, A: 255})
+	actualImage.SetRGBA(1, 0, color.RGBA{R: 21, G: 31, B: 41, A: 255})
+	writeTestPNG(t, reference, referenceImage)
+	writeTestPNG(t, actual, actualImage)
+
+	result := executeCommand(NewCommand(), "scan", reference, actual, "--reference-crop", "1,0,2,1", "--actual-crop", "0,0,2,1", "--y", "0")
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, `"hex": "#0A141E"`)
+	assert.Contains(t, result.Stdout, `"hex": "#0B151F"`)
+	assert.Contains(t, result.Stdout, `"crop"`)
 }
 
 func TestScanCommandRequiresOneAxis(t *testing.T) {

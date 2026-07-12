@@ -42,11 +42,12 @@ type exportMetadataSize struct {
 }
 
 type scanOutput struct {
-	Axis      string    `json:"axis"`
-	Index     int       `json:"index"`
-	Length    int       `json:"length"`
-	Reference []scanRun `json:"reference"`
-	Actual    []scanRun `json:"actual"`
+	Axis      string            `json:"axis"`
+	Index     int               `json:"index"`
+	Length    int               `json:"length"`
+	Reference []scanRun         `json:"reference"`
+	Actual    []scanRun         `json:"actual"`
+	Inputs    *diff.ImageInputs `json:"inputs,omitempty"`
 }
 
 type scanRun struct {
@@ -58,10 +59,11 @@ type scanRun struct {
 }
 
 type probeOutput struct {
-	Point     probePoint `json:"point"`
-	Reference probeColor `json:"reference"`
-	Actual    probeColor `json:"actual"`
-	Delta     probeDelta `json:"delta"`
+	Point     probePoint        `json:"point"`
+	Reference probeColor        `json:"reference"`
+	Actual    probeColor        `json:"actual"`
+	Delta     probeDelta        `json:"delta"`
+	Inputs    *diff.ImageInputs `json:"inputs,omitempty"`
 }
 
 type probePoint struct {
@@ -312,14 +314,21 @@ func newProbeCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			output, err := probeImages(args[0], args[1], point)
+			inputs, err := prepareCommandImageInputs(cmd, args[0], args[1])
 			if err != nil {
 				return err
 			}
+			defer inputs.cleanup()
+			output, err := probeImages(inputs.referencePath, inputs.actualPath, point)
+			if err != nil {
+				return err
+			}
+			output.Inputs = inputs.metadata
 			return writeJSON(cmd, output)
 		},
 	}
-	command.Flags().String("at", "", "pixel coordinate to inspect: x,y")
+	command.Flags().String("at", "", "pixel coordinate to inspect: x,y in comparison/cropped coordinates")
+	addInputPreparationFlags(command)
 	_ = command.MarkFlagRequired("at")
 	return command
 }
@@ -330,6 +339,11 @@ func newScanCommand() *cobra.Command {
 		Short: "Inspect compact color runs along one row or column in two PNGs",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			inputs, err := prepareCommandImageInputs(cmd, args[0], args[1])
+			if err != nil {
+				return err
+			}
+			defer inputs.cleanup()
 			xChanged := cmd.Flags().Changed("x")
 			yChanged := cmd.Flags().Changed("y")
 			if xChanged == yChanged {
@@ -344,15 +358,17 @@ func newScanCommand() *cobra.Command {
 			if index < 0 {
 				return fmt.Errorf("--%s must be non-negative", map[string]string{"x": "y", "y": "x"}[axis])
 			}
-			output, err := scanImages(args[0], args[1], axis, index)
+			output, err := scanImages(inputs.referencePath, inputs.actualPath, axis, index)
 			if err != nil {
 				return err
 			}
+			output.Inputs = inputs.metadata
 			return writeJSON(cmd, output)
 		},
 	}
-	command.Flags().Int("x", 0, "scan vertical column at x")
-	command.Flags().Int("y", 0, "scan horizontal row at y")
+	command.Flags().Int("x", 0, "scan vertical column at x in comparison/cropped coordinates")
+	command.Flags().Int("y", 0, "scan horizontal row at y in comparison/cropped coordinates")
+	addInputPreparationFlags(command)
 	return command
 }
 
@@ -527,6 +543,32 @@ func parseOptionalCrop(cmd *cobra.Command, flagName string) (*diff.Bounds, error
 		return nil, fmt.Errorf("invalid --%s: width and height must be positive", flagName)
 	}
 	return crop, nil
+}
+
+func addInputPreparationFlags(command *cobra.Command) {
+	command.Flags().String("reference-crop", "", "crop reference before operation: x,y,width,height")
+	command.Flags().String("reference-metadata", "", "apply logical crop from figma export metadata JSON")
+	command.Flags().String("actual-crop", "", "crop actual before operation: x,y,width,height")
+}
+
+func prepareCommandImageInputs(cmd *cobra.Command, referencePath, actualPath string) (preparedImageInputs, error) {
+	referenceCrop, err := parseOptionalCrop(cmd, "reference-crop")
+	if err != nil {
+		return preparedImageInputs{}, err
+	}
+	referenceMetadataPath, _ := cmd.Flags().GetString("reference-metadata")
+	referenceMetadata, err := loadExportMetadata(referenceMetadataPath)
+	if err != nil {
+		return preparedImageInputs{}, err
+	}
+	if referenceCrop != nil && referenceMetadata != nil {
+		return preparedImageInputs{}, fmt.Errorf("--reference-crop and --reference-metadata cannot be used together")
+	}
+	actualCrop, err := parseOptionalCrop(cmd, "actual-crop")
+	if err != nil {
+		return preparedImageInputs{}, err
+	}
+	return prepareImageInputs(referencePath, actualPath, referenceCrop, actualCrop, referenceMetadata)
 }
 
 func prepareImageInputs(referencePath, actualPath string, referenceCrop, actualCrop *diff.Bounds, referenceMetadata *exportMetadata) (preparedImageInputs, error) {
