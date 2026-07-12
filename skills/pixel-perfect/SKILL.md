@@ -1,10 +1,9 @@
 ---
 name: pixel-perfect
 description: >
-  Compare equal-sized PNG screenshots with deterministic metrics, masks, overlays, regions, alignment hints, and CI gates using the pixel-perfect CLI.
-  Use when user asks to compare screenshots, diagnose visual differences, validate pixel similarity, create a visual diff, or gate screenshot changes.
-  Triggers: "compare these screenshots", "run pixel-perfect", "generate a diff mask", "measure visual similarity", "why do these PNGs differ".
-  Works with local PNG files and the pixel-perfect CLI. Do NOT use for capturing browser screenshots, editing Figma files, or semantic CSS diagnosis without image inputs.
+  Compare PNG screenshots with deterministic metrics, masks, overlays, regions, and CI gates.
+  Use for requests like "compare these screenshots" or "generate a visual diff".
+  Not for browser capture, Figma editing, or iterative UI implementation.
 ---
 
 # pixel-perfect
@@ -70,6 +69,20 @@ pixel-perfect reference.png implementation.png \
 ```
 
 Repeat `--ignore-region` for known dynamic areas. In comparison masks, visible non-black pixels are included; black or transparent pixels are ignored.
+
+## Routing Checks
+
+Should trigger:
+- “Compare these two PNG screenshots.”
+- “Generate a visual diff mask and overlay.”
+- “Why do these equal-sized screenshots differ?”
+- “Gate this screenshot change in CI.”
+- “Measure similarity for these image files.”
+
+Should not trigger:
+- “Inspect this Figma frame.” → use `figma-cli`.
+- “Change this page until it matches Figma.” → use `figma-pixel-perfect-loop`.
+- “Capture a screenshot of this website.” → use browser tooling.
 
 ## Guardrails
 
