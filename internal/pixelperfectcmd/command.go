@@ -48,6 +48,17 @@ type scanOutput struct {
 	Reference []scanRun         `json:"reference"`
 	Actual    []scanRun         `json:"actual"`
 	Inputs    *diff.ImageInputs `json:"inputs,omitempty"`
+	InputLine *scanInputLine    `json:"inputLine,omitempty"`
+}
+
+type scanInputLine struct {
+	Reference scanLinePosition `json:"reference"`
+	Actual    scanLinePosition `json:"actual"`
+}
+
+type scanLinePosition struct {
+	Axis  string `json:"axis"`
+	Index int    `json:"index"`
 }
 
 type scanRun struct {
@@ -59,11 +70,17 @@ type scanRun struct {
 }
 
 type probeOutput struct {
-	Point     probePoint        `json:"point"`
-	Reference probeColor        `json:"reference"`
-	Actual    probeColor        `json:"actual"`
-	Delta     probeDelta        `json:"delta"`
-	Inputs    *diff.ImageInputs `json:"inputs,omitempty"`
+	Point      probePoint        `json:"point"`
+	Reference  probeColor        `json:"reference"`
+	Actual     probeColor        `json:"actual"`
+	Delta      probeDelta        `json:"delta"`
+	Inputs     *diff.ImageInputs `json:"inputs,omitempty"`
+	InputPoint *probeInputPoint  `json:"inputPoint,omitempty"`
+}
+
+type probeInputPoint struct {
+	Reference probePoint `json:"reference"`
+	Actual    probePoint `json:"actual"`
 }
 
 type probePoint struct {
@@ -324,6 +341,7 @@ func newProbeCommand() *cobra.Command {
 				return err
 			}
 			output.Inputs = inputs.metadata
+			output.InputPoint = inputPoint(point, inputs.metadata)
 			return writeJSON(cmd, output)
 		},
 	}
@@ -363,6 +381,7 @@ func newScanCommand() *cobra.Command {
 				return err
 			}
 			output.Inputs = inputs.metadata
+			output.InputLine = inputLine(axis, index, inputs.metadata)
 			return writeJSON(cmd, output)
 		},
 	}
@@ -370,6 +389,46 @@ func newScanCommand() *cobra.Command {
 	command.Flags().Int("y", 0, "scan horizontal row at y in comparison/cropped coordinates")
 	addInputPreparationFlags(command)
 	return command
+}
+
+func inputPoint(point probePoint, inputs *diff.ImageInputs) *probeInputPoint {
+	if inputs == nil {
+		return nil
+	}
+	return &probeInputPoint{
+		Reference: pointWithCropOrigin(point, inputs.Reference.Crop),
+		Actual:    pointWithCropOrigin(point, inputs.Actual.Crop),
+	}
+}
+
+func pointWithCropOrigin(point probePoint, crop *diff.Bounds) probePoint {
+	if crop == nil {
+		return point
+	}
+	return probePoint{X: point.X + crop.X, Y: point.Y + crop.Y}
+}
+
+func inputLine(axis string, index int, inputs *diff.ImageInputs) *scanInputLine {
+	if inputs == nil {
+		return nil
+	}
+	return &scanInputLine{
+		Reference: lineWithCropOrigin(axis, index, inputs.Reference.Crop),
+		Actual:    lineWithCropOrigin(axis, index, inputs.Actual.Crop),
+	}
+}
+
+func lineWithCropOrigin(axis string, index int, crop *diff.Bounds) scanLinePosition {
+	position := scanLinePosition{Axis: axis, Index: index}
+	if crop == nil {
+		return position
+	}
+	if axis == "x" {
+		position.Index += crop.Y
+		return position
+	}
+	position.Index += crop.X
+	return position
 }
 
 func parseProbePoint(value string) (probePoint, error) {

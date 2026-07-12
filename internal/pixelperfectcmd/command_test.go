@@ -56,6 +56,8 @@ func TestProbeCommandAppliesInputCrops(t *testing.T) {
 	assert.Contains(t, result.Stdout, `"hex": "#0A141E"`)
 	assert.Contains(t, result.Stdout, `"hex": "#0B151F"`)
 	assert.Contains(t, result.Stdout, `"crop"`)
+	assert.Contains(t, result.Stdout, `"inputPoint"`)
+	assert.Contains(t, result.Stdout, `"x": 1`)
 }
 
 func TestProbeCommandRejectsOutOfBoundsPoint(t *testing.T) {
@@ -125,6 +127,8 @@ func TestScanCommandAppliesInputCrops(t *testing.T) {
 	assert.Contains(t, result.Stdout, `"hex": "#0A141E"`)
 	assert.Contains(t, result.Stdout, `"hex": "#0B151F"`)
 	assert.Contains(t, result.Stdout, `"crop"`)
+	assert.Contains(t, result.Stdout, `"inputLine"`)
+	assert.Contains(t, result.Stdout, `"index": 0`)
 }
 
 func TestScanCommandRequiresOneAxis(t *testing.T) {
