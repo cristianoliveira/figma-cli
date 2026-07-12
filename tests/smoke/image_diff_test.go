@@ -204,6 +204,48 @@ func TestPixelPerfectBoundaryAndCompositingScenarios(t *testing.T) {
 	}
 }
 
+func TestPixelPerfectComparisonProfileAndExplicitOverride(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	dir := t.TempDir()
+	profile := filepath.Join(dir, "pixel-perfect.json")
+	require.NoError(t, os.WriteFile(profile, []byte(`{"version":1,"suggestOffset":2,"regionGap":3,"minRegionPixels":2}`), 0o600))
+	mask := filepath.Join(dir, "mask.png")
+
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "offset-reference.png"),
+		filepath.Join(fixtures, "offset-right-one.png"),
+		"--profile", profile,
+		"--suggest-offset", "0",
+		"--output", mask,
+	).CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	type resolvedInt struct {
+		Value  int    `json:"value"`
+		Source string `json:"source"`
+	}
+	var result struct {
+		SuggestedOffset *diff.SuggestedOffset `json:"suggestedOffset"`
+		Configuration   struct {
+			Resolved struct {
+				SuggestOffset   resolvedInt `json:"suggestOffset"`
+				RegionGap       resolvedInt `json:"regionGap"`
+				MinRegionPixels resolvedInt `json:"minRegionPixels"`
+			} `json:"resolved"`
+		} `json:"configuration"`
+	}
+	require.NoError(t, json.Unmarshal(output, &result))
+	assert.Nil(t, result.SuggestedOffset)
+	assert.Equal(t, 0, result.Configuration.Resolved.SuggestOffset.Value)
+	assert.Equal(t, "flag", result.Configuration.Resolved.SuggestOffset.Source)
+	assert.Equal(t, 3, result.Configuration.Resolved.RegionGap.Value)
+	assert.Equal(t, "profile", result.Configuration.Resolved.RegionGap.Source)
+	assert.Equal(t, 2, result.Configuration.Resolved.MinRegionPixels.Value)
+	assert.Equal(t, "profile", result.Configuration.Resolved.MinRegionPixels.Source)
+	assertPNGDimensions(t, mask, 4, 3)
+}
+
 func TestPixelPerfectOffsetInterpretationRejectsUpstreamNegativeControls(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "upstream", "odiff")

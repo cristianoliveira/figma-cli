@@ -119,6 +119,10 @@ func newCommand(compare imageComparer) *cobra.Command {
 		Short: "Compare equal-sized PNGs and write a changed-pixel mask",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			configuration, err := applyComparisonProfile(cmd)
+			if err != nil {
+				return err
+			}
 			output, _ := cmd.Flags().GetString("output")
 			if output == "" {
 				output = defaultMaskPath(args[1])
@@ -309,7 +313,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 					return err
 				}
 			}
-			outputResult := outputEnvelope{ImageComparison: result}
+			outputResult := outputEnvelope{ImageComparison: result, Configuration: configuration}
 			visualContextEnabled, _ := cmd.Flags().GetBool("visual-context")
 			if visualContextEnabled {
 				provider, _ := cmd.Flags().GetString("visual-context-provider")
@@ -341,6 +345,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 			return writeJSON(cmd, outputResult)
 		},
 	}
+	command.Flags().String("profile", "", "load comparison options from a versioned JSON profile; explicit flags override profile values")
 	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask; defaults to <actual>.diff.png")
 	command.Flags().Uint8("threshold", 0, "ignore per-channel differences at or below this value (0-255)")
 	command.Flags().Float64("perceptual-threshold", diff.DefaultPerceptualThreshold, "OKLab HyAB distance above which a pixel is perceptually changed (non-negative)")
@@ -1008,7 +1013,8 @@ func samePath(first, second string) bool {
 
 type outputEnvelope struct {
 	diff.ImageComparison
-	VisualContext *imagecontext.Result `json:"visualContext,omitempty"`
+	VisualContext *imagecontext.Result     `json:"visualContext,omitempty"`
+	Configuration *comparisonConfiguration `json:"configuration,omitempty"`
 }
 
 func writeProbeCSV(command *cobra.Command, output probeOutput) error {

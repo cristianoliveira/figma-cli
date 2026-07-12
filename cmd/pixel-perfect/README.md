@@ -27,6 +27,33 @@ The command prints JSON metrics to stdout and writes a transparent diff mask by 
 
 Both inputs must be equal-sized PNGs. Unequal dimensions fail instead of producing invalid metrics.
 
+## Comparison profiles
+
+Store frequently reused region and offset settings in a versioned JSON profile:
+
+```json
+{
+  "version": 1,
+  "suggestOffset": 8,
+  "regionGap": 2,
+  "minRegionPixels": 4
+}
+```
+
+```bash
+pixel-perfect reference.png implementation.png --profile pixel-perfect.json
+```
+
+Explicit flags override profile values, including values equal to built-in defaults:
+
+```bash
+pixel-perfect reference.png implementation.png \
+  --profile pixel-perfect.json \
+  --suggest-offset 0
+```
+
+Precedence is `built-in defaults < profile < explicit flags`. Output JSON includes resolved profile values and their source. Unknown fields, unsupported versions, and invalid values fail explicitly. Profiles configure comparison behavior only; input, crop, mask, report, overlay, and output paths remain explicit CLI arguments.
+
 ## Pixel probe
 
 ```bash
