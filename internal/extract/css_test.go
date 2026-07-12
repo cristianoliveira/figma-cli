@@ -303,3 +303,65 @@ func TestFormatCSSRules(t *testing.T) {
 	assert.Contains(t, out, ".a {\n  color: red;\n}")
 	assert.Contains(t, out, ".b {\n  display: flex;\n  z-index: 1;\n}")
 }
+
+func TestExtractCSSRules_SkipsVectorPrimitives(t *testing.T) {
+	primitiveTypes := []string{"BOOLEAN_OPERATION", "VECTOR", "ELLIPSE", "LINE", "STAR", "POLYGON"}
+	for _, typ := range primitiveTypes {
+		t.Run(typ, func(t *testing.T) {
+			doc := map[string]any{"name": "Icon", "type": typ, "fills": []any{
+				map[string]any{"type": "SOLID", "visible": true, "color": map[string]any{"r": float64(0), "g": float64(0), "b": float64(0), "a": float64(1)}},
+			}}
+			assert.Empty(t, ExtractCSSRules(doc), "%s should be skipped", typ)
+		})
+	}
+}
+
+func TestExtractCSSRules_VectorPrimitiveDescendantsNotReached(t *testing.T) {
+	// BOOLEAN_OPERATION is skipped, so its VECTOR children should never appear.
+	doc := map[string]any{
+		"name":       "Frame",
+		"layoutMode": "HORIZONTAL",
+		"children": []any{
+			map[string]any{
+				"name": "Icon", "type": "BOOLEAN_OPERATION",
+				"children": []any{
+					map[string]any{"name": "Path", "type": "VECTOR", "fills": []any{
+						map[string]any{"type": "SOLID", "visible": true, "color": map[string]any{"r": float64(0), "g": float64(0), "b": float64(0), "a": float64(1)}},
+					}},
+					map[string]any{"name": "Dot", "type": "ELLIPSE", "fills": []any{
+						map[string]any{"type": "SOLID", "visible": true, "color": map[string]any{"r": float64(0), "g": float64(0), "b": float64(0), "a": float64(1)}},
+					}},
+				},
+			},
+		},
+	}
+	rules := ExtractCSSRules(doc)
+	// Only .frame should appear.
+	assert.Len(t, rules, 1)
+	assert.Equal(t, ".frame", rules[0].Selector)
+}
+
+func TestExtractCSSRules_RectangleStillEmitted(t *testing.T) {
+	// RECTANGLE is not a vector primitive — it's a layout element with fills.
+	doc := map[string]any{"name": "Background", "type": "RECTANGLE", "fills": []any{
+		map[string]any{"type": "SOLID", "visible": true, "color": map[string]any{"r": float64(1), "g": float64(0), "b": float64(0), "a": float64(1)}},
+	}}
+	rules := ExtractCSSRules(doc)
+	assert.Len(t, rules, 1)
+	assert.Equal(t, ".background", rules[0].Selector)
+	assert.Equal(t, "#FF0000", propsMap(rules[0])["background"])
+}
+
+func TestIsVectorPrimitive(t *testing.T) {
+	assert.True(t, isVectorPrimitive("BOOLEAN_OPERATION"))
+	assert.True(t, isVectorPrimitive("VECTOR"))
+	assert.True(t, isVectorPrimitive("ELLIPSE"))
+	assert.True(t, isVectorPrimitive("LINE"))
+	assert.True(t, isVectorPrimitive("STAR"))
+	assert.True(t, isVectorPrimitive("POLYGON"))
+	assert.False(t, isVectorPrimitive("RECTANGLE"))
+	assert.False(t, isVectorPrimitive("FRAME"))
+	assert.False(t, isVectorPrimitive("TEXT"))
+	assert.False(t, isVectorPrimitive("INSTANCE"))
+	assert.False(t, isVectorPrimitive(""))
+}

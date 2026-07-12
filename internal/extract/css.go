@@ -36,6 +36,15 @@ func walkCSS(value any, recursive bool, seen map[string]int, rules *[]CSSRule) {
 	if !ok {
 		return
 	}
+
+	// Skip boolean operations and vector primitives — these are icon internals,
+	// not standalone CSS-worthy elements. Skipping them also prevents their
+	// children (VECTOR, ELLIPSE, RECTANGLE inside icons) from leaking as CSS.
+	nodeType := StringValue(node["type"])
+	if isVectorPrimitive(nodeType) {
+		return
+	}
+
 	props := cssPropsFor(node)
 	if len(props) > 0 {
 		name := StringValue(node["name"])
@@ -52,6 +61,16 @@ func walkCSS(value any, recursive bool, seen map[string]int, rules *[]CSSRule) {
 			walkCSS(child, true, seen, rules)
 		}
 	}
+}
+
+// isVectorPrimitive reports whether the Figma node type represents a low-level
+// vector drawing primitive that should not produce standalone CSS rules.
+func isVectorPrimitive(nodeType string) bool {
+	switch nodeType {
+	case "BOOLEAN_OPERATION", "VECTOR", "ELLIPSE", "LINE", "STAR", "POLYGON":
+		return true
+	}
+	return false
 }
 
 // cssClassName builds a slug from a node name, de-duplicating repeats.
