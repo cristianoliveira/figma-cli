@@ -30,6 +30,29 @@ func TestPixelPerfectStandaloneCLI(t *testing.T) {
 	assert.NotEmpty(t, comparison.Regions[0].Classification)
 }
 
+func TestPixelPerfectProbeCLI(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	output, err := exec.Command(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--at", "0,0").CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	assert.JSONEq(t, `{
+		"point":{"x":0,"y":0},
+		"reference":{"rgba":[255,255,255,255],"hex":"#FFFFFF"},
+		"actual":{"rgba":[0,0,0,255],"hex":"#000000"},
+		"delta":{"r":255,"g":255,"b":255,"a":0}
+	}`, string(output))
+}
+
+func TestPixelPerfectProbeCLIErrorContracts(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	output, err := exec.Command(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "unequal-dimensions.png"), "--at", "0,0").CombinedOutput()
+
+	require.Error(t, err)
+	assert.Contains(t, string(output), "image dimensions differ")
+}
+
 func TestPixelPerfectStandaloneCLIDefaultMask(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")

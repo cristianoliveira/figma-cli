@@ -27,6 +27,14 @@ The command prints JSON metrics to stdout and writes a transparent diff mask by 
 
 Both inputs must be equal-sized PNGs. Unequal dimensions fail instead of producing invalid metrics.
 
+## Pixel probe
+
+```bash
+pixel-perfect probe reference.png implementation.png --at 316,300
+```
+
+`probe` inspects one pixel in both equal-sized PNGs and prints RGBA, hex, and per-channel delta JSON. Use it when debugging exact colors, edge transitions, or when an agent would otherwise reach for ImageMagick pixel sampling. The point must be in bounds.
+
 ## Optional visual context
 
 ```bash

@@ -46,6 +46,11 @@ Measure and localize screenshot differences without silently resizing or alignin
      --report region-report.html
    ```
 6. Re-run after one bounded change; retain JSON and PNG artifacts.
+7. Probe exact colors instead of using external image tools:
+   ```bash
+   pixel-perfect probe reference.png implementation.png --at <x>,<y>
+   ```
+   Use probe for color checks, edge transitions, and validating what a diff region pixel actually contains. It returns RGBA, hex, and per-channel delta JSON.
 
 ## Diagnosis
 

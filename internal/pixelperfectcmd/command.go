@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image/png"
 	"math"
 	"os"
 	"path/filepath"
@@ -37,6 +38,30 @@ type exportMetadata struct {
 type exportMetadataSize struct {
 	Width  float64 `json:"width"`
 	Height float64 `json:"height"`
+}
+
+type probeOutput struct {
+	Point     probePoint `json:"point"`
+	Reference probeColor `json:"reference"`
+	Actual    probeColor `json:"actual"`
+	Delta     probeDelta `json:"delta"`
+}
+
+type probePoint struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+type probeColor struct {
+	RGBA [4]uint8 `json:"rgba"`
+	Hex  string   `json:"hex"`
+}
+
+type probeDelta struct {
+	R int `json:"r"`
+	G int `json:"g"`
+	B int `json:"b"`
+	A int `json:"a"`
 }
 
 func newCommand(compare imageComparer) *cobra.Command {
@@ -255,7 +280,101 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().String("visual-context-provider", "openrouter", "visual context provider: openrouter or openai")
 	command.Flags().String("visual-context-model", "", "override the visual context model")
 	command.Flags().String("visual-context-prompt", "", "extra advisory focus for visual context analysis")
+	command.AddCommand(newProbeCommand())
 	return command
+}
+
+func newProbeCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "probe <reference.png> <actual.png>",
+		Short: "Inspect colors at one pixel in two equal-sized PNGs",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			point, err := parseProbePoint(cmd.Flags().Lookup("at").Value.String())
+			if err != nil {
+				return err
+			}
+			output, err := probeImages(args[0], args[1], point)
+			if err != nil {
+				return err
+			}
+			return writeJSON(cmd, output)
+		},
+	}
+	command.Flags().String("at", "", "pixel coordinate to inspect: x,y")
+	_ = command.MarkFlagRequired("at")
+	return command
+}
+
+func parseProbePoint(value string) (probePoint, error) {
+	parts := strings.Split(value, ",")
+	if len(parts) != 2 {
+		return probePoint{}, fmt.Errorf("--at must be x,y")
+	}
+	x, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return probePoint{}, fmt.Errorf("--at x must be an integer")
+	}
+	y, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return probePoint{}, fmt.Errorf("--at y must be an integer")
+	}
+	if x < 0 || y < 0 {
+		return probePoint{}, fmt.Errorf("--at coordinates must be non-negative")
+	}
+	return probePoint{X: x, Y: y}, nil
+}
+
+func probeImages(referencePath, actualPath string, point probePoint) (probeOutput, error) {
+	referenceWidth, referenceHeight, err := diff.PNGDimensions(referencePath)
+	if err != nil {
+		return probeOutput{}, fmt.Errorf("decode reference: %w", err)
+	}
+	actualWidth, actualHeight, err := diff.PNGDimensions(actualPath)
+	if err != nil {
+		return probeOutput{}, fmt.Errorf("decode actual: %w", err)
+	}
+	if referenceWidth != actualWidth || referenceHeight != actualHeight {
+		return probeOutput{}, fmt.Errorf("image dimensions differ: reference is %dx%d, actual is %dx%d", referenceWidth, referenceHeight, actualWidth, actualHeight)
+	}
+	if point.X >= referenceWidth || point.Y >= referenceHeight {
+		return probeOutput{}, fmt.Errorf("--at point %d,%d is outside image bounds %dx%d", point.X, point.Y, referenceWidth, referenceHeight)
+	}
+	referenceColor, err := probePNGColor(referencePath, point)
+	if err != nil {
+		return probeOutput{}, fmt.Errorf("decode reference: %w", err)
+	}
+	actualColor, err := probePNGColor(actualPath, point)
+	if err != nil {
+		return probeOutput{}, fmt.Errorf("decode actual: %w", err)
+	}
+	return probeOutput{
+		Point:     point,
+		Reference: referenceColor,
+		Actual:    actualColor,
+		Delta: probeDelta{
+			R: int(referenceColor.RGBA[0]) - int(actualColor.RGBA[0]),
+			G: int(referenceColor.RGBA[1]) - int(actualColor.RGBA[1]),
+			B: int(referenceColor.RGBA[2]) - int(actualColor.RGBA[2]),
+			A: int(referenceColor.RGBA[3]) - int(actualColor.RGBA[3]),
+		},
+	}, nil
+}
+
+func probePNGColor(path string, point probePoint) (probeColor, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return probeColor{}, err
+	}
+	defer func() { _ = file.Close() }()
+	image, err := png.Decode(file)
+	if err != nil {
+		return probeColor{}, err
+	}
+	r, g, b, a := image.At(point.X, point.Y).RGBA()
+	color := probeColor{RGBA: [4]uint8{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), uint8(a >> 8)}}
+	color.Hex = fmt.Sprintf("#%02X%02X%02X", color.RGBA[0], color.RGBA[1], color.RGBA[2])
+	return color, nil
 }
 
 func defaultMaskPath(actualPath string) string {
