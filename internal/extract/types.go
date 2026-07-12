@@ -6,8 +6,9 @@ package extract
 // Shared output shapes embedded by the command-specific output structs.
 
 const (
-	layoutModeHorizontal = "HORIZONTAL"
-	layoutModeVertical   = "VERTICAL"
+	layoutModeHorizontal      = "HORIZONTAL"
+	layoutModeVertical        = "VERTICAL"
+	layoutPositioningAbsolute = "ABSOLUTE"
 )
 
 type gradientStopOutput struct {

@@ -89,7 +89,7 @@ Searches the file's version history backward from --to, binary-searching for
 the oldest version whose text matches --to at the given node. Prints the
 introducing version (id, author, date) and the before/after text change.
 
-The node is inferred from URL node-id or explicit --id. --to is required;
+The node is inferred from URL node-id or explicit --id/--node. --to is required;
 --from optionally caps how far back to search (oldest version ID, default:
 oldest available).
 
@@ -103,7 +103,10 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		toVersion, _ := cmd.Flags().GetString("to")
 		fromVersion, _ := cmd.Flags().GetString("from")
-		explicitNodeID, _ := cmd.Flags().GetString("id")
+		explicitNodeID, err := explicitNodeIDFlag(cmd)
+		if err != nil {
+			return err
+		}
 		if toVersion == "" {
 			return fmt.Errorf("--to is required")
 		}
@@ -130,7 +133,7 @@ Examples:
 }
 
 func init() {
-	diffBlameCmd.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
+	addNodeIDFlag(diffBlameCmd, "node ID to inspect; defaults to URL node-id")
 	diffBlameCmd.Flags().String("to", "", "target version ID whose text to explain (required)")
 	diffBlameCmd.Flags().String("from", "", "oldest version ID to search back to (default: oldest available)")
 	diffCmd.AddCommand(diffBlameCmd)

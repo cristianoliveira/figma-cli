@@ -23,10 +23,13 @@ func newInspectCommandWithVariables(
 	command := &cobra.Command{
 		Use:   "inspect [figma-url-or-file-id]",
 		Short: "Show a curated summary of a specific Figma node",
-		Long:  "Show a curated summary of a specific Figma node. With --recursive, bounds stay absolute and relativeBounds are measured from the requested scope node.",
+		Long:  "Show a curated summary of a specific Figma node. With --recursive, bounds stay absolute, relativeBounds are measured from the requested scope node, and spacingFromPrevious reports computed auto-layout sibling gaps.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			explicitNodeID, _ := cmd.Flags().GetString("id")
+			explicitNodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			handoff, _ := cmd.Flags().GetBool("handoff")
 			depth, _ := cmd.Flags().GetInt("depth")
@@ -78,7 +81,7 @@ func newInspectCommandWithVariables(
 			return nil
 		},
 	}
-	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")
 	command.Flags().Bool("recursive", false, "include implementation specs for all descendant nodes")
 	command.Flags().Bool("handoff", false, "emit bounded implementation specs and component usage")
 	command.Flags().Int("depth", 4, "maximum descendant depth for --handoff")

@@ -63,6 +63,60 @@ func TestInspectTreeReturnsImplementationSpecsInTreeOrder(t *testing.T) {
 	assert.Nil(t, outputs[1].RelativeBounds)
 }
 
+func TestInspectTreeMeasuresAdjacentAutoLayoutSiblingSpacing(t *testing.T) {
+	document := map[string]any{
+		"id": "1:1", "name": "Stack", "type": "FRAME", "layoutMode": "VERTICAL", "itemSpacing": 0.0,
+		"children": []any{
+			map[string]any{"id": "1:2", "name": "Sales copy", "type": "TEXT", "characters": "Talk to sales", "absoluteBoundingBox": map[string]any{"x": 0.0, "y": 253.718, "width": 413.0, "height": 48.0}},
+			map[string]any{"id": "1:3", "name": "Contact sales", "type": "TEXT", "characters": "Contact sales", "absoluteBoundingBox": map[string]any{"x": 0.0, "y": 301.718, "width": 107.0, "height": 24.0}},
+		},
+	}
+
+	outputs := InspectTree(document)
+
+	require.Len(t, outputs, 3)
+	assert.Nil(t, outputs[1].SpacingFromPrevious)
+	assert.Equal(t, &LayoutSpacing{
+		ParentID: "1:1", PreviousID: "1:2", Axis: "vertical", Measured: 0, Declared: numberPointer(0), MatchesDeclared: true,
+	}, outputs[2].SpacingFromPrevious)
+}
+
+func TestInspectTreeSkipsHiddenAndAbsoluteChildrenWhenMeasuringSpacing(t *testing.T) {
+	document := map[string]any{
+		"id": "1:1", "name": "Row", "type": "FRAME", "layoutMode": "HORIZONTAL", "itemSpacing": 8.0,
+		"children": []any{
+			map[string]any{"id": "1:2", "name": "A", "type": "RECTANGLE", "absoluteBoundingBox": map[string]any{"x": 0.0, "y": 0.0, "width": 10.0, "height": 10.0}},
+			map[string]any{"id": "1:9", "name": "Hidden", "type": "RECTANGLE", "visible": false, "absoluteBoundingBox": map[string]any{"x": 18.0, "y": 0.0, "width": 10.0, "height": 10.0}},
+			map[string]any{"id": "1:8", "name": "Absolute", "type": "RECTANGLE", "layoutPositioning": "ABSOLUTE", "absoluteBoundingBox": map[string]any{"x": 18.0, "y": 0.0, "width": 10.0, "height": 10.0}},
+			map[string]any{"id": "1:3", "name": "B", "type": "RECTANGLE", "absoluteBoundingBox": map[string]any{"x": 25.0, "y": 0.0, "width": 10.0, "height": 10.0}},
+		},
+	}
+
+	outputs := InspectTree(document)
+
+	require.Len(t, outputs, 5)
+	assert.Nil(t, outputs[2].SpacingFromPrevious)
+	assert.Nil(t, outputs[3].SpacingFromPrevious)
+	assert.Equal(t, &LayoutSpacing{
+		ParentID: "1:1", PreviousID: "1:2", Axis: "horizontal", Measured: 15, Declared: numberPointer(8), MatchesDeclared: false,
+	}, outputs[4].SpacingFromPrevious)
+}
+
+func TestInspectTreeOmitsSpacingForNonAutoLayoutParents(t *testing.T) {
+	document := map[string]any{
+		"id": "1:1", "name": "Group", "type": "GROUP",
+		"children": []any{
+			map[string]any{"id": "1:2", "name": "A", "type": "RECTANGLE", "absoluteBoundingBox": map[string]any{"x": 0.0, "y": 0.0, "width": 10.0, "height": 10.0}},
+			map[string]any{"id": "1:3", "name": "B", "type": "RECTANGLE", "absoluteBoundingBox": map[string]any{"x": 20.0, "y": 0.0, "width": 10.0, "height": 10.0}},
+		},
+	}
+
+	outputs := InspectTree(document)
+
+	require.Len(t, outputs, 3)
+	assert.Nil(t, outputs[2].SpacingFromPrevious)
+}
+
 func TestInspectTreeRelativeToScopePreservesAbsoluteBoundsAndFractionalRelativeBounds(t *testing.T) {
 	document := map[string]any{
 		"id": "13576:15248", "name": "Scope", "type": "FRAME",

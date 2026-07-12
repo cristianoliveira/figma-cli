@@ -32,7 +32,10 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 		Short: "Download image, instance, and vector assets from a Figma node tree",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			nodeID, _ := cmd.Flags().GetString("id")
+			nodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			outputDirectory, _ := cmd.Flags().GetString("output")
 			format, _ := cmd.Flags().GetString("format")
 			kind, _ := cmd.Flags().GetString("kind")
@@ -101,7 +104,7 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 			return assetExportResult(manifest, allowPartial)
 		},
 	}
-	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")
 	command.Flags().StringP("output", "o", "assets", "output directory")
 	command.Flags().String("format", assetFormatAuto, "export format: auto, png, jpg, svg, or pdf")
 	command.Flags().String("kind", assetKindAll, "asset kind: all, icon, image, instance, or vector")

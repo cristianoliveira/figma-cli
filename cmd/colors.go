@@ -16,7 +16,10 @@ func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 		Short: "Extract the color palette from a Figma node",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			nodeID, _ := cmd.Flags().GetString("id")
+			nodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
 				return err
@@ -42,7 +45,7 @@ func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			return nil
 		},
 	}
-	command.Flags().String("id", "", "node ID to extract colors from; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to extract colors from; defaults to URL node-id")
 	return command
 }
 

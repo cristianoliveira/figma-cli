@@ -33,7 +33,10 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if metadataPath != "" && sameExportPath(metadataPath, outputPath) {
 				return fmt.Errorf("--metadata must differ from --output")
 			}
-			nodeID, _ := cmd.Flags().GetString("id")
+			nodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
 				return err
@@ -82,7 +85,7 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 		},
 	}
 	command.Flags().String("format", "png", "export format: png, jpg, svg, or pdf")
-	command.Flags().String("id", "", "node ID to export; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to export; defaults to URL node-id")
 	command.Flags().StringP("output", "o", "", "output file path; defaults to <file-key>_<node-id>.<format>")
 	command.Flags().String("metadata", "", "write export metadata sidecar JSON to this path")
 	return command

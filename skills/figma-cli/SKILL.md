@@ -220,7 +220,7 @@ figma inspect --handoff --depth 2 --include-hidden "url?node-id=42-1"
 # → handoff JSON: { "scope": {...}, "result": { "nodes": [{...}], "components": [{ "name", "componentId", "count" }] } }
 ```
 
-Use `--handoff` as the design-to-code default: it limits traversal to depth 4, excludes invisible descendants, and summarizes repeated component instances. `--recursive` remains the unbounded flat implementation inventory and cannot be combined with `--handoff`. Scoped recursive inspect includes `relativeBounds` measured from the requested scope root while preserving absolute `bounds`; use these for local CSS coordinates instead of manual subtraction.
+Use `--handoff` as the design-to-code default: it limits traversal to depth 4, excludes invisible descendants, and summarizes repeated component instances. `--recursive` remains the unbounded flat implementation inventory and cannot be combined with `--handoff`. Scoped recursive inspect includes `relativeBounds` measured from the requested scope root while preserving absolute `bounds`; use these for local CSS coordinates instead of manual subtraction. Recursive inspect also includes `spacingFromPrevious` for measured auto-layout gaps between direct visible non-absolute siblings. It reports `parentId`, `previousId`, `axis`, `measured`, `declared`, and `matchesDeclared`; missing Figma `itemSpacing` is treated as declared `0`. Use it to catch collapsed text heights or missing DOM spacing before chasing raster offsets.
 
 Raw binding IDs are always preserved. `resolvedStyles` adds style name/type from node metadata. `resolvedVariables` adds variable and collection names when the Variables API is accessible; it is omitted without failing when metadata access is unavailable. Components and instances expose variants, property values, and property definitions. Mixed text exposes style override IDs and typography metadata. Prefer this over a separate handoff/spec command so implementation properties keep one source of truth.
 
@@ -357,7 +357,7 @@ figma find --type COMPONENT --name "button" "abc123"
 
 ## Node Scope Convention
 
-Node-scoped commands infer `node-id` from a Figma URL. Use optional `--id` with a bare file key or to override URL scope. Single-node commands reject multiple IDs instead of silently choosing one; multi-node commands preserve selection order.
+Node-scoped commands infer `node-id` from a Figma URL. Use optional `--id` with a bare file key or to override URL scope; `--node` is accepted as a cross-command alias for `--id`. Single-node commands reject multiple IDs instead of silently choosing one; multi-node commands preserve selection order.
 
 ## Output Convention
 

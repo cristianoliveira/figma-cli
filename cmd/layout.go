@@ -16,7 +16,10 @@ func newLayoutCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 		Short: "Show an ordered frame tree with layout and copy",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			nodeID, _ := cmd.Flags().GetString("id")
+			nodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			measureSpacing, _ := cmd.Flags().GetBool("measure-spacing")
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
@@ -44,7 +47,7 @@ func newLayoutCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			return cli.NewPrinter(cmd).JSON(result)
 		},
 	}
-	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")
 	command.Flags().Bool("measure-spacing", false, "measure geometric gaps between adjacent layout children")
 	command.AddCommand(newLayoutCompareCommand(loadClient))
 	return command

@@ -26,7 +26,10 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 		Short: "List components, component sets, and instances as JSON",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			nodeID, _ := cmd.Flags().GetString("id")
+			nodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			nameFilter, _ := cmd.Flags().GetString("name")
 			kind, _ := cmd.Flags().GetString("kind")
 			raw, _ := cmd.Flags().GetBool("raw")
@@ -113,7 +116,7 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 			return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, results))
 		},
 	}
-	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")
 	command.Flags().String("name", "", "filter components by name (case-insensitive substring match)")
 	command.Flags().String("kind", "", "filter by component, set, or instance")
 	command.Flags().Bool("raw", false, "output raw Figma node JSON for jq power users")

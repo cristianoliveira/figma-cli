@@ -20,7 +20,10 @@ func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			layerName, _ := cmd.Flags().GetString("name")
 			nodeType, _ := cmd.Flags().GetString("type")
-			nodeID, _ := cmd.Flags().GetString("id")
+			nodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			if layerName == "" && nodeType == "" {
 				return fmt.Errorf("at least one of --name or --type is required")
 			}
@@ -48,7 +51,7 @@ func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	}
 	command.Flags().String("name", "", "substring of layer name to find (case-insensitive)")
 	command.Flags().String("type", "", "node type to find, e.g. FRAME, COMPONENT, INSTANCE, SECTION (case-insensitive)")
-	command.Flags().String("id", "", "node ID to search within; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to search within; defaults to URL node-id")
 	return command
 }
 

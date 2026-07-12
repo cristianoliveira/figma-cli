@@ -29,7 +29,10 @@ func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fromVersion, _ := cmd.Flags().GetString("from")
 			toVersion, _ := cmd.Flags().GetString("to")
-			explicitNodeID, _ := cmd.Flags().GetString("id")
+			explicitNodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			terse, _ := cmd.Flags().GetBool("terse")
 			limit, _ := cmd.Flags().GetInt("limit")
@@ -76,7 +79,7 @@ func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 			return cli.NewPrinter(cmd).JSON(result)
 		},
 	}
-	command.Flags().String("id", "", "node ID to compare; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to compare; defaults to URL node-id")
 	command.Flags().String("from", "", "source Figma version ID")
 	command.Flags().String("to", "", "target Figma version ID")
 	command.Flags().Bool("quiet", false, "suppress output; exit 0 if changes exist, 1 if none")

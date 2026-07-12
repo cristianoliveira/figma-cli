@@ -17,11 +17,14 @@ type layoutCompareOutput struct {
 
 func newLayoutCompareCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command := &cobra.Command{
-		Use:   "compare [figma-url-or-file-id] (--id frame-id --id frame-id | --name frame --name frame)",
+		Use:   "compare [figma-url-or-file-id] (--id/--node frame-id --id/--node frame-id | --name frame --name frame)",
 		Short: "Compare explicitly selected responsive frames",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			requestedIDs, _ := cmd.Flags().GetStringArray("id")
+			requestedIDs, err := explicitNodeIDsFlag(cmd)
+			if err != nil {
+				return err
+			}
 			requestedNames, _ := cmd.Flags().GetStringArray("name")
 			if len(requestedIDs) > 0 && len(requestedNames) > 0 {
 				return fmt.Errorf("layout compare accepts either --id or --name, not both")
@@ -83,7 +86,7 @@ func newLayoutCompareCommand(loadClient func() (*figma.Client, error)) *cobra.Co
 			return cli.NewPrinter(cmd).JSON(result)
 		},
 	}
-	command.Flags().StringArray("id", nil, "frame ID to compare; repeat in responsive order")
+	addNodeIDsFlag(command, "frame ID to compare; repeat in responsive order")
 	command.Flags().StringArray("name", nil, "exact frame name under URL scope; repeat in responsive order")
 	return command
 }

@@ -29,7 +29,10 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			nodeID, _ := cmd.Flags().GetString("id")
+			nodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			outputPath, _ := cmd.Flags().GetString("output")
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			input, err := figma.ParseInput(args[0])
@@ -69,7 +72,7 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 			return nil
 		},
 	}
-	command.Flags().String("id", "", "node ID to inspect; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")
 	command.Flags().String("output", "", "write CSS to a file instead of stdout")
 	command.Flags().Bool("recursive", false, "include CSS rules from all descendant nodes")
 	return command

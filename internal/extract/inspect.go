@@ -44,6 +44,7 @@ type InspectOutput struct {
 	CornerRadius        *float64                     `json:"cornerRadius,omitempty"`
 	Bounds              boundsOutput                 `json:"bounds"`
 	RelativeBounds      *relativeBoundsOutput        `json:"relativeBounds,omitempty"`
+	SpacingFromPrevious *LayoutSpacing               `json:"spacingFromPrevious,omitempty"`
 	Layout              layoutOutput                 `json:"layout,omitempty"`
 	Typography          typographyOutput             `json:"typography,omitempty"`
 	StyleOverrideIDs    []int                        `json:"styleOverrideIds,omitempty"`
@@ -86,10 +87,43 @@ func InspectTree(value any) []InspectOutput {
 	}
 	outputs := []InspectOutput{NodeToInspectOutput(object)}
 	children, _ := object["children"].([]any)
+	var previousSibling map[string]any
 	for _, child := range children {
-		outputs = append(outputs, InspectTree(child)...)
+		childObject, ok := child.(map[string]any)
+		if !ok {
+			continue
+		}
+		childOutputs := InspectTree(childObject)
+		if len(childOutputs) == 0 {
+			continue
+		}
+		childOutputs[0].SpacingFromPrevious = measureInspectSiblingSpacing(object, previousSibling, childObject)
+		outputs = append(outputs, childOutputs...)
+		if measurableInspectSibling(childObject) {
+			previousSibling = childObject
+		}
 	}
 	return outputs
+}
+
+func measureInspectSiblingSpacing(parent, previous, current map[string]any) *LayoutSpacing {
+	spacing := measureSiblingSpacing(parent, previous, current)
+	if spacing == nil {
+		return nil
+	}
+	spacing.ParentID = StringValue(parent["id"])
+	return spacing
+}
+
+func measurableInspectSibling(object map[string]any) bool {
+	if object == nil || object["visible"] == false {
+		return false
+	}
+	if StringValue(object["layoutPositioning"]) == layoutPositioningAbsolute {
+		return false
+	}
+	_, ok := layoutBoundsFor(object)
+	return ok
 }
 
 // InspectTreeRelativeToScope returns implementation specs with bounds relative to the scoped root.

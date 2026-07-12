@@ -22,6 +22,7 @@ type LayoutOptions struct {
 
 // LayoutSpacing compares measured sibling distance with declared auto-layout gap.
 type LayoutSpacing struct {
+	ParentID        string   `json:"parentId,omitempty"`
 	PreviousID      string   `json:"previousId"`
 	Axis            string   `json:"axis"`
 	Measured        float64  `json:"measured"`
@@ -94,7 +95,7 @@ func measureSiblingSpacing(parent, previous, current map[string]any) *LayoutSpac
 	if previous == nil || previous["visible"] == false || current["visible"] == false {
 		return nil
 	}
-	if StringValue(previous["layoutPositioning"]) == "ABSOLUTE" || StringValue(current["layoutPositioning"]) == "ABSOLUTE" {
+	if StringValue(previous["layoutPositioning"]) == layoutPositioningAbsolute || StringValue(current["layoutPositioning"]) == layoutPositioningAbsolute {
 		return nil
 	}
 	previousBounds, previousOK := layoutBoundsFor(previous)
@@ -115,9 +116,21 @@ func measureSiblingSpacing(parent, previous, current map[string]any) *LayoutSpac
 	default:
 		return nil
 	}
+	measured = normalizeMeasuredSpacing(measured)
 	declared := optionalNumber(parent["itemSpacing"])
-	matches := declared != nil && math.Abs(measured-*declared) < 0.01
+	if declared == nil {
+		defaultGap := 0.0
+		declared = &defaultGap
+	}
+	matches := math.Abs(measured-*declared) < 0.01
 	return &LayoutSpacing{PreviousID: StringValue(previous["id"]), Axis: axis, Measured: measured, Declared: declared, MatchesDeclared: matches}
+}
+
+func normalizeMeasuredSpacing(value float64) float64 {
+	if math.Abs(value) < 0.000001 {
+		return 0
+	}
+	return value
 }
 
 type layoutBounds struct {

@@ -49,7 +49,7 @@ Turn Figma from inspiration into measurable source of truth. Improve one bounded
      figma css --recursive --id <frame-id> <file-key> > .tmp/figma/frame.css
      figma inspect --recursive --id <frame-id> <file-key> > .tmp/figma/frame.json
      ```
-     `inspect --recursive` includes `relativeBounds` scoped to the requested node; use those values for CSS/local coordinates instead of subtracting origins manually.
+     `inspect --recursive` includes `relativeBounds` scoped to the requested node; use those values for CSS/local coordinates instead of subtracting origins manually. It also includes `spacingFromPrevious` for measured auto-layout sibling gaps, with `parentId`, `previousId`, `axis`, `measured`, `declared`, and `matchesDeclared`; missing Figma `itemSpacing` is treated as declared `0`. Check it when text height, gap, or vertical shift seems suspicious.
 
 2. **Match the page coordinate system first**
    - Read frame and child bounds from `frame.json`.

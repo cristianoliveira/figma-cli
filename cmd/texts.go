@@ -25,7 +25,10 @@ func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			layerName, _ := cmd.Flags().GetString("layer")
 			recursive, _ := cmd.Flags().GetBool("recursive")
-			nodeID, _ := cmd.Flags().GetString("id")
+			nodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
 				return err
@@ -69,7 +72,7 @@ func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 		},
 	}
 	command.Flags().String("layer", "", "layer name to extract text from")
-	command.Flags().String("id", "", "node ID to extract descendant text from; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to extract descendant text from; defaults to URL node-id")
 	command.Flags().Bool("recursive", false, "include text from all descendant nodes")
 	return command
 }

@@ -40,7 +40,10 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 			if options.teamURL != "" {
 				return fmt.Errorf("--team is not supported yet; pass a file URL or file key")
 			}
-			explicitNodeID, _ := cmd.Flags().GetString("id")
+			explicitNodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return err
+			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
 				return err
@@ -77,7 +80,7 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 			return nil
 		},
 	}
-	command.Flags().String("id", "", "node ID to scan; defaults to URL node-id")
+	addNodeIDFlag(command, "node ID to scan; defaults to URL node-id")
 	command.Flags().StringVar(&options.format, "format", "css", "output format: css, tailwind, or json")
 	command.Flags().StringVar(&options.source, "source", "auto", "token source: variables, styles, scan, or auto")
 	command.Flags().BoolVar(&options.scanFallback, "scan-fallback", true, "in auto mode, fall back to a document node scan when no Styles/Variables exist (tokens named by value); use --scan-fallback=false for named-only")
