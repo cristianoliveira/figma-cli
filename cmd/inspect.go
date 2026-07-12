@@ -23,6 +23,7 @@ func newInspectCommandWithVariables(
 	command := &cobra.Command{
 		Use:   "inspect [figma-url-or-file-id]",
 		Short: "Show a curated summary of a specific Figma node",
+		Long:  "Show a curated summary of a specific Figma node. With --recursive, bounds stay absolute and relativeBounds are measured from the requested scope node.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			explicitNodeID, _ := cmd.Flags().GetString("id")
@@ -59,7 +60,7 @@ func newInspectCommandWithVariables(
 			}
 			scope := output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}}
 			if recursive {
-				nodes := extract.InspectTree(document)
+				nodes := extract.InspectTreeRelativeToScope(document, nodeID)
 				enrichInspectNodes(nodes, details.Styles, client, input.FileID, fetchVariables)
 				return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, nodes))
 			}

@@ -30,13 +30,25 @@ func TestInspectCommandEmitsStableScopedContract(t *testing.T) {
 
 func TestInspectCommandRecursivelyEmitsImplementationSpecs(t *testing.T) {
 	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
-		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","componentPropertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"children":[{"id":"42:2","name":"Label","type":"TEXT","characters":"Save"}]}}}}`
+		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","absoluteBoundingBox":{"x":100,"y":200,"width":50,"height":40},"componentPropertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"children":[{"id":"42:2","name":"Label","type":"TEXT","characters":"Save","absoluteBoundingBox":{"x":112.5,"y":205.25,"width":20,"height":10}}]}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"results":[{"id":"42:1","name":"Button","type":"COMPONENT","propertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"bounds":{},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","text":"Save","bounds":{},"layout":{},"typography":{}}]}`, result.Stdout)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"results":[{"id":"42:1","name":"Button","type":"COMPONENT","propertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"bounds":{"x":100,"y":200,"width":50,"height":40},"relativeBounds":{"x":0,"y":0,"width":50,"height":40,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","text":"Save","bounds":{"x":112.5,"y":205.25,"width":20,"height":10},"relativeBounds":{"x":12.5,"y":5.25,"width":20,"height":10,"relativeTo":"42:1"},"layout":{},"typography":{}}]}`, result.Stdout)
+}
+
+func TestInspectCommandRecursiveExplicitIDEmitsRelativeBounds(t *testing.T) {
+	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		assert.Contains(t, request.URL.RawQuery, "ids=42%3A1")
+		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","absoluteBoundingBox":{"x":100,"y":200,"width":50,"height":40},"children":[{"id":"42:2","name":"Label","type":"TEXT","absoluteBoundingBox":{"x":112.5,"y":205.25,"width":20,"height":10}}]}}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}}
+	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--id", "42:1", "--recursive")
+
+	require.NoError(t, result.Err)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"results":[{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{"x":100,"y":200,"width":50,"height":40},"relativeBounds":{"x":0,"y":0,"width":50,"height":40,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","bounds":{"x":112.5,"y":205.25,"width":20,"height":10},"relativeBounds":{"x":12.5,"y":5.25,"width":20,"height":10,"relativeTo":"42:1"},"layout":{},"typography":{}}]}`, result.Stdout)
 }
 
 func TestInspectCommandEmitsBoundedHandoff(t *testing.T) {

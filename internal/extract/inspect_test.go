@@ -59,6 +59,36 @@ func TestInspectTreeReturnsImplementationSpecsInTreeOrder(t *testing.T) {
 	assert.Equal(t, "1", outputs[0].ID)
 	assert.Equal(t, "2", outputs[1].ID)
 	assert.Equal(t, "Save", outputs[1].Text)
+	assert.Nil(t, outputs[0].RelativeBounds)
+	assert.Nil(t, outputs[1].RelativeBounds)
+}
+
+func TestInspectTreeRelativeToScopePreservesAbsoluteBoundsAndFractionalRelativeBounds(t *testing.T) {
+	document := map[string]any{
+		"id": "13576:15248", "name": "Scope", "type": "FRAME",
+		"absoluteBoundingBox": map[string]any{"x": 136.0, "y": 562.0, "width": 400.0, "height": 300.0},
+		"children": []any{
+			map[string]any{
+				"id": "13576:15249", "name": "Icon", "type": "VECTOR",
+				"absoluteBoundingBox": map[string]any{"x": 435.464, "y": 623.0, "width": 9.071, "height": 16.0},
+				"children": []any{
+					map[string]any{
+						"id": "13576:15250", "name": "Nested", "type": "VECTOR",
+						"absoluteBoundingBox": map[string]any{"x": 436.464, "y": 624.5, "width": 2.5, "height": 3.25},
+					},
+				},
+			},
+		},
+	}
+
+	outputs := InspectTreeRelativeToScope(document, "13576:15248")
+
+	require.Len(t, outputs, 3)
+	assert.Equal(t, boundsOutput{X: 136, Y: 562, Width: 400, Height: 300}, outputs[0].Bounds)
+	assert.Equal(t, &relativeBoundsOutput{X: 0, Y: 0, Width: 400, Height: 300, RelativeTo: "13576:15248"}, outputs[0].RelativeBounds)
+	assert.Equal(t, boundsOutput{X: 435.464, Y: 623, Width: 9.071, Height: 16}, outputs[1].Bounds)
+	assert.Equal(t, &relativeBoundsOutput{X: 299.464, Y: 61, Width: 9.071, Height: 16, RelativeTo: "13576:15248"}, outputs[1].RelativeBounds)
+	assert.Equal(t, &relativeBoundsOutput{X: 300.464, Y: 62.5, Width: 2.5, Height: 3.25, RelativeTo: "13576:15248"}, outputs[2].RelativeBounds)
 }
 
 func TestNodeToInspectOutputIncludesComponentAndMixedTextProperties(t *testing.T) {

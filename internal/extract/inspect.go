@@ -16,6 +16,14 @@ type VariableBinding struct {
 	CollectionName string `json:"collectionName,omitempty"`
 }
 
+type relativeBoundsOutput struct {
+	X          float64 `json:"x"`
+	Y          float64 `json:"y"`
+	Width      float64 `json:"width,omitempty"`
+	Height     float64 `json:"height,omitempty"`
+	RelativeTo string  `json:"relativeTo"`
+}
+
 // InspectOutput is a curated single-node summary, used by `figma inspect`.
 type InspectOutput struct {
 	ID                  string                       `json:"id"`
@@ -35,6 +43,7 @@ type InspectOutput struct {
 	Opacity             *float64                     `json:"opacity,omitempty"`
 	CornerRadius        *float64                     `json:"cornerRadius,omitempty"`
 	Bounds              boundsOutput                 `json:"bounds"`
+	RelativeBounds      *relativeBoundsOutput        `json:"relativeBounds,omitempty"`
 	Layout              layoutOutput                 `json:"layout,omitempty"`
 	Typography          typographyOutput             `json:"typography,omitempty"`
 	StyleOverrideIDs    []int                        `json:"styleOverrideIds,omitempty"`
@@ -81,6 +90,30 @@ func InspectTree(value any) []InspectOutput {
 		outputs = append(outputs, InspectTree(child)...)
 	}
 	return outputs
+}
+
+// InspectTreeRelativeToScope returns implementation specs with bounds relative to the scoped root.
+func InspectTreeRelativeToScope(value any, scopeID string) []InspectOutput {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	scopeBounds := boundsFromValue(object["absoluteBoundingBox"])
+	outputs := InspectTree(value)
+	for index := range outputs {
+		outputs[index].RelativeBounds = relativeBounds(outputs[index].Bounds, scopeBounds, scopeID)
+	}
+	return outputs
+}
+
+func relativeBounds(bounds boundsOutput, scope boundsOutput, scopeID string) *relativeBoundsOutput {
+	return &relativeBoundsOutput{
+		X:          bounds.X - scope.X,
+		Y:          bounds.Y - scope.Y,
+		Width:      bounds.Width,
+		Height:     bounds.Height,
+		RelativeTo: scopeID,
+	}
 }
 
 // NodeToInspectOutput builds an InspectOutput from a raw node map.
