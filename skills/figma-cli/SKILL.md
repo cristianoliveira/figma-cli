@@ -16,15 +16,16 @@ Answer one concrete design question with structured, frontend-ready Figma data.
 
 1. Verify authentication with `figma me` when token state is unknown.
 2. Identify user question and choose smallest command that answers it:
-   - implementation handoff: `figma inspect --handoff <url>`
-   - node details: `figma inspect <url>`
+   - implementation handoff: `figma inspect --handoff --depth <n> <url>`
+   - bounded recursive node details: `figma inspect --recursive --depth <n> <url>`
    - structure and spacing: `figma layout <url>`
    - generated styles: `figma css <url>`
    - copy: `figma texts <url>`
    - layer search: `figma find --name <name> <url>`
    - components: `figma components <url>`
    - assets: `figma assets --output <dir> <url>`
-   - screenshot-aligned raster export: `figma export --format png --width <pixels> --output <path> <url>`
+   - selected-node raster export: `figma export --format png --output <path> <url-with-node-id>`
+   - screenshot-aligned raster export: `figma export --format png --width <pixels> --output <path> <url-with-node-id>`
    - tokens or colors: `figma tokens <file>` / `figma colors <url>`
    - comments: `figma comments <url>`
    - history: `figma versions <url>`, `figma changes`, or `figma diff text`
@@ -37,7 +38,7 @@ Read [command reference](references/commands.md) only when exact flags, output s
 ## Scope and Output Rules
 
 - Accept Figma file key or full URL where command supports both.
-- Infer one node ID from URL. Use `--id` for bare keys or explicit override.
+- Infer one node ID from URL. Use `--id` or `--node` for bare keys or explicit override. `figma export` exports that selected node directly; do not export a parent frame and manually calculate a child crop when child node ID is available.
 - Reject unsupported multiple node IDs; never silently choose one.
 - User-facing node IDs use `1-2`; API-facing IDs use `1:2`.
 - Preserve stable JSON envelopes. CSS, tokens, exports, and downloaded assets may produce deterministic text/files.

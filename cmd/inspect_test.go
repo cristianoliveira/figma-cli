@@ -39,6 +39,19 @@ func TestInspectCommandRecursivelyEmitsImplementationSpecs(t *testing.T) {
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"results":[{"id":"42:1","name":"Button","type":"COMPONENT","propertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"bounds":{"x":100,"y":200,"width":50,"height":40},"relativeBounds":{"x":0,"y":0,"width":50,"height":40,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","text":"Save","bounds":{"x":112.5,"y":205.25,"width":20,"height":10},"relativeBounds":{"x":12.5,"y":5.25,"width":20,"height":10,"relativeTo":"42:1"},"layout":{},"typography":{}}]}`, result.Stdout)
 }
 
+func TestInspectCommandBoundsRecursiveTraversalWithDepth(t *testing.T) {
+	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Root","type":"FRAME","children":[{"id":"42:2","name":"Child","type":"FRAME","children":[{"id":"42:3","name":"Grandchild","type":"TEXT"}]}]}}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}}
+
+	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive", "--depth", "1")
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, `"id": "42:2"`)
+	assert.NotContains(t, result.Stdout, `"id": "42:3"`)
+}
+
 func TestInspectCommandRecursiveEmitsComputedSiblingSpacing(t *testing.T) {
 	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Stack","type":"FRAME","layoutMode":"VERTICAL","itemSpacing":0,"absoluteBoundingBox":{"x":0,"y":0,"width":100,"height":100},"children":[{"id":"42:2","name":"Copy","type":"TEXT","absoluteBoundingBox":{"x":0,"y":10,"width":80,"height":48}},{"id":"42:3","name":"Link","type":"TEXT","absoluteBoundingBox":{"x":0,"y":58,"width":40,"height":24}}]}}}}`

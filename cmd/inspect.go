@@ -64,6 +64,9 @@ func newInspectCommandWithVariables(
 			scope := output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}}
 			if recursive {
 				nodes := extract.InspectTreeRelativeToScope(document, nodeID)
+				if cmd.Flags().Changed("depth") {
+					nodes = extract.InspectTreeRelativeToScopeToDepth(document, nodeID, depth)
+				}
 				enrichInspectNodes(nodes, details.Styles, client, input.FileID, fetchVariables)
 				return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, nodes))
 			}
@@ -84,7 +87,7 @@ func newInspectCommandWithVariables(
 	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")
 	command.Flags().Bool("recursive", false, "include implementation specs for all descendant nodes")
 	command.Flags().Bool("handoff", false, "emit bounded implementation specs and component usage")
-	command.Flags().Int("depth", 4, "maximum descendant depth for --handoff")
+	command.Flags().Int("depth", 4, "maximum descendant depth for --handoff or --recursive; recursive stays unbounded unless set")
 	command.Flags().Bool("include-hidden", false, "include invisible descendants in --handoff")
 	return command
 }
