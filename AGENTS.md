@@ -2,19 +2,22 @@
 
 ## Start Here
 
-- Check nested guidance before editing: `cmd/AGENTS.md`, `internal/AGENTS.md`, and package-specific `AGENTS.md` files.
+- Read the nearest nested `AGENTS.md` before editing. Guidance exists for `cmd/`, `docs/`, `internal/`, and the `assets`, `comments`, `diff`, `extract`, `figma`, and generated API packages.
+- Treat source, command tests, and live Cobra help as command-contract truth when prose documentation differs.
 
 ## Project Shape
 
 This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, assets, CSS, and design tokens.
 
-- Entry point: `cmd/figma/main.go`
-- Cobra commands: `cmd/`
+- Main Figma CLI entry point: `cmd/figma/main.go`
+- Standalone image comparison entry point: `cmd/pixel-perfect/main.go`
+- Figma Cobra commands: `cmd/`
 - Runtime/env wiring: `internal/cli/`, `internal/env/`
 - Output envelopes and file/stdout handling: `internal/output/`
 - Figma API boundary: `internal/figma/`
 - Pure extraction/transforms: `internal/extract/`
-- Capability workflows: `internal/assets/`, `internal/comments/`, `internal/diff/`
+- Capability workflows: `internal/assets/`, `internal/comments/`, `internal/components/`, `internal/diff/`
+- Image analysis and comparison: `internal/imagecontext/`, `internal/imagediff/`, `internal/pixelperfectcmd/`, `internal/pixelperfectreport/`
 - Generated API models: `internal/figma/api/`
 - OpenAPI source/config: `openapi/`
 
@@ -24,7 +27,7 @@ This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, ass
 - Design exploration: `find`, `inspect`, `layout`, `components`, `texts`, `colors`.
 - Generation and export: `assets`, `export`, `css`, `tokens`.
 - Change analysis: `diff text` compares copy across file versions.
-- Treat live Cobra help and command tests as command-contract truth when README examples differ.
+- Screenshot analysis: `pixel-perfect` compares images independently of Figma; keep its generic image logic out of Figma packages.
 
 ## Architecture Rules
 
