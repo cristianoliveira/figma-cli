@@ -32,10 +32,17 @@ type preparedImageInputs struct {
 }
 
 type exportMetadata struct {
-	Version      int                `json:"version"`
-	NodeBounds   exportMetadataSize `json:"nodeBounds"`
-	ExportBounds exportMetadataSize `json:"exportBounds"`
-	LogicalCrop  *diff.Bounds       `json:"logicalCrop"`
+	Version      int                   `json:"version"`
+	NodeBounds   exportMetadataSize    `json:"nodeBounds"`
+	ExportBounds exportMetadataSize    `json:"exportBounds"`
+	LogicalCrop  *exportMetadataBounds `json:"logicalCrop"`
+}
+
+type exportMetadataBounds struct {
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
 }
 
 type exportMetadataSize struct {
@@ -379,16 +386,22 @@ func newScanCommand() *cobra.Command {
 				return err
 			}
 			defer inputs.cleanup()
-			xChanged := cmd.Flags().Changed("x")
-			yChanged := cmd.Flags().Changed("y")
+			xChanged := cmd.Flags().Changed("x") || cmd.Flags().Changed("column")
+			yChanged := cmd.Flags().Changed("y") || cmd.Flags().Changed("row")
 			if xChanged == yChanged {
-				return fmt.Errorf("provide exactly one of --x or --y")
+				return fmt.Errorf("provide exactly one of --x/--column or --y/--row")
 			}
 			axis := "y"
 			index, _ := cmd.Flags().GetInt("x")
+			if cmd.Flags().Changed("column") {
+				index, _ = cmd.Flags().GetInt("column")
+			}
 			if yChanged {
 				axis = "x"
 				index, _ = cmd.Flags().GetInt("y")
+				if cmd.Flags().Changed("row") {
+					index, _ = cmd.Flags().GetInt("row")
+				}
 			}
 			if index < 0 {
 				return fmt.Errorf("--%s must be non-negative", map[string]string{"x": "y", "y": "x"}[axis])
@@ -411,6 +424,8 @@ func newScanCommand() *cobra.Command {
 	}
 	command.Flags().Int("x", 0, "scan vertical column at x in comparison/cropped coordinates")
 	command.Flags().Int("y", 0, "scan horizontal row at y in comparison/cropped coordinates")
+	command.Flags().Int("column", 0, "alias for --x")
+	command.Flags().Int("row", 0, "alias for --y")
 	addTabularFormatFlag(command)
 	addInputPreparationFlags(command)
 	return command
@@ -759,13 +774,21 @@ func loadExportMetadata(path string) (*exportMetadata, error) {
 
 func cropFromExportMetadata(metadata exportMetadata) *diff.Bounds {
 	if metadata.LogicalCrop != nil {
-		return metadata.LogicalCrop
+		crop := &diff.Bounds{
+			X:      int(math.Round(metadata.LogicalCrop.X)),
+			Y:      int(math.Round(metadata.LogicalCrop.Y)),
+			Width:  int(math.Round(metadata.LogicalCrop.Width)),
+			Height: int(math.Round(metadata.LogicalCrop.Height)),
+		}
+		if crop.X >= 0 && crop.Y >= 0 && crop.X+crop.Width <= int(math.Round(metadata.ExportBounds.Width)) && crop.Y+crop.Height <= int(math.Round(metadata.ExportBounds.Height)) {
+			return crop
+		}
 	}
 	return &diff.Bounds{
-		X:      int((metadata.ExportBounds.Width - metadata.NodeBounds.Width) / 2),
-		Y:      int((metadata.ExportBounds.Height - metadata.NodeBounds.Height) / 2),
-		Width:  int(metadata.NodeBounds.Width),
-		Height: int(metadata.NodeBounds.Height),
+		X:      int(math.Floor((metadata.ExportBounds.Width - metadata.NodeBounds.Width) / 2)),
+		Y:      int(math.Floor((metadata.ExportBounds.Height - metadata.NodeBounds.Height) / 2)),
+		Width:  int(math.Round(metadata.NodeBounds.Width)),
+		Height: int(math.Round(metadata.NodeBounds.Height)),
 	}
 }
 

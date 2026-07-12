@@ -166,7 +166,19 @@ func TestExportCommandWritesMetadataSidecar(t *testing.T) {
 	assert.JSONEq(t, `{"path":"`+outputPath+`","format":"svg","node":"42:1","scale":1,"metadata":"`+metadataPath+`"}`, result.Stdout)
 	metadata, err := os.ReadFile(metadataPath)
 	require.NoError(t, err)
-	assert.JSONEq(t, `{"version":1,"nodeId":"42:1","format":"svg","scale":1,"nodeBounds":{"x":136,"y":562,"width":320,"height":166},"exportBounds":{"width":336,"height":182},"dimensionDelta":{"width":16,"height":16},"logicalCrop":{"x":8,"y":6,"width":320,"height":166},"exportPadding":{"left":8,"top":6,"right":8,"bottom":10},"paddingEvidence":["DROP_SHADOW radius=8 offsetX=0 offsetY=2"],"output":"`+outputPath+`"}`, string(metadata))
+	assert.JSONEq(t, `{"version":1,"nodeId":"42:1","format":"svg","scale":1,"nodeBounds":{"x":136,"y":562,"width":320,"height":166},"exportBounds":{"width":336,"height":182},"dimensionDelta":{"width":16,"height":16},"logicalCrop":{"x":8,"y":6,"width":320,"height":166},"contentInset":{"left":8,"top":6,"right":8,"bottom":10},"paddingEvidence":["DROP_SHADOW radius=8 offsetX=0 offsetY=2"],"output":"`+outputPath+`"}`, string(metadata))
+}
+
+func TestMeasureLogicalCropFallsBackWhenSVGPathCannotFitExport(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "header.svg")
+	require.NoError(t, os.WriteFile(path, []byte(`<svg><path d="M26.9871 16H780" /></svg>`), 0o600))
+
+	crop, inset := measureLogicalCrop(path, "svg", exportBounds{Width: 780, Height: 72}, exportSize{Width: 780, Height: 74}, 1)
+
+	require.NotNil(t, crop)
+	require.NotNil(t, inset)
+	assert.Equal(t, &exportBounds{X: 0, Y: 1, Width: 780, Height: 72}, crop)
+	assert.Equal(t, &exportPadding{Top: 1, Bottom: 1}, inset)
 }
 
 func TestMeasureExportBoundsReadsPNGDimensions(t *testing.T) {

@@ -135,7 +135,7 @@ type exportMetadata struct {
 	ExportBounds    exportSize     `json:"exportBounds"`
 	DimensionDelta  exportSize     `json:"dimensionDelta"`
 	LogicalCrop     *exportBounds  `json:"logicalCrop,omitempty"`
-	ExportPadding   *exportPadding `json:"exportPadding,omitempty"`
+	ContentInset    *exportPadding `json:"contentInset,omitempty"`
 	PaddingEvidence []string       `json:"paddingEvidence,omitempty"`
 	Output          string         `json:"output"`
 }
@@ -223,7 +223,7 @@ func writeExportMetadata(client *figma.Client, fileID, nodeID, format string, sc
 		ExportBounds:    exportBounds,
 		DimensionDelta:  exportSize{Width: exportBounds.Width - nodeBounds.Width, Height: exportBounds.Height - nodeBounds.Height},
 		LogicalCrop:     logicalCrop,
-		ExportPadding:   padding,
+		ContentInset:    padding,
 		PaddingEvidence: exportPaddingEvidence(node["effects"]),
 		Output:          outputPath,
 	}
@@ -332,16 +332,31 @@ func measureLogicalCrop(path, format string, nodeBounds exportBounds, measuredBo
 	if !ok {
 		return nil, nil
 	}
-	left *= scale
-	top *= scale
-	crop := &exportBounds{X: left, Y: top, Width: nodeBounds.Width * scale, Height: nodeBounds.Height * scale}
+	left = math.Round(left * scale)
+	top = math.Round(top * scale)
+	crop := &exportBounds{X: left, Y: top, Width: math.Round(nodeBounds.Width * scale), Height: math.Round(nodeBounds.Height * scale)}
+	if crop.X < 0 || crop.Y < 0 || crop.X+crop.Width > measuredBounds.Width || crop.Y+crop.Height > measuredBounds.Height {
+		return centeredLogicalCrop(nodeBounds, measuredBounds, scale)
+	}
 	padding := &exportPadding{
-		Left:   left,
-		Top:    top,
-		Right:  measuredBounds.Width - left - crop.Width,
-		Bottom: measuredBounds.Height - top - crop.Height,
+		Left:   crop.X,
+		Top:    crop.Y,
+		Right:  measuredBounds.Width - crop.X - crop.Width,
+		Bottom: measuredBounds.Height - crop.Y - crop.Height,
 	}
 	return crop, padding
+}
+
+func centeredLogicalCrop(nodeBounds exportBounds, measuredBounds exportSize, scale float64) (*exportBounds, *exportPadding) {
+	width := math.Round(nodeBounds.Width * scale)
+	height := math.Round(nodeBounds.Height * scale)
+	if width > measuredBounds.Width || height > measuredBounds.Height {
+		return nil, nil
+	}
+	left := math.Floor((measuredBounds.Width - width) / 2)
+	top := math.Floor((measuredBounds.Height - height) / 2)
+	crop := &exportBounds{X: left, Y: top, Width: width, Height: height}
+	return crop, &exportPadding{Left: left, Top: top, Right: measuredBounds.Width - left - width, Bottom: measuredBounds.Height - top - height}
 }
 
 func svgPathStart(data []byte) (float64, float64, bool) {

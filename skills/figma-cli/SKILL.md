@@ -42,6 +42,7 @@ Read [command reference](references/commands.md) only when exact flags, output s
 - User-facing node IDs use `1-2`; API-facing IDs use `1:2`.
 - Preserve stable JSON envelopes. CSS, tokens, exports, and downloaded assets may produce deterministic text/files.
 - For PNG/JPG exports, use either `--scale` or target `--width`; the latter derives valid Figma scale from node bounds. Do not combine them.
+- Export metadata uses pixel-aligned `logicalCrop` and `contentInset` relative to the exported image. Prefer these values over Figma canvas coordinates when preparing screenshot comparisons.
 - Layer names are not unique; return every match with node ID.
 - Exact comment ID lookup takes precedence over node filtering.
 - Never edit Figma or claim CLI can mutate design files.

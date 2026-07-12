@@ -133,7 +133,7 @@ func TestScanCommandRequiresOneAxis(t *testing.T) {
 	result := executeCommand(NewCommand(), "scan", reference, actual, "--x", "0", "--y", "0")
 
 	require.Error(t, result.Err)
-	assert.Contains(t, result.Err.Error(), "provide exactly one of --x or --y")
+	assert.Contains(t, result.Err.Error(), "provide exactly one of --x/--column or --y/--row")
 }
 
 func TestProbeCommandRejectsDimensionMismatch(t *testing.T) {
@@ -161,6 +161,22 @@ func TestDiffImageCommandProducesMaskAndJSONMetrics(t *testing.T) {
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"width":2,"height":2,"changedPixels":0,"comparedPixels":4,"changedRatio":0,"rmse":0,"rgbRmse":0,"luminanceRmse":0,"alphaRmse":0,"edgeRmse":0,"perceptualRmse":0,"perceptualChangedPixels":0,"perceptualChangedRatio":0,"perceptualThreshold":0.1,"antialiasedPixels":0,"evidence":{"rawOnlyPixels":0,"perceptualOnlyPixels":0,"rawAndPerceptualPixels":0},"mask":"`+mask+`"}`, result.Stdout)
+}
+
+func TestScanCommandAcceptsRowAndColumnAliases(t *testing.T) {
+	directory := t.TempDir()
+	referencePath := filepath.Join(directory, "reference.png")
+	actualPath := filepath.Join(directory, "actual.png")
+	writeTestPNG(t, referencePath, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+	writeTestPNG(t, actualPath, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+
+	row := executeCommand(NewCommand(), "scan", referencePath, actualPath, "--row", "0", "--format", "json")
+	column := executeCommand(NewCommand(), "scan", referencePath, actualPath, "--column", "0", "--format", "json")
+
+	require.NoError(t, row.Err)
+	require.NoError(t, column.Err)
+	assert.Contains(t, row.Stdout, `"axis": "x"`)
+	assert.Contains(t, column.Stdout, `"axis": "y"`)
 }
 
 func TestDiffImageCommandWritesDefaultMaskOutput(t *testing.T) {
@@ -198,6 +214,16 @@ func TestDiffImageCommandWritesReportWithoutExplicitMaskOutput(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(content), "Pixel Perfect Report")
 	assert.Contains(t, string(content), "data:image/png;base64,")
+}
+
+func TestLoadExportMetadataAcceptsFractionalLogicalCrop(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "reference.export.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"version":1,"nodeBounds":{"width":780,"height":72},"exportBounds":{"width":780,"height":74},"logicalCrop":{"x":26.9871,"y":16,"width":780,"height":72}}`), 0o600))
+
+	metadata, err := loadExportMetadata(path)
+
+	require.NoError(t, err)
+	assert.Equal(t, &diff.Bounds{X: 0, Y: 1, Width: 780, Height: 72}, cropFromExportMetadata(*metadata))
 }
 
 func TestDiffImageCommandAppliesReferenceMetadataCrop(t *testing.T) {
