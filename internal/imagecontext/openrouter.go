@@ -30,10 +30,11 @@ type RegionContext struct {
 	VisualContext       string `json:"visualContext,omitempty"`
 }
 type Result struct {
-	Provider string          `json:"provider"`
-	Model    string          `json:"model"`
-	Advisory bool            `json:"advisory"`
-	Regions  []RegionContext `json:"regions"`
+	Provider   string          `json:"provider"`
+	Model      string          `json:"model,omitempty"`
+	Advisory   bool            `json:"advisory"`
+	Disclaimer string          `json:"disclaimer,omitempty"`
+	Regions    []RegionContext `json:"regions,omitempty"`
 }
 type OpenRouter struct {
 	apiKey, model, baseURL string
@@ -53,8 +54,7 @@ func (o *OpenRouter) Describe(ctx context.Context, input Input) (Result, error) 
 	if err != nil {
 		return Result{}, fmt.Errorf("read actual for visual context: %w", err)
 	}
-	regions, _ := json.Marshal(input.Regions)
-	prompt := `The first image is reference and second is implementation. For each supplied region ID, name the visible object and briefly describe its appearance in each image. Mention only differences clearly visible inside that region. Use at most 15 words per field. Do not describe causes, measure, diagnose geometry, suggest fixes, infer DOM/Figma semantics, or alter metrics. Do not mention anything outside the supplied region. Preserve region IDs exactly. Return JSON only: {"regions":[{"region":"r1","referenceAppearance":"","actualAppearance":"","visualContext":""}]}. Regions: ` + string(regions)
+	prompt := visualContextPrompt(input.Regions)
 	payload := map[string]any{"model": o.model, "stream": false, "messages": []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": prompt}, map[string]any{"type": "image_url", "image_url": map[string]any{"url": ref}}, map[string]any{"type": "image_url", "image_url": map[string]any{"url": actual}}}}}}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.baseURL+"/chat/completions", bytes.NewReader(body))
@@ -91,28 +91,37 @@ func (o *OpenRouter) Describe(ctx context.Context, input Input) (Result, error) 
 	if len(envelope.Choices) == 0 {
 		return Result{}, fmt.Errorf("OpenRouter response did not include visual context")
 	}
+	regions, err := parseRegionContexts(envelope.Choices[0].Message.Content, input.Regions)
+	if err != nil {
+		return Result{}, err
+	}
+	return Result{Provider: "openrouter", Model: o.model, Advisory: true, Regions: regions}, nil
+}
+func visualContextPrompt(regions []Region) string {
+	encoded, _ := json.Marshal(regions)
+	return `The first image is reference and second is implementation. For each supplied region ID, name the visible object and briefly describe its appearance in each image. Mention only differences clearly visible inside that region. Use at most 15 words per field. Do not describe causes, measure, diagnose geometry, suggest fixes, infer DOM/Figma semantics, or alter metrics. Do not mention anything outside the supplied region. Preserve region IDs exactly. Return JSON only: {"regions":[{"region":"r1","referenceAppearance":"","actualAppearance":"","visualContext":""}]}. Regions: ` + string(encoded)
+}
+
+func parseRegionContexts(content string, expected []Region) ([]RegionContext, error) {
+	content = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(content), "```json"), "```"), "```"))
 	var parsed struct {
 		Regions []RegionContext `json:"regions"`
 	}
-	content := strings.TrimSpace(envelope.Choices[0].Message.Content)
-	content = strings.TrimPrefix(content, "```json")
-	content = strings.TrimPrefix(content, "```")
-	content = strings.TrimSuffix(content, "```")
-	content = strings.TrimSpace(content)
 	if err := json.Unmarshal([]byte(content), &parsed); err != nil {
-		return Result{}, fmt.Errorf("decode visual context JSON: %w", err)
+		return nil, fmt.Errorf("decode visual context JSON: %w", err)
 	}
 	allowed := map[string]bool{}
-	for _, region := range input.Regions {
+	for _, region := range expected {
 		allowed[region.ID] = true
 	}
 	for _, region := range parsed.Regions {
 		if !allowed[region.Region] {
-			return Result{}, fmt.Errorf("visual context returned unknown region %q", region.Region)
+			return nil, fmt.Errorf("visual context returned unknown region %q", region.Region)
 		}
 	}
-	return Result{Provider: "openrouter", Model: o.model, Advisory: true, Regions: parsed.Regions}, nil
+	return parsed.Regions, nil
 }
+
 func imageDataURL(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

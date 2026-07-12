@@ -3,6 +3,7 @@ package pixelperfectcmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"path/filepath"
@@ -142,8 +143,13 @@ func newCommand(compare imageComparer) *cobra.Command {
 			outputResult := outputEnvelope{ImageComparison: result}
 			visualContextEnabled, _ := cmd.Flags().GetBool("visual-context")
 			if visualContextEnabled {
+				provider, _ := cmd.Flags().GetString("visual-context-provider")
 				model, _ := cmd.Flags().GetString("visual-context-model")
-				config, configErr := imagecontext.LoadConfig(model)
+				config, configErr := imagecontext.LoadProviderConfig(provider, model)
+				if errors.Is(configErr, imagecontext.ErrNotConfigured) {
+					outputResult.VisualContext = &imagecontext.Result{Provider: provider, Advisory: true, Disclaimer: fmt.Sprintf("Visual context unavailable: configure %s credentials in the Pi Spectacles config or environment.", provider)}
+					return writeJSON(cmd, outputResult)
+				}
 				if configErr != nil {
 					return configErr
 				}
@@ -151,7 +157,12 @@ func newCommand(compare imageComparer) *cobra.Command {
 				for index, region := range result.Regions {
 					regions[index] = imagecontext.Region{ID: fmt.Sprintf("r%d", index+1), Bounds: imagecontext.Bounds{X: region.Bounds.X, Y: region.Bounds.Y, Width: region.Bounds.Width, Height: region.Bounds.Height}}
 				}
-				visualContext, explainErr := imagecontext.NewOpenRouter(config.APIKey, config.Model, config.BaseURL).Describe(context.Background(), imagecontext.Input{ReferencePath: args[0], ActualPath: args[1], Regions: regions})
+				client, clientErr := imagecontext.NewClient(provider, config)
+				if clientErr != nil {
+					return clientErr
+				}
+				input := imagecontext.Input{ReferencePath: args[0], ActualPath: args[1], Regions: regions}
+				visualContext, explainErr := client.Describe(context.Background(), input)
 				if explainErr != nil {
 					return explainErr
 				}
@@ -174,7 +185,8 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().Float64("max-changed-ratio", -1, "fail when changed-pixel ratio exceeds this value")
 	command.Flags().Float64("max-perceptual-changed-ratio", -1, "fail when perceptual changed-pixel ratio exceeds this value")
 	command.Flags().Bool("visual-context", false, "add advisory visual descriptions using the configured multimodal model")
-	command.Flags().String("visual-context-model", "", "override the pi-spectacles OpenRouter model")
+	command.Flags().String("visual-context-provider", "openrouter", "visual context provider: openrouter or openai")
+	command.Flags().String("visual-context-model", "", "override the visual context model")
 	return command
 }
 

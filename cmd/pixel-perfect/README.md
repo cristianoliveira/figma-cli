@@ -35,9 +35,21 @@ pixel-perfect reference.png implementation.png \
   --visual-context
 ```
 
-`--visual-context` adds advisory appearance descriptions for deterministic changed regions. It does not alter metrics, classifications, or validation gates. Configuration is shared with Pi Spectacles at `~/.pi/agent/pi-spectacles.json`; `OPENROUTER_API_KEY`, `OPENROUTER_MEDIA_MODEL`, `OPENROUTER_BASE_URL`, and `PI_SPECTACLES_CONFIG` use the same precedence. Use `--visual-context-model` for a per-call model override.
+`--visual-context` adds advisory appearance descriptions for deterministic changed regions. It does not alter metrics, classifications, or validation gates. OpenRouter remains default; select OpenAI with `--visual-context-provider openai`. Use `--visual-context-model` for per-call model override.
 
-The two screenshots are sent to the configured OpenRouter model only when this flag is present.
+Configuration is based on Pi Spectacles at `~/.pi/agent/pi-spectacles.json`. OpenRouter uses its existing top-level settings and environment variables. OpenAI uses `OPENAI_API_KEY`, `OPENAI_VISION_MODEL`, and `OPENAI_BASE_URL`, or an optional nested configuration:
+
+```json
+{
+  "openai": {
+    "apiKey": "...",
+    "model": "gpt-5.4-mini",
+    "baseUrl": "https://api.openai.com/v1"
+  }
+}
+```
+
+The screenshots are sent only when `--visual-context` is present. If selected provider is not configured, comparison succeeds and `visualContext.disclaimer` explains why advisory context is unavailable.
 
 ## Focus and validation
 
