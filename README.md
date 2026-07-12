@@ -2,9 +2,11 @@
 
 **Turn Figma designs into implementation-ready data—and prove the result matches.**
 
-Figma CLI gives developers and coding agents a direct, scriptable path from a Figma URL to structured design context, generated assets, CSS, tokens, and deterministic visual validation.
+Figma CLI gives coding agents a direct, scriptable path from a Figma URL to structured design context, generated assets, CSS, tokens, and deterministic visual validation.
 
-No clicking through panels. No manually copying node IDs. No asking an agent to guess from a screenshot.
+The main goal is agent self-validation without relying on vision models. Instead of asking a model to repeatedly inspect full screenshots, agents can query semantic design data, measure raster differences, inspect exact pixels, and narrow failures to actionable regions using deterministic tools.
+
+No clicking through panels. No manually copying node IDs. No guessing from screenshots. No spending vision tokens just to learn that a button is two pixels too wide.
 
 ```bash
 figma inspect --handoff "https://www.figma.com/design/KEY/App?node-id=42-1"
@@ -24,7 +26,20 @@ It ships two complementary tools:
 - **`figma`** explains what the design intends.
 - **`pixel-perfect`** measures what the implementation rendered.
 
-Together they close the loop from design exploration to visual verification.
+Together they close the loop from design exploration to visual verification, giving an agent evidence to inspect, implement, measure, diagnose, and correct its own work.
+
+### Progressive disclosure by design
+
+Agents should request only the context needed for the next decision. The CLI supports that workflow from broad discovery to exact evidence:
+
+1. Start with compact file or frame context using `meta` and `layout`.
+2. Narrow by name or type with `find`.
+3. Inspect only the relevant node with `inspect`, `texts`, `colors`, or `components`.
+4. Generate only required implementation inputs with `css`, `tokens`, `assets`, or `export`.
+5. Measure the rendered result with `pixel-perfect`.
+6. Drill into mismatch regions with `probe` and `scan` instead of sending entire screenshots back to a vision model.
+
+This progressive disclosure keeps outputs focused and token use proportional to the problem. Vision remains an optional advisory layer, not a prerequisite for validation.
 
 ## What you can do
 
@@ -135,8 +150,11 @@ pixel-perfect reference.png implementation.png \
 
 Now a mismatch is not merely “some pixels changed.” It can be localized to a design region, measured objectively, and traced back to semantic Figma context.
 
-## Built for agents and automation
+## Built for agent self-validation
 
+- Uses semantic API data and deterministic image metrics before optional vision.
+- Supports progressive disclosure from file metadata to nodes, regions, rows, and individual pixels.
+- Produces compact, machine-readable evidence agents can use in an iterative correction loop.
 - Accepts full Figma URLs or bare file keys.
 - Infers node scope from `node-id` in URLs.
 - Normalizes user-facing and API-facing node ID formats.
@@ -146,7 +164,7 @@ Now a mismatch is not merely “some pixels changed.” It can be localized to a
 - Fails explicitly on invalid input and unsupported ambiguity.
 - Keeps network access separate from pure extraction and image analysis.
 
-This makes the CLI useful as both a developer tool and a reliable capability layer for coding agents.
+This makes the CLI a reliable capability layer for coding agents: enough tooling to validate their own implementation while controlling context size and avoiding unnecessary vision calls.
 
 ## Command overview
 

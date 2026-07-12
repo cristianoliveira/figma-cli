@@ -8,6 +8,8 @@ It never silently resizes or aligns inputs to make a comparison look better. The
 
 `pixel-perfect` works with any equal-sized PNGs and requires no Figma credentials. When used with the companion [`figma`](../../README.md) CLI, it closes the loop between semantic design intent and rendered implementation.
 
+Its primary consumer can be an agent, not a human looking at an overlay. Structured metrics, regions, color pairs, probes, and scans let the agent validate and diagnose its own work without requiring a vision model. Optional visual context is deliberately advisory rather than part of measurement.
+
 ## Why use it
 
 A single “12% different” score is not enough to fix a UI. You need to know whether the problem is geometry, color, transparency, text rasterization, alignment, or one isolated region.
@@ -25,6 +27,18 @@ A single “12% different” score is not enough to fix a UI. You need to know w
 - optional advisory visual descriptions without affecting deterministic results
 
 Use it as a tight feedback loop while implementing a screen, or as a stable regression gate after the screen ships.
+
+## Progressive diagnosis, bounded context
+
+Visual debugging should not require loading two full screenshots into model context on every iteration. Start with compact global metrics, then request progressively narrower evidence:
+
+1. Compare images to identify changed bounds and ranked regions.
+2. Focus one region with `--region`.
+3. Inspect exact suspicious coordinates with `probe`.
+4. Inspect edge and color transitions with `scan`.
+5. Use an overlay, HTML report, or optional visual context only when deterministic evidence is insufficient.
+
+Each step reduces the search space while keeping output machine-readable and token-efficient.
 
 ## Install
 
