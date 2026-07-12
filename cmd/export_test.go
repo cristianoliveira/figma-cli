@@ -48,7 +48,7 @@ func TestExportCommandWritesFileAndJSONContract(t *testing.T) {
 
 func TestExportCommandWritesMetadataSidecar(t *testing.T) {
 	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
-		body := `<svg width="336" height="182" viewBox="0 0 336 182"></svg>`
+		body := `<svg width="336" height="182" viewBox="0 0 336 182"><path d="M8 6H320C320 6 320 29.8986 320 51C320 60 328 63.935 328 75C328 86.065 320 88.9604 320 99C320 113.466 320 172 320 172H8L8 6Z" /></svg>`
 		switch {
 		case strings.Contains(request.URL.Path, "/v1/images/"):
 			body = `{"images":{"42:1":"https://cdn.example/image"}}`
@@ -72,7 +72,7 @@ func TestExportCommandWritesMetadataSidecar(t *testing.T) {
 	assert.JSONEq(t, `{"path":"`+outputPath+`","format":"svg","node":"42:1","metadata":"`+metadataPath+`"}`, result.Stdout)
 	metadata, err := os.ReadFile(metadataPath)
 	require.NoError(t, err)
-	assert.JSONEq(t, `{"version":1,"nodeId":"42:1","format":"svg","scale":1,"nodeBounds":{"x":136,"y":562,"width":320,"height":166},"exportBounds":{"width":336,"height":182},"dimensionDelta":{"width":16,"height":16},"paddingEvidence":["DROP_SHADOW radius=8 offsetX=0 offsetY=2"],"output":"`+outputPath+`"}`, string(metadata))
+	assert.JSONEq(t, `{"version":1,"nodeId":"42:1","format":"svg","scale":1,"nodeBounds":{"x":136,"y":562,"width":320,"height":166},"exportBounds":{"width":336,"height":182},"dimensionDelta":{"width":16,"height":16},"logicalCrop":{"x":8,"y":6,"width":320,"height":166},"exportPadding":{"left":8,"top":6,"right":8,"bottom":10},"paddingEvidence":["DROP_SHADOW radius=8 offsetX=0 offsetY=2"],"output":"`+outputPath+`"}`, string(metadata))
 }
 
 func TestMeasureExportBoundsReadsPNGDimensions(t *testing.T) {

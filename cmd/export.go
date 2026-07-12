@@ -89,15 +89,17 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 }
 
 type exportMetadata struct {
-	Version         int          `json:"version"`
-	NodeID          string       `json:"nodeId"`
-	Format          string       `json:"format"`
-	Scale           int          `json:"scale"`
-	NodeBounds      exportBounds `json:"nodeBounds"`
-	ExportBounds    exportSize   `json:"exportBounds"`
-	DimensionDelta  exportSize   `json:"dimensionDelta"`
-	PaddingEvidence []string     `json:"paddingEvidence,omitempty"`
-	Output          string       `json:"output"`
+	Version         int            `json:"version"`
+	NodeID          string         `json:"nodeId"`
+	Format          string         `json:"format"`
+	Scale           int            `json:"scale"`
+	NodeBounds      exportBounds   `json:"nodeBounds"`
+	ExportBounds    exportSize     `json:"exportBounds"`
+	DimensionDelta  exportSize     `json:"dimensionDelta"`
+	LogicalCrop     *exportBounds  `json:"logicalCrop,omitempty"`
+	ExportPadding   *exportPadding `json:"exportPadding,omitempty"`
+	PaddingEvidence []string       `json:"paddingEvidence,omitempty"`
+	Output          string         `json:"output"`
 }
 
 type exportBounds struct {
@@ -112,6 +114,13 @@ type exportSize struct {
 	Height float64 `json:"height,omitempty"`
 }
 
+type exportPadding struct {
+	Left   float64 `json:"left"`
+	Top    float64 `json:"top"`
+	Right  float64 `json:"right"`
+	Bottom float64 `json:"bottom"`
+}
+
 func writeExportMetadata(client *figma.Client, fileID, nodeID, format, outputPath, metadataPath string) error {
 	details, err := figma.FetchNodeDetails(client, fileID, []string{nodeID})
 	if err != nil {
@@ -123,6 +132,10 @@ func writeExportMetadata(client *figma.Client, fileID, nodeID, format, outputPat
 	if err != nil {
 		return err
 	}
+	logicalCrop, padding := measureLogicalCrop(outputPath, format, nodeBounds, exportBounds)
+	if logicalCrop == nil && format != "svg" {
+		logicalCrop, padding = measureLogicalCropFromSVGExport(client, fileID, nodeID, nodeBounds, exportBounds)
+	}
 	metadata := exportMetadata{
 		Version:         1,
 		NodeID:          nodeID,
@@ -131,6 +144,8 @@ func writeExportMetadata(client *figma.Client, fileID, nodeID, format, outputPat
 		NodeBounds:      nodeBounds,
 		ExportBounds:    exportBounds,
 		DimensionDelta:  exportSize{Width: exportBounds.Width - nodeBounds.Width, Height: exportBounds.Height - nodeBounds.Height},
+		LogicalCrop:     logicalCrop,
+		ExportPadding:   padding,
 		PaddingEvidence: exportPaddingEvidence(node["effects"]),
 		Output:          outputPath,
 	}
@@ -196,6 +211,64 @@ func svgAttributeNumber(data []byte, name string) (float64, error) {
 		return 0, fmt.Errorf("svg %s attribute not found", name)
 	}
 	return strconv.ParseFloat(string(matches[1]), 64)
+}
+
+func measureLogicalCropFromSVGExport(client *figma.Client, fileID, nodeID string, nodeBounds exportBounds, measuredBounds exportSize) (*exportBounds, *exportPadding) {
+	apiURL, err := figma.BuildExportURL(fileID, []string{nodeID}, "svg")
+	if err != nil {
+		return nil, nil
+	}
+	assetURL, err := figma.FetchExportURL(client, apiURL, nodeID)
+	if err != nil {
+		return nil, nil
+	}
+	tempFile, err := os.CreateTemp("", "figma-export-metadata-*.svg")
+	if err != nil {
+		return nil, nil
+	}
+	path := tempFile.Name()
+	_ = tempFile.Close()
+	defer func() { _ = os.Remove(path) }()
+	if err := assets.DownloadFile(client.HTTP, path, assetURL); err != nil {
+		return nil, nil
+	}
+	return measureLogicalCrop(path, "svg", nodeBounds, measuredBounds)
+}
+
+func measureLogicalCrop(path, format string, nodeBounds exportBounds, measuredBounds exportSize) (*exportBounds, *exportPadding) {
+	if format != "svg" {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil
+	}
+	left, top, ok := svgPathStart(data)
+	if !ok {
+		return nil, nil
+	}
+	crop := &exportBounds{X: left, Y: top, Width: nodeBounds.Width, Height: nodeBounds.Height}
+	padding := &exportPadding{
+		Left:   left,
+		Top:    top,
+		Right:  measuredBounds.Width - left - nodeBounds.Width,
+		Bottom: measuredBounds.Height - top - nodeBounds.Height,
+	}
+	return crop, padding
+}
+
+func svgPathStart(data []byte) (float64, float64, bool) {
+	pathPattern := regexp.MustCompile(`<path[^>]+d="M\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)`)
+	matches := pathPattern.FindSubmatch(data)
+	if len(matches) != 3 {
+		return 0, 0, false
+	}
+	x, xErr := strconv.ParseFloat(string(matches[1]), 64)
+	y, yErr := strconv.ParseFloat(string(matches[2]), 64)
+	if xErr != nil || yErr != nil {
+		return 0, 0, false
+	}
+	return x, y, true
 }
 
 func exportPaddingEvidence(value any) []string {

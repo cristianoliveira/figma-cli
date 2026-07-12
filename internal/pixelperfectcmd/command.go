@@ -26,6 +26,18 @@ type preparedImageInputs struct {
 	cleanup       func()
 }
 
+type exportMetadata struct {
+	Version      int                `json:"version"`
+	NodeBounds   exportMetadataSize `json:"nodeBounds"`
+	ExportBounds exportMetadataSize `json:"exportBounds"`
+	LogicalCrop  *diff.Bounds       `json:"logicalCrop"`
+}
+
+type exportMetadataSize struct {
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
+
 func newCommand(compare imageComparer) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "image <reference.png> <actual.png>",
@@ -95,11 +107,19 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			referenceMetadataPath, _ := cmd.Flags().GetString("reference-metadata")
+			referenceMetadata, err := loadExportMetadata(referenceMetadataPath)
+			if err != nil {
+				return err
+			}
+			if referenceCrop != nil && referenceMetadata != nil {
+				return fmt.Errorf("--reference-crop and --reference-metadata cannot be used together")
+			}
 			actualCrop, err := parseOptionalCrop(cmd, "actual-crop")
 			if err != nil {
 				return err
 			}
-			inputs, err := prepareImageInputs(args[0], args[1], referenceCrop, actualCrop)
+			inputs, err := prepareImageInputs(args[0], args[1], referenceCrop, actualCrop, referenceMetadata)
 			if err != nil {
 				return err
 			}
@@ -199,6 +219,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().Float64("perceptual-threshold", diff.DefaultPerceptualThreshold, "OKLab HyAB distance above which a pixel is perceptually changed (non-negative)")
 	command.Flags().String("region", "", "compare only x,y,width,height")
 	command.Flags().String("reference-crop", "", "crop reference before comparing: x,y,width,height")
+	command.Flags().String("reference-metadata", "", "apply logical crop from figma export metadata JSON")
 	command.Flags().String("actual-crop", "", "crop actual before comparing: x,y,width,height")
 	command.Flags().StringArray("ignore-region", nil, "exclude x,y,width,height; repeat for multiple areas")
 	command.Flags().String("mask", "", "full-size PNG selecting compared pixels (visible non-black includes)")
@@ -246,7 +267,7 @@ func parseOptionalCrop(cmd *cobra.Command, flagName string) (*diff.Bounds, error
 	return crop, nil
 }
 
-func prepareImageInputs(referencePath, actualPath string, referenceCrop, actualCrop *diff.Bounds) (preparedImageInputs, error) {
+func prepareImageInputs(referencePath, actualPath string, referenceCrop, actualCrop *diff.Bounds, referenceMetadata *exportMetadata) (preparedImageInputs, error) {
 	referenceWidth, referenceHeight, err := diff.PNGDimensions(referencePath)
 	if err != nil {
 		return preparedImageInputs{}, fmt.Errorf("decode reference: %w", err)
@@ -254,6 +275,12 @@ func prepareImageInputs(referencePath, actualPath string, referenceCrop, actualC
 	actualWidth, actualHeight, err := diff.PNGDimensions(actualPath)
 	if err != nil {
 		return preparedImageInputs{}, fmt.Errorf("decode actual: %w", err)
+	}
+	if referenceMetadata != nil {
+		if int(referenceMetadata.ExportBounds.Width) != referenceWidth || int(referenceMetadata.ExportBounds.Height) != referenceHeight {
+			return preparedImageInputs{}, fmt.Errorf("--reference-metadata export bounds %gx%g do not match reference image %dx%d", referenceMetadata.ExportBounds.Width, referenceMetadata.ExportBounds.Height, referenceWidth, referenceHeight)
+		}
+		referenceCrop = cropFromExportMetadata(*referenceMetadata)
 	}
 	if referenceCrop == nil && actualCrop == nil {
 		return preparedImageInputs{referencePath: referencePath, actualPath: actualPath, cleanup: func() {}}, nil
@@ -294,6 +321,36 @@ func prepareImageInputs(referencePath, actualPath string, referenceCrop, actualC
 		}
 	}
 	return prepared, nil
+}
+
+func loadExportMetadata(path string) (*exportMetadata, error) {
+	if path == "" {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var metadata exportMetadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		return nil, err
+	}
+	if metadata.Version != 1 {
+		return nil, fmt.Errorf("unsupported --reference-metadata version %d", metadata.Version)
+	}
+	return &metadata, nil
+}
+
+func cropFromExportMetadata(metadata exportMetadata) *diff.Bounds {
+	if metadata.LogicalCrop != nil {
+		return metadata.LogicalCrop
+	}
+	return &diff.Bounds{
+		X:      int((metadata.ExportBounds.Width - metadata.NodeBounds.Width) / 2),
+		Y:      int((metadata.ExportBounds.Height - metadata.NodeBounds.Height) / 2),
+		Width:  int(metadata.NodeBounds.Width),
+		Height: int(metadata.NodeBounds.Height),
+	}
 }
 
 func croppedDimensions(width, height int, crop *diff.Bounds) (int, int) {

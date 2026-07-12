@@ -30,6 +30,68 @@ func TestDiffImageCommandProducesMaskAndJSONMetrics(t *testing.T) {
 	assert.JSONEq(t, `{"width":2,"height":2,"changedPixels":0,"comparedPixels":4,"changedRatio":0,"rmse":0,"rgbRmse":0,"luminanceRmse":0,"alphaRmse":0,"edgeRmse":0,"perceptualRmse":0,"perceptualChangedPixels":0,"perceptualChangedRatio":0,"perceptualThreshold":0.1,"antialiasedPixels":0,"evidence":{"rawOnlyPixels":0,"perceptualOnlyPixels":0,"rawAndPerceptualPixels":0},"mask":"`+mask+`"}`, result.Stdout)
 }
 
+func TestDiffImageCommandAppliesReferenceMetadataCrop(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	mask := filepath.Join(dir, "mask.png")
+	metadata := filepath.Join(dir, "reference.export.json")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 4, 2)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+	require.NoError(t, os.WriteFile(metadata, []byte(`{"version":1,"nodeBounds":{"width":2,"height":2},"exportBounds":{"width":4,"height":2},"logicalCrop":{"x":1,"y":0,"width":2,"height":2}}`), 0o600))
+
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--reference-metadata", metadata, "--output", mask)
+
+	require.NoError(t, result.Err)
+	assert.JSONEq(t, `{"width":2,"height":2,"changedPixels":0,"comparedPixels":4,"changedRatio":0,"rmse":0,"rgbRmse":0,"luminanceRmse":0,"alphaRmse":0,"edgeRmse":0,"perceptualRmse":0,"perceptualChangedPixels":0,"perceptualChangedRatio":0,"perceptualThreshold":0.1,"antialiasedPixels":0,"evidence":{"rawOnlyPixels":0,"perceptualOnlyPixels":0,"rawAndPerceptualPixels":0},"inputs":{"reference":{"width":4,"height":2,"crop":{"x":1,"y":0,"width":2,"height":2}},"actual":{"width":2,"height":2}},"mask":"`+mask+`"}`, result.Stdout)
+}
+
+func TestDiffImageCommandPrefersMetadataLogicalCrop(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	metadata := filepath.Join(dir, "reference.export.json")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 4, 4)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+	require.NoError(t, os.WriteFile(metadata, []byte(`{"version":1,"nodeBounds":{"width":2,"height":2},"exportBounds":{"width":4,"height":4},"logicalCrop":{"x":1,"y":0,"width":2,"height":2}}`), 0o600))
+
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--reference-metadata", metadata, "--output", filepath.Join(dir, "mask.png"))
+
+	require.NoError(t, result.Err)
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal([]byte(result.Stdout), &comparison))
+	require.NotNil(t, comparison.Inputs)
+	assert.Equal(t, &diff.Bounds{X: 1, Y: 0, Width: 2, Height: 2}, comparison.Inputs.Reference.Crop)
+}
+
+func TestDiffImageCommandRejectsUnsupportedReferenceMetadataVersion(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	metadata := filepath.Join(dir, "reference.export.json")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 4, 2)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+	require.NoError(t, os.WriteFile(metadata, []byte(`{"version":2}`), 0o600))
+
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--reference-metadata", metadata, "--output", filepath.Join(dir, "mask.png"))
+
+	assert.EqualError(t, result.Err, "unsupported --reference-metadata version 2")
+}
+
+func TestDiffImageCommandRejectsReferenceMetadataDimensionMismatch(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	metadata := filepath.Join(dir, "reference.export.json")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 4, 2)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+	require.NoError(t, os.WriteFile(metadata, []byte(`{"version":1,"nodeBounds":{"width":2,"height":2},"exportBounds":{"width":5,"height":2}}`), 0o600))
+
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--reference-metadata", metadata, "--output", filepath.Join(dir, "mask.png"))
+
+	assert.EqualError(t, result.Err, "--reference-metadata export bounds 5x2 do not match reference image 4x2")
+}
+
 func TestDiffImageCommandAppliesIndependentInputCrops(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")
