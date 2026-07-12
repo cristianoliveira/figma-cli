@@ -2,6 +2,7 @@ package imagediff
 
 import (
 	"fmt"
+	"image"
 	"math"
 	"sort"
 )
@@ -40,6 +41,32 @@ func MeasureImageRegionWithThresholds(referencePath, actualPath string, bounds B
 	if reference.Bounds().Dx() != actual.Bounds().Dx() || reference.Bounds().Dy() != actual.Bounds().Dy() {
 		return RegionMetrics{}, fmt.Errorf("image dimensions differ: reference is %dx%d, actual is %dx%d", reference.Bounds().Dx(), reference.Bounds().Dy(), actual.Bounds().Dx(), actual.Bounds().Dy())
 	}
+	return measureImageRegion(reference, actual, bounds, threshold, perceptualThreshold, ignored)
+}
+
+func MeasureImageRegionsWithThresholds(referencePath, actualPath string, regions []Bounds, threshold uint8, perceptualThreshold float64, ignored []Bounds) ([]RegionMetrics, error) {
+	reference, err := decodeNRGBA(referencePath)
+	if err != nil {
+		return nil, fmt.Errorf("decode reference: %w", err)
+	}
+	actual, err := decodeNRGBA(actualPath)
+	if err != nil {
+		return nil, fmt.Errorf("decode actual: %w", err)
+	}
+	if reference.Bounds().Dx() != actual.Bounds().Dx() || reference.Bounds().Dy() != actual.Bounds().Dy() {
+		return nil, fmt.Errorf("image dimensions differ: reference is %dx%d, actual is %dx%d", reference.Bounds().Dx(), reference.Bounds().Dy(), actual.Bounds().Dx(), actual.Bounds().Dy())
+	}
+	metrics := make([]RegionMetrics, len(regions))
+	for index, bounds := range regions {
+		metrics[index], err = measureImageRegion(reference, actual, bounds, threshold, perceptualThreshold, ignored)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return metrics, nil
+}
+
+func measureImageRegion(reference, actual *image.NRGBA, bounds Bounds, threshold uint8, perceptualThreshold float64, ignored []Bounds) (RegionMetrics, error) {
 	if bounds.X < 0 || bounds.Y < 0 || bounds.Width <= 0 || bounds.Height <= 0 || bounds.X+bounds.Width > reference.Bounds().Dx() || bounds.Y+bounds.Height > reference.Bounds().Dy() {
 		return RegionMetrics{}, fmt.Errorf("region %d,%d,%d,%d is outside image bounds %dx%d", bounds.X, bounds.Y, bounds.Width, bounds.Height, reference.Bounds().Dx(), reference.Bounds().Dy())
 	}

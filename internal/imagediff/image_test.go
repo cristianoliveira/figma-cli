@@ -128,6 +128,28 @@ func TestMeasureImageRegionReportsLocalMetrics(t *testing.T) {
 	assert.InDelta(t, 0.25, metrics.PerceptualChangedRatio, 0.000001)
 }
 
+func TestMeasureImageRegionsMatchesIndividualMeasurements(t *testing.T) {
+	dir := t.TempDir()
+	reference := image.NewNRGBA(image.Rect(0, 0, 4, 1))
+	actual := image.NewNRGBA(image.Rect(0, 0, 4, 1))
+	actual.SetNRGBA(0, 0, color.NRGBA{R: 255, A: 255})
+	actual.SetNRGBA(3, 0, color.NRGBA{B: 255, A: 255})
+	referencePath, actualPath := filepath.Join(dir, "reference.png"), filepath.Join(dir, "actual.png")
+	writeTestPNG(t, referencePath, reference)
+	writeTestPNG(t, actualPath, actual)
+	bounds := []Bounds{{Width: 2, Height: 1}, {X: 2, Width: 2, Height: 1}}
+
+	metrics, err := MeasureImageRegionsWithThresholds(referencePath, actualPath, bounds, 0, DefaultPerceptualThreshold, nil)
+
+	require.NoError(t, err)
+	require.Len(t, metrics, 2)
+	for index, region := range bounds {
+		expected, measureErr := MeasureImageRegionWithThresholds(referencePath, actualPath, region, 0, DefaultPerceptualThreshold, nil)
+		require.NoError(t, measureErr)
+		assert.Equal(t, expected, metrics[index])
+	}
+}
+
 func TestMeasureImageRegionReportsDominantColorPairs(t *testing.T) {
 	dir := t.TempDir()
 	referenceImage := image.NewRGBA(image.Rect(0, 0, 3, 1))

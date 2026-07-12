@@ -236,12 +236,20 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if len(result.Regions) > 20 {
 				result.Regions = result.Regions[:20]
 			}
+			regionMetrics := make([]diff.RegionMetrics, len(result.Regions))
+			if len(result.Regions) > 0 {
+				regionBounds := make([]diff.Bounds, len(result.Regions))
+				for index := range result.Regions {
+					regionBounds[index] = result.Regions[index].Bounds
+				}
+				regionMetrics, err = diff.MeasureImageRegionsWithThresholds(inputs.referencePath, inputs.actualPath, regionBounds, threshold, perceptualThreshold, ignored)
+				if err != nil {
+					return err
+				}
+			}
 			for index := range result.Regions {
 				result.Regions[index].InputBounds = inputBounds(result.Regions[index].Bounds, inputs.metadata)
-				metrics, metricsErr := diff.MeasureImageRegionWithThresholds(inputs.referencePath, inputs.actualPath, result.Regions[index].Bounds, threshold, perceptualThreshold, ignored)
-				if metricsErr != nil {
-					return metricsErr
-				}
+				metrics := regionMetrics[index]
 				result.Regions[index].ChangedPixels = metrics.ChangedPixels
 				result.Regions[index].ChangedRatio = metrics.ChangedRatio
 				result.Regions[index].RMSE = metrics.RMSE
