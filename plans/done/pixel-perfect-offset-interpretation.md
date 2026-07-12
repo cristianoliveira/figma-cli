@@ -1,5 +1,7 @@
 # Suggested-offset evidence and interpretation
 
+**Status:** Completed 12-07-2026. Output now includes baseline RMSE, improvement ratio, and deterministic `candidate-translation` / `inconclusive` interpretation with overlap guardrails and upstream negative-control fixtures.
+
 Source feedback: [`../pains/figma-pixel-perfect-cli-feedback.md`](../pains/figma-pixel-perfect-cli-feedback.md)
 
 This task defines desired behavior and verification, not a mandatory implementation. Inspect current code, write failing tests first, and preserve package boundaries described in repository guidance. Deterministic evidence must remain separate from advisory interpretation.

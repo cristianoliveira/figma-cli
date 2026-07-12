@@ -2,30 +2,15 @@
 
 Source: [`../pains/figma-pixel-perfect-cli-feedback.md`](../pains/figma-pixel-perfect-cli-feedback.md)
 
-Each problem is independently assignable. Implementers own detailed design after inspecting current contracts and creating failing tests.
+Completed coordinate and workflow foundations live in [`../done/`](../done/), including relative bounds, explicit crops, export metadata, HTML reports, offset interpretation, comparison profiles, and generic coordinate annotations.
 
-## Recommended order
+## Recommended remaining order
 
-### Phase 1: coordinate truth
-
-1. [Figma relative bounds](figma-relative-bounds.md)
-2. [Pixel-perfect explicit crops](pixel-perfect-explicit-crops.md)
-3. [Figma export metadata](figma-export-metadata.md)
-4. [Figma/pixel-perfect handoff manifest](figma-pixel-perfect-handoff-manifest.md)
-
-### Phase 2: review workflow
-
-5. [Pixel-perfect HTML report](pixel-perfect-html-report.md)
-6. [Suggested-offset interpretation](pixel-perfect-offset-interpretation.md)
-7. [Agent preset](pixel-perfect-agent-preset.md)
-
-### Phase 3: shape and structural context
-
-8. [Figma vector path inspection](figma-vector-path-inspection.md)
-9. [Figma component-role hints](figma-component-role-hints.md)
-10. [Pixel-perfect shape-mismatch evidence](pixel-perfect-shape-mismatch.md)
-11. [Pixel-perfect actionable issue ranking](pixel-perfect-actionable-issue-ranking.md)
-12. [Transparent-crop suggestions](pixel-perfect-transparent-crop-suggestions.md)
+1. [Figma vector path inspection](figma-vector-path-inspection.md)
+2. [Figma component-role hints](figma-component-role-hints.md)
+3. [Pixel-perfect shape-mismatch evidence](pixel-perfect-shape-mismatch.md)
+4. [Pixel-perfect actionable issue ranking](pixel-perfect-actionable-issue-ranking.md)
+5. [Transparent-crop suggestions](pixel-perfect-transparent-crop-suggestions.md)
 
 ## Task-plan pattern
 
