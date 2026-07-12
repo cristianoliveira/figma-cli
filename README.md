@@ -1,202 +1,266 @@
 # Figma CLI
 
-A command-line interface tool for exploring and interacting with Figma designs, designed to be LLM-friendly for AI agents.
+**Turn Figma designs into implementation-ready data—and prove the result matches.**
 
-[![Go Version](https://img.shields.io/badge/go-1.25.5-blue)](https://golang.org/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+Figma CLI gives developers and coding agents a direct, scriptable path from a Figma URL to structured design context, generated assets, CSS, tokens, and deterministic visual validation.
 
-## Overview
+No clicking through panels. No manually copying node IDs. No asking an agent to guess from a screenshot.
 
-`figma-cli` enables developers and AI agents to fetch, analyze, and understand Figma design data directly from the command line. It parses Figma URLs, retrieves design metadata, and provides structured JSON output for easy integration with automation workflows.
+```bash
+figma inspect --handoff "https://www.figma.com/design/KEY/App?node-id=42-1"
+figma assets --output ./assets "https://www.figma.com/design/KEY/App?node-id=42-1"
+figma tokens --format css "https://www.figma.com/design/KEY/App"
+pixel-perfect reference.png implementation.png --report visual-diff.html
+```
 
-The tool is built with a focus on being **LLM-friendly**, **URL-based**, and **context-aware**, making it ideal for AI-assisted design review, code generation, and asset export workflows.
+## Why this project exists
 
-## Features
+A Figma design contains more than pixels: layout constraints, component relationships, text hierarchy, design tokens, assets, comments, and version history. Screenshots hide that information, while the Figma UI makes it difficult to automate.
 
-- **URL Parsing**: Accept Figma URLs directly—no manual ID extraction required
-- **Structured JSON Output**: All commands produce JSON for easy parsing by AI agents
-- **Node Hierarchy**: Always provides full context of node relationships and parent/child structure
-- **Batch Operations**: Minimize API calls through efficient batch fetching and caching
-- **Design Inspection**: Explore layers, components, styles, and text content
-- **Asset Export**: Export images, SVGs, and other design assets
-- **Plugin Simulation**: Simulate Figma plugin behavior for local testing
-- **Standalone Visual Diff**: [`pixel-perfect`](cmd/pixel-perfect/README.md) compares PNG screenshots without requiring Figma
+Figma CLI exposes the design as stable command-line contracts built for humans, scripts, CI pipelines, and AI agents.
+
+It ships two complementary tools:
+
+- **`figma`** explains what the design intends.
+- **`pixel-perfect`** measures what the implementation rendered.
+
+Together they close the loop from design exploration to visual verification.
+
+## What you can do
+
+### Understand a design before writing code
+
+```bash
+# Get file-level context
+figma meta <figma-url>
+
+# Find every matching layer, with node IDs
+figma find --name "Button" <figma-url>
+
+# Inspect one node as an implementation handoff
+figma inspect --handoff <figma-node-url>
+
+# Read layout, copy, components, and colors
+figma layout <figma-node-url>
+figma texts <figma-node-url>
+figma components <figma-node-url>
+figma colors <figma-node-url>
+```
+
+Layer names do not need to be unique. Results retain node IDs and hierarchy so consumers can act on the right element instead of guessing.
+
+### Generate implementation inputs
+
+```bash
+# Scriptable equivalent of Dev Mode CSS
+figma css --recursive <figma-node-url> > design.css
+
+# Produce CSS variables, Tailwind configuration, or JSON tokens
+figma tokens --format css <figma-url> > tokens.css
+figma tokens --format tailwind <figma-url> > tailwind.tokens.js
+figma tokens --format json <figma-url> > tokens.json
+
+# Download assets from an entire node tree
+figma assets --output ./public/assets <figma-node-url>
+
+# Export one exact node
+figma export --format png --output reference.png <figma-node-url>
+```
+
+### Understand design changes
+
+```bash
+figma versions <figma-url>
+figma diff text --from <version-1> --to <version-2> <figma-url>
+figma diff blame --to <version> <figma-node-url>
+figma changes --from <version-1> --to <version-2> <figma-url>
+```
+
+Use design history as structured evidence: identify changed copy, find when text was introduced, or detect frontend-relevant structural changes before implementation drifts.
+
+### Verify the rendered result
+
+`pixel-perfect` is a standalone PNG comparison CLI. It does not require a Figma token and does not silently resize or align images.
+
+```bash
+pixel-perfect reference.png implementation.png \
+  --threshold 8 \
+  --overlay diff-overlay.png \
+  --report visual-diff.html \
+  --max-changed-ratio 0.02
+```
+
+It reports deterministic evidence including:
+
+- changed-pixel ratio and normalized RMSE
+- perceptual, luminance, alpha, and edge differences
+- mismatch bounds and connected regions
+- dominant color pairs
+- likely geometry, fill, or sparse-raster mismatches
+- optional masks, directional overlays, and HTML reports
+- non-zero exit status when CI thresholds fail
+
+For targeted diagnosis:
+
+```bash
+pixel-perfect probe reference.png implementation.png --at 316,300
+pixel-perfect scan reference.png implementation.png --y 300
+```
+
+## The design-to-code loop
+
+The two CLIs integrate without coupling generic image comparison to Figma:
+
+```bash
+# 1. Export the reference and its logical crop metadata
+figma export \
+  --format png \
+  --output reference.png \
+  --metadata reference.json \
+  <figma-node-url>
+
+# 2. Export design-node coordinates for meaningful mismatch labels
+figma inspect \
+  --recursive \
+  --annotations-output annotations.json \
+  <figma-node-url>
+
+# 3. Compare against your implementation screenshot
+pixel-perfect reference.png implementation.png \
+  --reference-metadata reference.json \
+  --annotations annotations.json \
+  --overlay diff.png \
+  --report visual-diff.html
+```
+
+Now a mismatch is not merely “some pixels changed.” It can be localized to a design region, measured objectively, and traced back to semantic Figma context.
+
+## Built for agents and automation
+
+- Accepts full Figma URLs or bare file keys.
+- Infers node scope from `node-id` in URLs.
+- Normalizes user-facing and API-facing node ID formats.
+- Emits structured, stable JSON for query commands.
+- Supports global `--json` envelopes for text and file-producing commands.
+- Uses deterministic formatting for generated CSS and tokens.
+- Fails explicitly on invalid input and unsupported ambiguity.
+- Keeps network access separate from pure extraction and image analysis.
+
+This makes the CLI useful as both a developer tool and a reliable capability layer for coding agents.
+
+## Command overview
+
+### `figma`
+
+| Goal | Commands |
+| --- | --- |
+| Validate access and navigate workspaces | `me`, `projects`, `files` |
+| Explore files and nodes | `meta`, `find`, `inspect`, `layout` |
+| Extract implementation context | `texts`, `colors`, `components`, `css`, `tokens` |
+| Produce files | `assets`, `export` |
+| Review collaboration and history | `comments`, `versions`, `diff`, `changes` |
+| Compare responsive frames | `layout compare` |
+
+Run `figma <command> --help` for command-specific examples and flags.
+
+### `pixel-perfect`
+
+| Command | Purpose |
+| --- | --- |
+| `pixel-perfect <reference> <actual>` | Compare PNGs and produce metrics and artifacts |
+| `pixel-perfect probe` | Inspect exact colors at points or sampled lines |
+| `pixel-perfect scan` | Inspect compact color runs along a row or column |
+
+See [`cmd/pixel-perfect/README.md`](cmd/pixel-perfect/README.md) for metrics, profiles, masks, crops, visual context, and CI gates.
 
 ## Installation
 
-### Prerequisites
+### Go
 
-- [Go 1.25.5+](https://golang.org/dl/)
-- [Figma Personal Access Token](https://www.figma.com/developers/api#access-tokens)
+Requires Go 1.25.5 or newer.
 
-### Build from Source
+```bash
+go install github.com/cristianoliveira/figma-cli/cmd/figma@latest
+go install github.com/cristianoliveira/figma-cli/cmd/pixel-perfect@latest
+```
+
+### Build from source
 
 ```bash
 git clone https://github.com/cristianoliveira/figma-cli.git
 cd figma-cli
 go build -o figma ./cmd/figma
+go build -o pixel-perfect ./cmd/pixel-perfect
 ```
 
-### Install Globally
-
-```bash
-go install github.com/cristianoliveira/figma-cli/cmd/figma@latest
-
-# Generic screenshot comparison CLI
-go install github.com/cristianoliveira/figma-cli/cmd/pixel-perfect@latest
-```
-
-### Using Nix (Development)
-
-If you have Nix and direnv installed, enable the reproducible development shell once:
-
-```bash
-direnv allow
-```
-
-Otherwise enter it manually:
+### Nix
 
 ```bash
 nix develop
 ```
 
-The shell provides the project Go toolchain, `golangci-lint`, and `goimports`.
+The development shell provides the expected Go toolchain, `golangci-lint`, and `goimports`.
 
 ## Configuration
 
-Set your Figma access token as an environment variable:
+`figma` requires a [Figma personal access token](https://www.figma.com/developers/api#access-tokens):
 
 ```bash
 export FIGMA_ACCESS_TOKEN="your-personal-access-token"
+figma me
 ```
 
-Or create a `.env` file in the project root:
+You can also place it in a local `.env` file:
 
-```bash
+```dotenv
 FIGMA_ACCESS_TOKEN=your-personal-access-token
 ```
 
-## Usage
+`pixel-perfect` does not require Figma credentials. Its optional visual-context feature requires a configured OpenRouter or OpenAI provider.
 
-### Basic Command Structure
+## Architecture
 
-```bash
-figma [command] [options] <figma-url>
+```text
+cmd/                         Cobra command contracts and entry points
+internal/cli/                Runtime dependency wiring
+internal/env/                Environment configuration
+internal/output/             Stable stdout and JSON envelopes
+internal/figma/              Figma URLs, node IDs, HTTP, and API boundary
+internal/figma/api/          Generated OpenAPI models
+internal/extract/            Pure document-tree transformations
+internal/assets/             Asset discovery and download workflows
+internal/comments/           Comment retrieval and node scoping
+internal/diff/               Design-history diff workflows
+internal/imagediff/          Generic deterministic PNG comparison
+internal/pixelperfectcmd/    Standalone image CLI orchestration
+internal/imagecontext/       Optional multimodal descriptions
 ```
 
-### Examples
-
-```bash
-# Fetch file metadata
-figma meta "https://www.figma.com/design/<file-key>/<file-name>?node-id=1-2"
-
-# List components within a specific node tree
-figma components --id 123:456 "https://www.figma.com/file/abc123/My-Design"
-
-# Extract ordered text layers from a design
-figma texts "https://www.figma.com/design/xyz456/Another-Design?node-id=123-456"
-
-# Export one frame as PNG
-figma export --format png "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
-
-# Inspect exact vector contours without exporting/parsing SVG
-figma inspect --include-vector-paths "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
-
-# Export generic coordinate annotations for pixel-perfect region context
-figma inspect --recursive --annotations-output frame.annotations.json \
-  "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
-pixel-perfect reference.png implementation.png --annotations frame.annotations.json
-
-# Download image, instance, and vector assets from a frame
-figma assets --output ./assets "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
-figma assets --json --output ./assets "https://www.figma.com/design/abc123/My-Design?node-id=123-456"
-
-# Generate design tokens (CSS variables, Tailwind theme, or JSON)
-figma tokens --format css "https://www.figma.com/design/abc123/My-Design"
-figma tokens --format tailwind --output tailwind.tokens.js "https://www.figma.com/design/abc123/My-Design"
-figma tokens --source styles --prefix fig- "abc123"
-
-# Generate CSS (layout + fills + type) for a frame — scriptable Dev Mode
-echo '/* customization-page.css */' > styles.css
-figma css "https://www.figma.com/design/abc123/My-Design?node-id=42:1" >> styles.css
-```
-
-### JSON Output
-
-All commands produce JSON output for easy parsing:
-
-```json
-{
-  "file": {
-    "key": "<file-key>",
-    "name": "Example Design",
-    "lastModified": "2025-01-23T08:33:00Z"
-  },
-  "node": {
-    "id": "1:2",
-    "name": "Example Frame",
-    "type": "FRAME",
-    "children": [...]
-  }
-}
-```
-
-## Project Structure
-
-```
-figma-cli/
-├── cmd/                    # Cobra command implementations (root, texts, export, ...)
-│   └── figma/              # Main CLI entry point (main.go)
-├── internal/               # Private application code
-│   ├── assets/             # Asset discovery, export, and downloads
-│   ├── cli/                # CLI runtime wiring
-│   ├── comments/           # Comment retrieval and node scoping
-│   ├── diff/               # Pure design-diff use cases
-│   ├── env/                # Environment configuration (token loading)
-│   ├── extract/            # Pure document-tree transformations
-│   └── figma/              # Figma API boundary (client, document, URLs, export)
-│       └── api/            # Generated Figma REST API types (from openapi/, DO NOT EDIT)
-├── openapi/                # OpenAPI spec and oapi-codegen config (source of truth for api.gen.go)
-├── scripts/                # Codegen helpers (regenerate API types)
-├── testdata/               # Test fixtures
-├── plans/                  # Work planning notes
-├── research/               # Research notes
-├── docs/                   # Documentation
-├── flake.nix               # Nix flake (dev shell)
-├── go.mod                  # Go module definition
-└── README.md               # This file
-```
+The architectural rule is simple: command code stays thin, Figma networking stays at the Figma boundary, extraction remains testable, and generic image comparison never depends on Figma.
 
 ## Development
 
-Run quality checks from the flake shell:
+Enter the reproducible toolchain with `direnv allow` or `nix develop`, then run:
 
 ```bash
+goimports -w <changed-go-files>
 golangci-lint run ./...
 go test ./...
-go vet ./...
 ```
 
-### Multi-Agent Workflow
+Generated API models in `internal/figma/api/api.gen.go` come from `openapi/` and must be regenerated rather than edited manually.
 
-Refer to [AGENTS.md](AGENTS.md) for guidelines on ordering agents and completing work sessions.
+## Who this is for
 
-## Contributing
+- Developers implementing Figma designs
+- Coding agents that need structured design context
+- Teams automating design handoff
+- CI pipelines enforcing visual regression thresholds
+- Design-system maintainers extracting tokens and assets
+- Reviewers investigating when and how a design changed
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-Please ensure your code follows Go conventions and includes appropriate tests.
+If your current workflow is “open Figma, inspect manually, copy values, take screenshots, and eyeball the result,” this project turns that process into a repeatable interface.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [Figma API](https://www.figma.com/developers/api) for the underlying design platform
-- The Go community for excellent CLI tooling libraries
-- AI agents for helping build this tool
+[MIT](LICENSE)

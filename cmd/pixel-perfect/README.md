@@ -1,8 +1,30 @@
 # pixel-perfect
 
-Deterministic PNG comparison for visual-regression loops, CI, and screenshot diagnosis.
+**Stop eyeballing screenshots. Measure exactly what changed, where it changed, and whether it should fail CI.**
 
-`pixel-perfect` measures raster differences and points to likely causes without silently resizing or aligning either image. It is generic and does not require Figma credentials.
+`pixel-perfect` is a deterministic PNG comparison CLI for visual-regression loops, implementation debugging, and automated quality gates. It turns two screenshots into objective metrics, localized mismatch regions, diagnostic artifacts, and a machine-readable result.
+
+It never silently resizes or aligns inputs to make a comparison look better. The evidence stays honest: unequal dimensions fail, suggested offsets are reported rather than applied, and heuristic classifications never replace raw metrics.
+
+`pixel-perfect` works with any equal-sized PNGs and requires no Figma credentials. When used with the companion [`figma`](../../README.md) CLI, it closes the loop between semantic design intent and rendered implementation.
+
+## Why use it
+
+A single “12% different” score is not enough to fix a UI. You need to know whether the problem is geometry, color, transparency, text rasterization, alignment, or one isolated region.
+
+`pixel-perfect` provides:
+
+- exact and perceptual changed-pixel measurements
+- RGB, luminance, alpha, edge, and perceptual RMSE
+- connected mismatch regions with dominant color pairs
+- deterministic geometry, solid-fill, sparse-raster, and mixed hints
+- transparent masks, directional overlays, and self-contained HTML reports
+- point probes and row/column scans for boundary-level diagnosis
+- reusable comparison profiles, masks, crops, and ignored regions
+- explicit CI gates with non-zero exit status
+- optional advisory visual descriptions without affecting deterministic results
+
+Use it as a tight feedback loop while implementing a screen, or as a stable regression gate after the screen ships.
 
 ## Install
 
@@ -20,12 +42,48 @@ go install github.com/cristianoliveira/figma-cli/cmd/pixel-perfect@latest
 ## Quick start
 
 ```bash
-pixel-perfect reference.png implementation.png --threshold 8
+pixel-perfect reference.png implementation.png \
+  --threshold 8 \
+  --overlay diff-overlay.png \
+  --report visual-diff.html
 ```
 
-The command prints JSON metrics to stdout and writes a transparent diff mask by default beside the actual image as `<actual>.diff.png`. Use `--output diff-mask.png` to choose a different mask path, and `--overlay diff-overlay.png` for a directional overlay.
+The command prints structured JSON metrics, writes a transparent difference mask beside the actual image, creates a red/green directional overlay, and produces a report you can inspect or share.
 
-Both inputs must be equal-sized PNGs. Unequal dimensions fail instead of producing invalid metrics.
+Add objective release criteria when the comparison belongs in CI:
+
+```bash
+pixel-perfect reference.png implementation.png \
+  --max-changed-ratio 0.02 \
+  --max-perceptual-changed-ratio 0.01 \
+  --max-rmse 0.03
+```
+
+Both inputs must be equal-sized PNGs. Unequal dimensions fail instead of producing misleading metrics.
+
+## Use with Figma CLI
+
+The companion `figma` CLI can export both the reference image and coordinate context needed to turn raster mismatches into actionable design regions:
+
+```bash
+figma export \
+  --output reference.png \
+  --metadata reference.json \
+  <figma-node-url>
+
+figma inspect \
+  --recursive \
+  --annotations-output annotations.json \
+  <figma-node-url>
+
+pixel-perfect reference.png implementation.png \
+  --reference-metadata reference.json \
+  --annotations annotations.json \
+  --overlay diff-overlay.png \
+  --report visual-diff.html
+```
+
+`--reference-metadata` preserves logical crop coordinates. `--annotations` enriches mismatch regions with intersecting design-node labels while leaving measurements and exit status untouched.
 
 ## Comparison profiles
 
@@ -53,6 +111,18 @@ pixel-perfect reference.png implementation.png \
 ```
 
 Precedence is `built-in defaults < profile < explicit flags`. Output JSON includes resolved profile values and their source. Unknown fields, unsupported versions, and invalid values fail explicitly. Profiles configure comparison behavior only; input, crop, mask, report, overlay, and output paths remain explicit CLI arguments.
+
+## Experimental alpha topology evidence
+
+For transparent artwork such as exported icons or vectors, measure exact alpha-foreground connected components:
+
+```bash
+pixel-perfect reference.png implementation.png \
+  --topology-evidence \
+  --topology-alpha-threshold 10
+```
+
+Evidence reports component count, bounds, pixel occupancy, and image-boundary contact for reference and actual images. Foreground uses four-connectivity and alpha strictly greater than configured threshold. Opaque screenshots report `available: false` because no objective background can be inferred. This is raw diagnostic evidence only: it does not label shapes, suggest CSS, or affect validation and exit status. Isolated visible pixels remain components rather than being silently discarded.
 
 ## Coordinate annotations
 
