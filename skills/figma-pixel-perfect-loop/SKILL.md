@@ -41,7 +41,9 @@ Recreate Figma web UI as real, accessible DOM and improve measured similarity on
 
 4. **Measure one region**
    - Run `pixel-perfect` baseline, then narrow to one direct child region.
+   - For component work—especially when shared Figma URL targets specific component or frame rather than whole page—render real production component in isolated page, route, story, or preview. Compare there first, then verify it once in full page for integration regressions.
    - Prefer `--reference-metadata`; calculate crops from Figma bounds.
+   - Use `pixel-perfect --reference-crop` / `--actual-crop` for all comparison crops. Do not use ImageMagick crop chains: `+repage`/virtual-canvas offsets can silently change later crop geometry. Native CLI crops decode raster pixels directly and preserve `inputs.*.crop` provenance.
    - If a `pixel-perfect` skill is available, load it for comparison flags and metric diagnosis. Otherwise, inspect `pixel-perfect --help` and use deterministic metrics, masks, and overlays directly.
    - For exact color or boundary questions, use the pixel-perfect skill/CLI (`probe` for one point, `scan` for a row/column) instead of external image tools.
    - Keep screenshot, mask, overlay, report, and JSON evidence under `output/visual-diff/`.
@@ -62,7 +64,7 @@ Recreate Figma web UI as real, accessible DOM and improve measured similarity on
 
 After baseline, repeat until acceptance gate passes or budget is exhausted:
 
-1. Select highest-impact actionable region: geometry first, then color/effects, then raster details.
+1. Select highest-impact actionable region: geometry first, then color/effects, then raster details. Prefer isolated development page for component work.
 2. Record current regional metrics and DOM/Figma bounds.
 3. Form one evidence-backed hypothesis and make smallest related change.
 4. Verify behavior and key DOM facts; capture under same conditions.
@@ -113,7 +115,7 @@ Never define success as zero changed pixels unless user explicitly requires exac
 - Build selectable, semantic, accessible, interactive DOM components.
 - Images are allowed only for genuine artwork such as photos, illustrations, logos, and icons—never flattened panels, forms, text, controls, navigation, sections, or screens.
 - Never resize comparison images or silently apply suggested alignment.
-- Never eyeball crop coordinates.
+- Never eyeball crop coordinates or use ImageMagick as the primary crop pipeline. Use Figma metadata or explicit `pixel-perfect` crop flags; use ImageMagick only as an independent diagnostic cross-check.
 - Whole-frame RMSE is baseline, not proof of regional progress.
 - Raster classification and visual context are advisory; verify exact CSS with Figma and DOM data.
 - Preserve responsive behavior after calibrating reference viewport.
