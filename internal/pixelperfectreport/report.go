@@ -10,11 +10,14 @@ import (
 )
 
 type Input struct {
-	ReferencePath string
-	ActualPath    string
-	MaskPath      string
-	OverlayPath   string
-	Result        imagediff.ImageComparison
+	ReferencePath       string
+	ActualPath          string
+	MaskPath            string
+	OverlayPath         string
+	Threshold           uint8
+	PerceptualThreshold float64
+	ComparedRegion      *imagediff.Bounds
+	Result              imagediff.ImageComparison
 }
 
 type view struct {
@@ -75,7 +78,8 @@ var reportTemplate = template.Must(template.New("report").Parse(`<!doctype html>
 <body>
 <h1>Pixel Perfect Report</h1>
 <section><h2>Run configuration and provenance</h2>
-<ul><li>Reference: {{.ReferencePath}}</li><li>Actual: {{.ActualPath}}</li><li>Mask: {{.MaskPath}}</li>{{if .OverlayPath}}<li>Overlay: {{.OverlayPath}}</li>{{end}}</ul>
+<ul><li>Reference: {{.ReferencePath}}</li><li>Actual: {{.ActualPath}}</li><li>Mask: {{.MaskPath}}</li>{{if .OverlayPath}}<li>Overlay: {{.OverlayPath}}</li>{{end}}<li>Threshold: {{.Threshold}}</li><li>Perceptual threshold: {{.PerceptualThreshold}}</li>{{if .ComparedRegion}}<li>Compared region: {{.ComparedRegion.X}},{{.ComparedRegion.Y}},{{.ComparedRegion.Width}},{{.ComparedRegion.Height}}</li>{{end}}</ul>
+{{if .Result.Inputs}}<h3>Input transforms</h3><ul>{{if .Result.Inputs.Reference.Crop}}<li>Reference crop: {{.Result.Inputs.Reference.Crop.X}},{{.Result.Inputs.Reference.Crop.Y}},{{.Result.Inputs.Reference.Crop.Width}},{{.Result.Inputs.Reference.Crop.Height}}</li>{{end}}{{if .Result.Inputs.Actual.Crop}}<li>Actual crop: {{.Result.Inputs.Actual.Crop.X}},{{.Result.Inputs.Actual.Crop.Y}},{{.Result.Inputs.Actual.Crop.Width}},{{.Result.Inputs.Actual.Crop.Height}}</li>{{end}}</ul>{{end}}
 </section>
 <section><h2>Global metrics</h2>
 <ul><li>Changed pixels: {{.Result.ChangedPixels}}</li><li>Changed ratio: {{.Result.ChangedRatio}}</li><li>RMSE: {{.Result.RMSE}}</li><li>Perceptual changed ratio: {{.Result.PerceptualChangedRatio}}</li></ul>
@@ -87,7 +91,7 @@ var reportTemplate = template.Must(template.New("report").Parse(`<!doctype html>
 {{if .OverlayDataURL}}<h3>Overlay</h3><img alt="Overlay" src="{{.OverlayDataURL}}">{{end}}
 </section>
 <section><h2>Ranked deterministic regions</h2>
-{{if .Result.Regions}}<ol>{{range .Result.Regions}}<li>Bounds: {{.Bounds.X}},{{.Bounds.Y}},{{.Bounds.Width}},{{.Bounds.Height}} Changed: {{.ChangedPixels}} Classification: {{.Classification}}</li>{{end}}</ol>{{else}}<p>No changed regions.</p>{{end}}
+{{if .Result.Regions}}<table><thead><tr><th>#</th><th>Cropped bounds</th><th>Reference input bounds</th><th>Actual input bounds</th><th>Changed pixels</th><th>Changed ratio</th><th>RMSE</th><th>Classification</th></tr></thead><tbody>{{range $index, $region := .Result.Regions}}<tr><td>{{$index}}</td><td>{{$region.Bounds.X}},{{$region.Bounds.Y}},{{$region.Bounds.Width}},{{$region.Bounds.Height}}</td><td>{{if $region.InputBounds}}{{$region.InputBounds.Reference.X}},{{$region.InputBounds.Reference.Y}},{{$region.InputBounds.Reference.Width}},{{$region.InputBounds.Reference.Height}}{{end}}</td><td>{{if $region.InputBounds}}{{$region.InputBounds.Actual.X}},{{$region.InputBounds.Actual.Y}},{{$region.InputBounds.Actual.Width}},{{$region.InputBounds.Actual.Height}}{{end}}</td><td>{{$region.ChangedPixels}}</td><td>{{$region.ChangedRatio}}</td><td>{{$region.RMSE}}</td><td>{{$region.Classification}}</td></tr>{{end}}</tbody></table>{{else}}<p>No changed regions.</p>{{end}}
 </section>
 {{if .Result.SuggestedOffset}}<section><h2>Suggested offset</h2><p>x={{.Result.SuggestedOffset.X}} y={{.Result.SuggestedOffset.Y}} rmse={{.Result.SuggestedOffset.RMSE}}</p></section>{{end}}
 </body></html>

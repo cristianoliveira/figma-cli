@@ -184,6 +184,33 @@ func TestDiffImageCommandWritesHTMLReport(t *testing.T) {
 	assert.Contains(t, html, "Reference")
 	assert.Contains(t, html, "Actual")
 	assert.Contains(t, html, "Mask")
+	assert.Contains(t, html, "Threshold: 0")
+	assert.Contains(t, html, "Perceptual threshold: 0.1")
+}
+
+func TestDiffImageCommandHTMLReportIncludesCropAndRegionProvenance(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	mask := filepath.Join(dir, "mask.png")
+	report := filepath.Join(dir, "report.html")
+	referenceImage := image.NewRGBA(image.Rect(0, 0, 4, 2))
+	actualImage := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	actualImage.Set(1, 1, image.White)
+	writeTestPNG(t, reference, referenceImage)
+	writeTestPNG(t, actual, actualImage)
+
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--reference-crop", "1,0,2,2", "--actual-crop", "0,0,2,2", "--region", "0,0,2,2", "--output", mask, "--report", report)
+
+	require.NoError(t, result.Err)
+	content, err := os.ReadFile(report)
+	require.NoError(t, err)
+	html := string(content)
+	assert.Contains(t, html, "Reference crop: 1,0,2,2")
+	assert.Contains(t, html, "Actual crop: 0,0,2,2")
+	assert.Contains(t, html, "Compared region: 0,0,2,2")
+	assert.Contains(t, html, "1,1,1,1")
+	assert.Contains(t, html, "2,1,1,1")
 }
 
 func TestDiffImageCommandRejectsReportPathCollisions(t *testing.T) {

@@ -189,7 +189,16 @@ func newCommand(compare imageComparer) *cobra.Command {
 				return fmt.Errorf("image diff validation failed: perceptual changed ratio %.6f exceeds maximum %.6f", result.PerceptualChangedRatio, maxPerceptualChangedRatio)
 			}
 			if report != "" {
-				if err := pixelperfectreport.Write(report, pixelperfectreport.Input{ReferencePath: inputs.referencePath, ActualPath: inputs.actualPath, MaskPath: output, OverlayPath: overlay, Result: result}); err != nil {
+				if err := pixelperfectreport.Write(report, pixelperfectreport.Input{
+					ReferencePath:       inputs.referencePath,
+					ActualPath:          inputs.actualPath,
+					MaskPath:            output,
+					OverlayPath:         overlay,
+					Threshold:           threshold,
+					PerceptualThreshold: perceptualThreshold,
+					ComparedRegion:      region,
+					Result:              result,
+				}); err != nil {
 					return err
 				}
 			}
