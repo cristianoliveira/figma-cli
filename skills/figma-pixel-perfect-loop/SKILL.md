@@ -71,6 +71,21 @@ After baseline, repeat until acceptance gate passes or budget is exhausted:
 
 Default budget is 10 iterations per region. User-provided budget or gates take precedence. Do not loop indefinitely.
 
+### Accessibility Gate
+
+Before retaining each visual change:
+
+- Prefer native semantic HTML over ARIA and custom controls.
+- Use real `button`, `a`, `input`, `label`, `nav`, heading, list, and table elements where appropriate; never fake controls with images, SVG, canvas, or generic `div` elements.
+- Keep interactive elements keyboard reachable and operable with visible focus.
+- Preserve accessible names, roles, states, form labels, instructions, and errors.
+- Hide decorative images and SVGs from assistive technology; give meaningful images appropriate alternative text.
+- Preserve meaningful heading and landmark structure.
+- Do not communicate meaning by color alone; retain reduced-motion behavior and usable reflow at 200% zoom.
+- Run project accessibility checks and a keyboard smoke test when available.
+
+Any visual improvement that breaks semantics, keyboard behavior, focus, or accessible naming is a regression and must be reverted.
+
 ### Acceptance Gates
 
 Stop successfully when either:
@@ -91,9 +106,10 @@ Never define success as zero changed pixels unless user explicitly requires exac
 
 ## Non-negotiable Guardrails
 
+- Figma exports are evidence and asset sources, never component implementations.
 - Never render reference screenshot, frame export, crop, base64 capture, canvas copy, or screenshot-wrapped SVG as UI.
-- Build selectable, accessible, interactive DOM/native components.
-- Images are allowed only for genuine design artwork, never flattened panels, forms, text, controls, sections, or screens.
+- Build selectable, semantic, accessible, interactive DOM/native components.
+- Images are allowed only for genuine artwork such as photos, illustrations, logos, and icons—never flattened panels, forms, text, controls, navigation, sections, or screens.
 - Never resize comparison images or silently apply suggested alignment.
 - Never eyeball crop coordinates.
 - Whole-frame RMSE is baseline, not proof of regional progress.
@@ -118,6 +134,7 @@ Should not trigger:
 ## Completion
 
 - No reference pixels are rendered by implementation.
+- Semantic HTML, keyboard operation, visible focus, and accessible names pass the accessibility gate.
 - Reference and implementation dimensions and capture conditions match.
 - Important regions have recorded metrics, masks, and overlays.
 - Changed CSS values trace to Figma facts or exported assets.
