@@ -52,6 +52,54 @@ func TestProbeCommandRejectsOutOfBoundsPoint(t *testing.T) {
 	assert.Contains(t, result.Err.Error(), "--at point 2,0 is outside image bounds 2x2")
 }
 
+func TestScanCommandReportsRowColorRuns(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	referenceImage := image.NewRGBA(image.Rect(0, 0, 4, 1))
+	actualImage := image.NewRGBA(image.Rect(0, 0, 4, 1))
+	for x := 0; x < 2; x++ {
+		referenceImage.SetRGBA(x, 0, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+		actualImage.SetRGBA(x, 0, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+	}
+	for x := 2; x < 4; x++ {
+		referenceImage.SetRGBA(x, 0, color.RGBA{R: 222, G: 223, B: 224, A: 255})
+		actualImage.SetRGBA(x, 0, color.RGBA{R: 233, G: 235, B: 236, A: 255})
+	}
+	writeTestPNG(t, reference, referenceImage)
+	writeTestPNG(t, actual, actualImage)
+
+	result := executeCommand(NewCommand(), "scan", reference, actual, "--y", "0")
+
+	require.NoError(t, result.Err)
+	assert.JSONEq(t, `{
+		"axis":"x",
+		"index":0,
+		"length":4,
+		"reference":[
+			{"start":0,"end":1,"length":2,"rgba":[255,255,255,255],"hex":"#FFFFFF"},
+			{"start":2,"end":3,"length":2,"rgba":[222,223,224,255],"hex":"#DEDFE0"}
+		],
+		"actual":[
+			{"start":0,"end":1,"length":2,"rgba":[255,255,255,255],"hex":"#FFFFFF"},
+			{"start":2,"end":3,"length":2,"rgba":[233,235,236,255],"hex":"#E9EBEC"}
+		]
+	}`, result.Stdout)
+}
+
+func TestScanCommandRequiresOneAxis(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+
+	result := executeCommand(NewCommand(), "scan", reference, actual, "--x", "0", "--y", "0")
+
+	require.Error(t, result.Err)
+	assert.Contains(t, result.Err.Error(), "provide exactly one of --x or --y")
+}
+
 func TestProbeCommandRejectsDimensionMismatch(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")

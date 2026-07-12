@@ -35,6 +35,15 @@ pixel-perfect probe reference.png implementation.png --at 316,300
 
 `probe` inspects one pixel in both equal-sized PNGs and prints RGBA, hex, and per-channel delta JSON. Use it when debugging exact colors, edge transitions, or when an agent would otherwise reach for ImageMagick pixel sampling. The point must be in bounds.
 
+For repeated boundary checks, scan one row or column into compact color runs:
+
+```bash
+pixel-perfect scan reference.png implementation.png --y 300  # horizontal row
+pixel-perfect scan reference.png implementation.png --x 316  # vertical column
+```
+
+`scan` prints reference and actual runs with `start`, `end`, `length`, `rgba`, and `hex`, making edge transitions visible without N separate probe calls.
+
 ## Optional visual context
 
 ```bash

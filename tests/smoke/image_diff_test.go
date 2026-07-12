@@ -44,6 +44,26 @@ func TestPixelPerfectProbeCLI(t *testing.T) {
 	}`, string(output))
 }
 
+func TestPixelPerfectScanCLI(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	output, err := exec.Command(binary, "scan", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--y", "0").CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	assert.Contains(t, string(output), `"axis": "x"`)
+	assert.Contains(t, string(output), `"hex": "#FFFFFF"`)
+	assert.Contains(t, string(output), `"hex": "#000000"`)
+}
+
+func TestPixelPerfectScanCLIErrorContracts(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	output, err := exec.Command(binary, "scan", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--x", "0", "--y", "0").CombinedOutput()
+
+	require.Error(t, err)
+	assert.Contains(t, string(output), "provide exactly one of --x or --y")
+}
+
 func TestPixelPerfectProbeCLIErrorContracts(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")

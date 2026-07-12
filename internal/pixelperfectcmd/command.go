@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
 	"image/png"
 	"math"
 	"os"
@@ -38,6 +39,22 @@ type exportMetadata struct {
 type exportMetadataSize struct {
 	Width  float64 `json:"width"`
 	Height float64 `json:"height"`
+}
+
+type scanOutput struct {
+	Axis      string    `json:"axis"`
+	Index     int       `json:"index"`
+	Length    int       `json:"length"`
+	Reference []scanRun `json:"reference"`
+	Actual    []scanRun `json:"actual"`
+}
+
+type scanRun struct {
+	Start  int      `json:"start"`
+	End    int      `json:"end"`
+	Length int      `json:"length"`
+	RGBA   [4]uint8 `json:"rgba"`
+	Hex    string   `json:"hex"`
 }
 
 type probeOutput struct {
@@ -281,6 +298,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().String("visual-context-model", "", "override the visual context model")
 	command.Flags().String("visual-context-prompt", "", "extra advisory focus for visual context analysis")
 	command.AddCommand(newProbeCommand())
+	command.AddCommand(newScanCommand())
 	return command
 }
 
@@ -306,6 +324,38 @@ func newProbeCommand() *cobra.Command {
 	return command
 }
 
+func newScanCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "scan <reference.png> <actual.png>",
+		Short: "Inspect compact color runs along one row or column in two PNGs",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			xChanged := cmd.Flags().Changed("x")
+			yChanged := cmd.Flags().Changed("y")
+			if xChanged == yChanged {
+				return fmt.Errorf("provide exactly one of --x or --y")
+			}
+			axis := "y"
+			index, _ := cmd.Flags().GetInt("x")
+			if yChanged {
+				axis = "x"
+				index, _ = cmd.Flags().GetInt("y")
+			}
+			if index < 0 {
+				return fmt.Errorf("--%s must be non-negative", map[string]string{"x": "y", "y": "x"}[axis])
+			}
+			output, err := scanImages(args[0], args[1], axis, index)
+			if err != nil {
+				return err
+			}
+			return writeJSON(cmd, output)
+		},
+	}
+	command.Flags().Int("x", 0, "scan vertical column at x")
+	command.Flags().Int("y", 0, "scan horizontal row at y")
+	return command
+}
+
 func parseProbePoint(value string) (probePoint, error) {
 	parts := strings.Split(value, ",")
 	if len(parts) != 2 {
@@ -323,6 +373,65 @@ func parseProbePoint(value string) (probePoint, error) {
 		return probePoint{}, fmt.Errorf("--at coordinates must be non-negative")
 	}
 	return probePoint{X: x, Y: y}, nil
+}
+
+func scanImages(referencePath, actualPath string, axis string, index int) (scanOutput, error) {
+	referenceWidth, referenceHeight, err := diff.PNGDimensions(referencePath)
+	if err != nil {
+		return scanOutput{}, fmt.Errorf("decode reference: %w", err)
+	}
+	actualWidth, actualHeight, err := diff.PNGDimensions(actualPath)
+	if err != nil {
+		return scanOutput{}, fmt.Errorf("decode actual: %w", err)
+	}
+	if referenceWidth != actualWidth || referenceHeight != actualHeight {
+		return scanOutput{}, fmt.Errorf("image dimensions differ: reference is %dx%d, actual is %dx%d", referenceWidth, referenceHeight, actualWidth, actualHeight)
+	}
+	length := referenceWidth
+	if axis == "y" {
+		length = referenceHeight
+	}
+	if index >= map[string]int{"x": referenceHeight, "y": referenceWidth}[axis] {
+		flag := map[string]string{"x": "--y", "y": "--x"}[axis]
+		limit := map[string]int{"x": referenceHeight, "y": referenceWidth}[axis]
+		return scanOutput{}, fmt.Errorf("%s index %d is outside image bounds %dx%d (valid 0-%d)", flag, index, referenceWidth, referenceHeight, limit-1)
+	}
+	referenceRuns, err := scanPNGRuns(referencePath, axis, index, length)
+	if err != nil {
+		return scanOutput{}, fmt.Errorf("decode reference: %w", err)
+	}
+	actualRuns, err := scanPNGRuns(actualPath, axis, index, length)
+	if err != nil {
+		return scanOutput{}, fmt.Errorf("decode actual: %w", err)
+	}
+	return scanOutput{Axis: axis, Index: index, Length: length, Reference: referenceRuns, Actual: actualRuns}, nil
+}
+
+func scanPNGRuns(path string, axis string, index int, length int) ([]scanRun, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = file.Close() }()
+	image, err := png.Decode(file)
+	if err != nil {
+		return nil, err
+	}
+	runs := make([]scanRun, 0)
+	for position := 0; position < length; position++ {
+		point := probePoint{X: position, Y: index}
+		if axis == "y" {
+			point = probePoint{X: index, Y: position}
+		}
+		color := colorFromImage(image, point)
+		if len(runs) > 0 && runs[len(runs)-1].RGBA == color.RGBA {
+			runs[len(runs)-1].End = position
+			runs[len(runs)-1].Length++
+			continue
+		}
+		runs = append(runs, scanRun{Start: position, End: position, Length: 1, RGBA: color.RGBA, Hex: color.Hex})
+	}
+	return runs, nil
 }
 
 func probeImages(referencePath, actualPath string, point probePoint) (probeOutput, error) {
@@ -371,10 +480,14 @@ func probePNGColor(path string, point probePoint) (probeColor, error) {
 	if err != nil {
 		return probeColor{}, err
 	}
+	return colorFromImage(image, point), nil
+}
+
+func colorFromImage(image image.Image, point probePoint) probeColor {
 	r, g, b, a := image.At(point.X, point.Y).RGBA()
 	color := probeColor{RGBA: [4]uint8{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), uint8(a >> 8)}}
 	color.Hex = fmt.Sprintf("#%02X%02X%02X", color.RGBA[0], color.RGBA[1], color.RGBA[2])
-	return color, nil
+	return color
 }
 
 func defaultMaskPath(actualPath string) string {

@@ -50,7 +50,13 @@ Measure and localize screenshot differences without silently resizing or alignin
    ```bash
    pixel-perfect probe reference.png implementation.png --at <x>,<y>
    ```
-   Use probe for color checks, edge transitions, and validating what a diff region pixel actually contains. It returns RGBA, hex, and per-channel delta JSON.
+   Use probe for color checks and validating what a diff region pixel actually contains. It returns RGBA, hex, and per-channel delta JSON.
+8. Use scan for edge transitions instead of N probe calls:
+   ```bash
+   pixel-perfect scan reference.png implementation.png --y <row>
+   pixel-perfect scan reference.png implementation.png --x <column>
+   ```
+   It returns compact color runs for reference and actual.
 
 ## Diagnosis
 
