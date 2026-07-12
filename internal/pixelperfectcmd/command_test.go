@@ -163,6 +163,35 @@ func TestDiffImageCommandRejectsCroppedDimensionMismatch(t *testing.T) {
 	assert.EqualError(t, result.Err, "cropped image dimensions differ: reference is 2x2, actual is 3x2")
 }
 
+func TestDiffImageCommandWritesHTMLReport(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	mask := filepath.Join(dir, "mask.png")
+	report := filepath.Join(dir, "report.html")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--output", mask, "--report", report)
+
+	require.NoError(t, result.Err)
+	content, err := os.ReadFile(report)
+	require.NoError(t, err)
+	html := string(content)
+	assert.Contains(t, html, "Pixel Perfect Report")
+	assert.Contains(t, html, "Global metrics")
+	assert.Contains(t, html, "data:image/png;base64,")
+	assert.Contains(t, html, "Reference")
+	assert.Contains(t, html, "Actual")
+	assert.Contains(t, html, "Mask")
+}
+
+func TestDiffImageCommandRejectsReportPathCollisions(t *testing.T) {
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), "reference.png", "actual.png", "--output", "mask.png", "--report", "mask.png")
+
+	assert.EqualError(t, result.Err, "--report must not overwrite an input, mask, or overlay")
+}
+
 func TestDiffImageCommandAddsDisclaimerWhenVisualContextIsNotConfigured(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("PI_SPECTACLES_CONFIG", filepath.Join(dir, "missing.json"))

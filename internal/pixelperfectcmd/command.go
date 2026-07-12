@@ -14,6 +14,7 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/imagecontext"
 	diff "github.com/cristianoliveira/figma-cli/internal/imagediff"
+	"github.com/cristianoliveira/figma-cli/internal/pixelperfectreport"
 	"github.com/spf13/cobra"
 )
 
@@ -50,6 +51,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 				return fmt.Errorf("--output is required")
 			}
 			overlay, _ := cmd.Flags().GetString("overlay")
+			report, _ := cmd.Flags().GetString("report")
 			if samePath(output, args[0]) || samePath(output, args[1]) {
 				return fmt.Errorf("--output must not overwrite an input image")
 			}
@@ -58,6 +60,9 @@ func newCommand(compare imageComparer) *cobra.Command {
 			}
 			if overlay != "" && samePath(overlay, output) {
 				return fmt.Errorf("--overlay must differ from --output")
+			}
+			if report != "" && (samePath(report, args[0]) || samePath(report, args[1]) || samePath(report, output) || samePath(report, overlay)) {
+				return fmt.Errorf("--report must not overwrite an input, mask, or overlay")
 			}
 			offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
 			if offsetRadius < 0 {
@@ -183,6 +188,11 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if maxPerceptualChangedRatio >= 0 && result.PerceptualChangedRatio > maxPerceptualChangedRatio {
 				return fmt.Errorf("image diff validation failed: perceptual changed ratio %.6f exceeds maximum %.6f", result.PerceptualChangedRatio, maxPerceptualChangedRatio)
 			}
+			if report != "" {
+				if err := pixelperfectreport.Write(report, pixelperfectreport.Input{ReferencePath: inputs.referencePath, ActualPath: inputs.actualPath, MaskPath: output, OverlayPath: overlay, Result: result}); err != nil {
+					return err
+				}
+			}
 			outputResult := outputEnvelope{ImageComparison: result}
 			visualContextEnabled, _ := cmd.Flags().GetBool("visual-context")
 			if visualContextEnabled {
@@ -224,6 +234,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().StringArray("ignore-region", nil, "exclude x,y,width,height; repeat for multiple areas")
 	command.Flags().String("mask", "", "full-size PNG selecting compared pixels (visible non-black includes)")
 	command.Flags().String("overlay", "", "path for directional overlay (reference red, actual green)")
+	command.Flags().String("report", "", "write a self-contained HTML report to this path")
 	command.Flags().Int("suggest-offset", 0, "report best translation within this pixel radius without applying it")
 	command.Flags().Int("region-gap", 0, "group mismatch regions separated by at most this many pixels")
 	command.Flags().Int("min-region-pixels", 1, "omit disconnected regions smaller than this many changed pixels")

@@ -74,8 +74,8 @@ nix-profile-install: ## Reinstall figma and pixel-perfect from the current local
 	-nix profile remove figma-cli
 	-nix profile remove figma
 	-nix profile remove pixel-perfect
-	nix profile install .#figma
-	nix profile install .#pixel-perfect
+	nix profile install path:.#figma
+	nix profile install path:.#pixel-perfect
 
 # Utility
 .PHONY: version
