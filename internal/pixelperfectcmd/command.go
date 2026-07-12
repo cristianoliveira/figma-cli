@@ -1,6 +1,7 @@
 package pixelperfectcmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cristianoliveira/figma-cli/internal/imagecontext"
 	diff "github.com/cristianoliveira/figma-cli/internal/imagediff"
 	"github.com/spf13/cobra"
 )
@@ -137,7 +139,25 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if maxPerceptualChangedRatio >= 0 && result.PerceptualChangedRatio > maxPerceptualChangedRatio {
 				return fmt.Errorf("image diff validation failed: perceptual changed ratio %.6f exceeds maximum %.6f", result.PerceptualChangedRatio, maxPerceptualChangedRatio)
 			}
-			return writeJSON(cmd, result)
+			outputResult := outputEnvelope{ImageComparison: result}
+			visualContextEnabled, _ := cmd.Flags().GetBool("visual-context")
+			if visualContextEnabled {
+				model, _ := cmd.Flags().GetString("visual-context-model")
+				config, configErr := imagecontext.LoadConfig(model)
+				if configErr != nil {
+					return configErr
+				}
+				regions := make([]imagecontext.Region, len(result.Regions))
+				for index, region := range result.Regions {
+					regions[index] = imagecontext.Region{ID: fmt.Sprintf("r%d", index+1), Bounds: imagecontext.Bounds{X: region.Bounds.X, Y: region.Bounds.Y, Width: region.Bounds.Width, Height: region.Bounds.Height}}
+				}
+				visualContext, explainErr := imagecontext.NewOpenRouter(config.APIKey, config.Model, config.BaseURL).Describe(context.Background(), imagecontext.Input{ReferencePath: args[0], ActualPath: args[1], Regions: regions})
+				if explainErr != nil {
+					return explainErr
+				}
+				outputResult.VisualContext = &visualContext
+			}
+			return writeJSON(cmd, outputResult)
 		},
 	}
 	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask")
@@ -153,6 +173,8 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().Float64("max-rmse", -1, "fail when normalized RMSE exceeds this value")
 	command.Flags().Float64("max-changed-ratio", -1, "fail when changed-pixel ratio exceeds this value")
 	command.Flags().Float64("max-perceptual-changed-ratio", -1, "fail when perceptual changed-pixel ratio exceeds this value")
+	command.Flags().Bool("visual-context", false, "add advisory visual descriptions using the configured multimodal model")
+	command.Flags().String("visual-context-model", "", "override the pi-spectacles OpenRouter model")
 	return command
 }
 
@@ -224,6 +246,11 @@ func samePath(first, second string) bool {
 		return filepath.Clean(first) == filepath.Clean(second)
 	}
 	return filepath.Clean(firstAbsolute) == filepath.Clean(secondAbsolute)
+}
+
+type outputEnvelope struct {
+	diff.ImageComparison
+	VisualContext *imagecontext.Result `json:"visualContext,omitempty"`
 }
 
 func writeJSON(command *cobra.Command, value any) error {

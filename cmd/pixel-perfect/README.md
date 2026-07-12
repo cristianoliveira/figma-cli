@@ -27,6 +27,18 @@ pixel-perfect reference.png implementation.png \
 
 Both inputs must be equal-sized PNGs. Unequal dimensions fail instead of producing invalid metrics.
 
+## Optional visual context
+
+```bash
+pixel-perfect reference.png implementation.png \
+  --output diff-mask.png \
+  --visual-context
+```
+
+`--visual-context` adds advisory appearance descriptions for deterministic changed regions. It does not alter metrics, classifications, or validation gates. Configuration is shared with Pi Spectacles at `~/.pi/agent/pi-spectacles.json`; `OPENROUTER_API_KEY`, `OPENROUTER_MEDIA_MODEL`, `OPENROUTER_BASE_URL`, and `PI_SPECTACLES_CONFIG` use the same precedence. Use `--visual-context-model` for a per-call model override.
+
+The two screenshots are sent to the configured OpenRouter model only when this flag is present.
+
 ## Focus and validation
 
 ```bash
