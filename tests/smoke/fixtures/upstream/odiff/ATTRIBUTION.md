@@ -10,6 +10,8 @@ Upstream paths:
 - `test/png/extreme-alpha-1.png`
 - `test/png/orange.png`
 - `test/png/orange_changed.png`
+- `images/test_map.png`
+- `images/test_map_1.png`
 
 ODiff is distributed under the MIT license. See [`LICENSE.txt`](LICENSE.txt).
 

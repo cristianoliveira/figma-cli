@@ -61,6 +61,17 @@ func TestPixelPerfectAgainstUpstreamComparisonCorpus(t *testing.T) {
 				assert.Zero(t, result.PerceptualChangedPixels)
 			},
 		},
+		{
+			name: "odiff realistic RGB and RGBA map", project: "odiff", reference: "test-map-reference.png", actual: "test-map-actual.png",
+			width: 438, height: 412, changed: 69_117, regions: 1,
+			assertMetrics: func(t *testing.T, result diff.ImageComparison) {
+				assert.Zero(t, result.AlphaRMSE)
+				assert.Equal(t, 10_094, result.PerceptualChangedPixels)
+				assert.Equal(t, 15_114, result.AntialiasedPixels)
+				assert.Less(t, result.PerceptualChangedPixels, result.ChangedPixels)
+				assert.Greater(t, result.EdgeRMSE, 0.0)
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
