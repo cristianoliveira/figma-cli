@@ -9,7 +9,7 @@
 This is a session retrospective, not an implementation backlog. Current triage:
 
 - **Build:** scoped frame discovery and bounded pixel-perfect presentation.
-- **Investigate first:** nested-instance PNG export.
+- **Live investigation resolved:** nested instances render correctly in current Figma API exports.
 - **Document instead of build:** perceptual metric calibration.
 - **Already resolved:** export crop metadata, scoped `find`, computed inspect gaps, and explicit pixel-perfect cropping.
 - **Move to owning tools/workflow:** browser defaults, Vite lifecycle, Playwright session cleanup, and accessibility-first implementation.
@@ -34,7 +34,7 @@ The verified App Lock metadata reports a 591×493 export, 575×477 logical crop,
 
 ### P0 — investigate with evidence
 
-1. **Nested-instance export:** compare the live Figma canvas, REST-exported PNG, and direct exports of the missing nested nodes. Determine whether the cause is Figma rendering, component permissions, node selection, or local export handling before designing a flag. The REST API renders PNGs server-side, so `--resolve-instances` or `--flatten` may not be implementable client-side.
+1. **Nested-instance export:** resolved against the live session node. The full App Lock card currently renders its checkbox, dropdown label/chevron, and Save button. Direct nested exports also succeed: `I19247:678066;0:142` produces a 200×48 button and `I19247:678066;0:143` produces a 496×66 dropdown. No `--resolve-instances` or `--flatten` work is justified without a new reproducible failure.
 2. **Scoped find regression:** the original failure no longer reproduces with `--id 4:1082`. Add a regression only if an exact scoped invocation still produces HTTP 400.
 
 ### P1 — product work
@@ -61,8 +61,8 @@ curl -s -H "X-Figma-Token: $TOKEN" "https://api.figma.com/v1/files/KEY/nodes?ids
 ### 2. Export always adds ~16px padding — resolved
 Every `figma export --format png --width 575` produces 591×493 for a 575×477 card. The extra pixels are shadow/effect overflows. `figma export --metadata` now emits `contentInset` and `logicalCrop`; `pixel-perfect --reference-metadata` consumes it, eliminating manual `sips` cropping.
 
-### 3. Component instances don't render nested instances in PNG
-Exporting `I19247:678066` (App Lock card) gave a card with empty button/dropdown regions. The nested `Button / Text Button` and `Dropdown / Dropdown` instances rendered as solid white. Pixel-perfect comparisons against these exports show 99% "changed" in those regions — false positives. Need a `--resolve-instances` or `--flatten` flag.
+### 3. Component instances don't render nested instances in PNG — no longer reproducible
+The original export showed empty button/dropdown regions. A fresh API export of `I19247:678066` renders the checkbox, dropdown, and Save button correctly. Direct exports of nested `Button / Text Button` (`I19247:678066;0:142`, 200×48) and `Dropdown / Dropdown` (`I19247:678066;0:143`, 496×66) also render. Treat this as transient Figma API behavior unless a new exact reproduction appears; do not add speculative flattening flags.
 
 ### 4. `find --name` fails on large files — scoped path resolved
 The unscoped command can still request too much data, but `figma find --id <page-or-frame> --name "Customise"` scopes search to a node subtree. Live verification with `--id 4:1082` succeeded. Keep this as a regression report only if a scoped invocation still fails.
