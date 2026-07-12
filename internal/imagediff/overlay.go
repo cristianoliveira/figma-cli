@@ -9,17 +9,15 @@ import (
 // WriteImageOverlay writes a transparent directional difference image.
 // Red pixels are stronger in the reference; green pixels are stronger in the actual image.
 func WriteImageOverlay(referencePath, actualPath, outputPath string, region *Bounds, ignored []Bounds) error {
-	reference, err := decodePNG(referencePath)
+	images, err := LoadDecodedImages(referencePath, actualPath)
 	if err != nil {
-		return fmt.Errorf("decode reference: %w", err)
+		return err
 	}
-	actual, err := decodePNG(actualPath)
-	if err != nil {
-		return fmt.Errorf("decode actual: %w", err)
-	}
-	if reference.Bounds().Dx() != actual.Bounds().Dx() || reference.Bounds().Dy() != actual.Bounds().Dy() {
-		return fmt.Errorf("image dimensions differ: reference is %dx%d, actual is %dx%d", reference.Bounds().Dx(), reference.Bounds().Dy(), actual.Bounds().Dx(), actual.Bounds().Dy())
-	}
+	return images.WriteOverlay(outputPath, region, ignored)
+}
+
+func (images *DecodedImages) WriteOverlay(outputPath string, region *Bounds, ignored []Bounds) error {
+	reference, actual := images.Reference, images.Actual
 	area := Bounds{Width: reference.Bounds().Dx(), Height: reference.Bounds().Dy()}
 	if region != nil {
 		area = *region

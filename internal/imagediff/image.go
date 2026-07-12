@@ -123,31 +123,15 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 }
 
 func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, threshold uint8, perceptualThreshold float64, region *Bounds, ignored []Bounds) (ImageComparison, error) {
-	type decodeResult struct {
-		image *image.NRGBA
-		err   error
+	images, err := LoadDecodedImages(referencePath, actualPath)
+	if err != nil {
+		return ImageComparison{}, err
 	}
-	referenceResult := make(chan decodeResult, 1)
-	actualResult := make(chan decodeResult, 1)
-	go func() {
-		decoded, err := decodeNRGBA(referencePath)
-		referenceResult <- decodeResult{image: decoded, err: err}
-	}()
-	go func() {
-		decoded, err := decodeNRGBA(actualPath)
-		actualResult <- decodeResult{image: decoded, err: err}
-	}()
-	referenceDecoded, actualDecoded := <-referenceResult, <-actualResult
-	if referenceDecoded.err != nil {
-		return ImageComparison{}, fmt.Errorf("decode reference: %w", referenceDecoded.err)
-	}
-	if actualDecoded.err != nil {
-		return ImageComparison{}, fmt.Errorf("decode actual: %w", actualDecoded.err)
-	}
-	reference, actual := referenceDecoded.image, actualDecoded.image
-	if reference.Bounds().Dx() != actual.Bounds().Dx() || reference.Bounds().Dy() != actual.Bounds().Dy() {
-		return ImageComparison{}, fmt.Errorf("image dimensions differ: reference is %dx%d, actual is %dx%d", reference.Bounds().Dx(), reference.Bounds().Dy(), actual.Bounds().Dx(), actual.Bounds().Dy())
-	}
+	return images.Compare(maskPath, threshold, perceptualThreshold, region, ignored)
+}
+
+func (images *DecodedImages) Compare(maskPath string, threshold uint8, perceptualThreshold float64, region *Bounds, ignored []Bounds) (ImageComparison, error) {
+	reference, actual := images.Reference, images.Actual
 
 	imageWidth, imageHeight := reference.Bounds().Dx(), reference.Bounds().Dy()
 	area := Bounds{Width: imageWidth, Height: imageHeight}

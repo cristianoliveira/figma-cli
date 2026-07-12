@@ -1,7 +1,6 @@
 package imagediff
 
 import (
-	"fmt"
 	"image/color"
 	"math"
 	"sort"
@@ -14,17 +13,15 @@ type SuggestedOffset struct {
 }
 
 func SuggestImageOffset(referencePath, actualPath string, radius int, region *Bounds, ignored []Bounds) (SuggestedOffset, error) {
-	reference, err := decodePNG(referencePath)
+	images, err := LoadDecodedImages(referencePath, actualPath)
 	if err != nil {
-		return SuggestedOffset{}, fmt.Errorf("decode reference: %w", err)
+		return SuggestedOffset{}, err
 	}
-	actual, err := decodePNG(actualPath)
-	if err != nil {
-		return SuggestedOffset{}, fmt.Errorf("decode actual: %w", err)
-	}
-	if reference.Bounds().Dx() != actual.Bounds().Dx() || reference.Bounds().Dy() != actual.Bounds().Dy() {
-		return SuggestedOffset{}, fmt.Errorf("image dimensions differ: reference is %dx%d, actual is %dx%d", reference.Bounds().Dx(), reference.Bounds().Dy(), actual.Bounds().Dx(), actual.Bounds().Dy())
-	}
+	return images.SuggestOffset(radius, region, ignored), nil
+}
+
+func (images *DecodedImages) SuggestOffset(radius int, region *Bounds, ignored []Bounds) SuggestedOffset {
+	reference, actual := images.Reference, images.Actual
 	area := Bounds{Width: reference.Bounds().Dx(), Height: reference.Bounds().Dy()}
 	if region != nil {
 		area = *region
@@ -53,7 +50,7 @@ func SuggestImageOffset(referencePath, actualPath string, radius int, region *Bo
 			best = candidate
 		}
 	}
-	return best, nil
+	return best
 }
 
 func offsetRMSE(reference, actual interface{ At(int, int) color.Color }, area Bounds, ignored ignoredPixelMap, offsetX, offsetY int) float64 {

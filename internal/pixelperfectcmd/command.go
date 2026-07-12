@@ -211,22 +211,41 @@ func newCommand(compare imageComparer) *cobra.Command {
 				}
 				ignored = append(ignored, maskedRegions...)
 			}
-			result, err := compare(inputs.referencePath, inputs.actualPath, output, threshold, perceptualThreshold, region, ignored)
+			var decoded *diff.DecodedImages
+			var result diff.ImageComparison
+			if compare == nil {
+				decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
+				if err != nil {
+					return err
+				}
+				result, err = decoded.Compare(output, threshold, perceptualThreshold, region, ignored)
+			} else {
+				result, err = compare(inputs.referencePath, inputs.actualPath, output, threshold, perceptualThreshold, region, ignored)
+			}
 			if err != nil {
 				return err
 			}
 			result.Inputs = inputs.metadata
 			if overlay != "" {
-				if err := diff.WriteImageOverlay(inputs.referencePath, inputs.actualPath, overlay, region, ignored); err != nil {
+				if decoded == nil {
+					decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
+					if err != nil {
+						return err
+					}
+				}
+				if err := decoded.WriteOverlay(overlay, region, ignored); err != nil {
 					return err
 				}
 				result.Overlay = overlay
 			}
 			if offsetRadius > 0 {
-				suggestedOffset, offsetErr := diff.SuggestImageOffset(inputs.referencePath, inputs.actualPath, offsetRadius, region, ignored)
-				if offsetErr != nil {
-					return offsetErr
+				if decoded == nil {
+					decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
+					if err != nil {
+						return err
+					}
 				}
+				suggestedOffset := decoded.SuggestOffset(offsetRadius, region, ignored)
 				if !math.IsInf(suggestedOffset.RMSE, 0) && !math.IsNaN(suggestedOffset.RMSE) {
 					result.SuggestedOffset = &suggestedOffset
 				}
@@ -242,7 +261,13 @@ func newCommand(compare imageComparer) *cobra.Command {
 				for index := range result.Regions {
 					regionBounds[index] = result.Regions[index].Bounds
 				}
-				regionMetrics, err = diff.MeasureImageRegionsWithThresholds(inputs.referencePath, inputs.actualPath, regionBounds, threshold, perceptualThreshold, ignored)
+				if decoded == nil {
+					decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
+					if err != nil {
+						return err
+					}
+				}
+				regionMetrics, err = decoded.MeasureRegions(regionBounds, threshold, perceptualThreshold, ignored)
 				if err != nil {
 					return err
 				}
@@ -1056,7 +1081,7 @@ func writeJSON(command *cobra.Command, value any) error {
 
 // NewCommand creates the standalone image comparison command.
 func NewCommand() *cobra.Command {
-	command := newCommand(diff.CompareImagesWithThresholds)
+	command := newCommand(nil)
 	command.Use = "pixel-perfect <reference.png> <actual.png>"
 	return command
 }

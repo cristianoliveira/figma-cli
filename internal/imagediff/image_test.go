@@ -12,6 +12,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestLoadDecodedImagesRejectsDifferentDimensions(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewNRGBA(image.Rect(0, 0, 2, 1)))
+	writeTestPNG(t, actual, image.NewNRGBA(image.Rect(0, 0, 3, 1)))
+
+	_, err := LoadDecodedImages(reference, actual)
+
+	assert.EqualError(t, err, "image dimensions differ: reference is 2x1, actual is 3x1")
+}
+
 func TestDecodeNRGBANormalizesDecodedPixelsAndBounds(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "offset.png")
