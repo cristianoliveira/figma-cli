@@ -18,6 +18,34 @@ type Bounds struct {
 	Height int `json:"height"`
 }
 
+type ignoredPixelMap struct {
+	width  int
+	height int
+	pixels []bool
+}
+
+func newIgnoredPixelMap(width, height int, regions []Bounds) ignoredPixelMap {
+	result := ignoredPixelMap{width: width, height: height}
+	if len(regions) == 0 {
+		return result
+	}
+	result.pixels = make([]bool, width*height)
+	for _, region := range regions {
+		startX, startY := max(0, region.X), max(0, region.Y)
+		endX, endY := min(width, region.X+region.Width), min(height, region.Y+region.Height)
+		for y := startY; y < endY; y++ {
+			for x := startX; x < endX; x++ {
+				result.pixels[y*width+x] = true
+			}
+		}
+	}
+	return result
+}
+
+func (m ignoredPixelMap) Contains(x, y int) bool {
+	return len(m.pixels) > 0 && x >= 0 && x < m.width && y >= 0 && y < m.height && m.pixels[y*m.width+x]
+}
+
 type InputBounds struct {
 	Reference Bounds `json:"reference"`
 	Actual    Bounds `json:"actual"`
@@ -131,6 +159,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 	}
 	width, height := area.Width, area.Height
 	fullImage := Bounds{Width: imageWidth, Height: imageHeight}
+	ignoredPixels := newIgnoredPixelMap(imageWidth, imageHeight, ignored)
 	var mask *image.NRGBA
 	if maskPath != "" {
 		mask = image.NewNRGBA(image.Rect(0, 0, width, height))
@@ -143,7 +172,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			absoluteX, absoluteY := area.X+x, area.Y+y
-			if pointIgnored(absoluteX, absoluteY, ignored) {
+			if ignoredPixels.Contains(absoluteX, absoluteY) {
 				continue
 			}
 			compared++
@@ -213,7 +242,7 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 		result.RGBRMSE = math.Sqrt(rgbSquaredError/float64(compared*3)) / 255
 		result.LuminanceRMSE = math.Sqrt(luminanceSquaredError/float64(compared)) / 255
 		result.AlphaRMSE = math.Sqrt(alphaSquaredError/float64(compared)) / 255
-		result.EdgeRMSE = imageEdgeRMSE(reference, actual, area, ignored)
+		result.EdgeRMSE = imageEdgeRMSE(reference, actual, area, ignoredPixels)
 		result.PerceptualRMSE = math.Sqrt(perceptualSquaredError / float64(compared))
 		result.PerceptualChangedRatio = float64(perceptualChanged) / float64(compared)
 	}
@@ -298,18 +327,18 @@ func encodePNG(path string, img image.Image) error {
 	return file.Close()
 }
 
-func imageEdgeRMSE(reference, actual *image.NRGBA, area Bounds, ignored []Bounds) float64 {
+func imageEdgeRMSE(reference, actual *image.NRGBA, area Bounds, ignored ignoredPixelMap) float64 {
 	var squaredError float64
 	samples := 0
 	for y := area.Y; y < area.Y+area.Height; y++ {
 		for x := area.X; x < area.X+area.Width; x++ {
-			if pointIgnored(x, y, ignored) {
+			if ignored.Contains(x, y) {
 				continue
 			}
 			referencePixel := reference.NRGBAAt(x, y)
 			actualPixel := actual.NRGBAAt(x, y)
 			for _, previous := range [][2]int{{x - 1, y}, {x, y - 1}} {
-				if previous[0] < area.X || previous[1] < area.Y || pointIgnored(previous[0], previous[1], ignored) {
+				if previous[0] < area.X || previous[1] < area.Y || ignored.Contains(previous[0], previous[1]) {
 					continue
 				}
 				referencePrevious := reference.NRGBAAt(previous[0], previous[1])

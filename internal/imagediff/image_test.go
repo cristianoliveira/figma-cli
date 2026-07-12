@@ -147,6 +147,21 @@ func TestMeasureImageRegionReportsDominantColorPairs(t *testing.T) {
 	assert.Equal(t, ColorPair{Reference: "#0667C8", Actual: "#1676D2", Pixels: 3}, metrics.DominantColorPairs[0])
 }
 
+func TestIgnoredPixelMapClipsRegionsAndCombinesOverlaps(t *testing.T) {
+	ignored := newIgnoredPixelMap(4, 3, []Bounds{
+		{X: -1, Y: 1, Width: 3, Height: 3},
+		{X: 1, Y: 1, Width: 3, Height: 1},
+	})
+
+	assert.False(t, ignored.Contains(0, 0))
+	assert.True(t, ignored.Contains(0, 1))
+	assert.True(t, ignored.Contains(3, 1))
+	assert.True(t, ignored.Contains(1, 2))
+	assert.False(t, ignored.Contains(2, 2))
+	assert.False(t, ignored.Contains(-1, 1))
+	assert.False(t, ignored.Contains(4, 1))
+}
+
 func TestCompareImagesIgnoresSelectedRegions(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")

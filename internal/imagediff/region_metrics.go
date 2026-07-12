@@ -44,13 +44,14 @@ func MeasureImageRegionWithThresholds(referencePath, actualPath string, bounds B
 		return RegionMetrics{}, fmt.Errorf("region %d,%d,%d,%d is outside image bounds %dx%d", bounds.X, bounds.Y, bounds.Width, bounds.Height, reference.Bounds().Dx(), reference.Bounds().Dy())
 	}
 	fullImage := Bounds{Width: reference.Bounds().Dx(), Height: reference.Bounds().Dy()}
+	ignoredPixels := newIgnoredPixelMap(fullImage.Width, fullImage.Height, ignored)
 	changed, perceptualChanged, antialiased, compared, channels := 0, 0, 0, 0, 3
 	colorPairs := make(map[[8]uint8]int)
 	var rgbError, alphaError, perceptualError float64
 	transparent := false
 	for y := bounds.Y; y < bounds.Y+bounds.Height; y++ {
 		for x := bounds.X; x < bounds.X+bounds.Width; x++ {
-			if pointIgnored(x, y, ignored) {
+			if ignoredPixels.Contains(x, y) {
 				continue
 			}
 			compared++
@@ -86,7 +87,7 @@ func MeasureImageRegionWithThresholds(referencePath, actualPath string, bounds B
 	}
 	return RegionMetrics{
 		ChangedPixels: changed, ChangedRatio: float64(changed) / float64(compared),
-		RMSE: math.Sqrt(total/float64(compared*channels)) / 255, EdgeRMSE: imageEdgeRMSE(reference, actual, bounds, ignored),
+		RMSE: math.Sqrt(total/float64(compared*channels)) / 255, EdgeRMSE: imageEdgeRMSE(reference, actual, bounds, ignoredPixels),
 		PerceptualRMSE: math.Sqrt(perceptualError / float64(compared)), PerceptualChangedPixels: perceptualChanged,
 		PerceptualChangedRatio: float64(perceptualChanged) / float64(compared), AntialiasedPixels: antialiased,
 		DominantColorPairs: dominantColorPairs(colorPairs),
