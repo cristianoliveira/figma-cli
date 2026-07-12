@@ -12,6 +12,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDecodeNRGBANormalizesDecodedPixelsAndBounds(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "offset.png")
+	input := image.NewNRGBA(image.Rect(3, 4, 5, 5))
+	input.SetNRGBA(3, 4, color.NRGBA{R: 10, G: 20, B: 30, A: 40})
+	writeTestPNG(t, path, input)
+
+	decoded, err := decodeNRGBA(path)
+
+	require.NoError(t, err)
+	assert.Equal(t, image.Rect(0, 0, 2, 1), decoded.Bounds())
+	assert.Equal(t, color.NRGBA{R: 10, G: 20, B: 30, A: 40}, decoded.NRGBAAt(0, 0))
+}
+
 func TestCompareImagesWritesMaskAndMeasuresChangedArea(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")
@@ -207,6 +221,26 @@ func TestCompareImagesRejectsDifferentDimensions(t *testing.T) {
 	_, err := CompareImages(a, b, filepath.Join(dir, "diff.png"), 0)
 
 	assert.EqualError(t, err, "image dimensions differ: reference is 2x2, actual is 3x2")
+}
+
+func BenchmarkCompareIdenticalImages(b *testing.B) {
+	dir := b.TempDir()
+	path := filepath.Join(dir, "identical.png")
+	img := image.NewNRGBA(image.Rect(0, 0, 1024, 768))
+	for index := range img.Pix {
+		img.Pix[index] = byte(index)
+	}
+	file, err := os.Create(path)
+	require.NoError(b, err)
+	require.NoError(b, png.Encode(file, img))
+	require.NoError(b, file.Close())
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_, err := CompareImages(path, path, "", 0)
+		require.NoError(b, err)
+	}
 }
 
 func writeTestPNG(t *testing.T, path string, img image.Image) {

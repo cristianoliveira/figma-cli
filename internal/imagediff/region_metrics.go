@@ -2,7 +2,6 @@ package imagediff
 
 import (
 	"fmt"
-	"image/color"
 	"math"
 	"sort"
 )
@@ -30,11 +29,11 @@ func MeasureImageRegion(referencePath, actualPath string, bounds Bounds, thresho
 }
 
 func MeasureImageRegionWithThresholds(referencePath, actualPath string, bounds Bounds, threshold uint8, perceptualThreshold float64, ignored []Bounds) (RegionMetrics, error) {
-	reference, err := decodePNG(referencePath)
+	reference, err := decodeNRGBA(referencePath)
 	if err != nil {
 		return RegionMetrics{}, fmt.Errorf("decode reference: %w", err)
 	}
-	actual, err := decodePNG(actualPath)
+	actual, err := decodeNRGBA(actualPath)
 	if err != nil {
 		return RegionMetrics{}, fmt.Errorf("decode actual: %w", err)
 	}
@@ -55,8 +54,8 @@ func MeasureImageRegionWithThresholds(referencePath, actualPath string, bounds B
 				continue
 			}
 			compared++
-			r := color.NRGBAModel.Convert(reference.At(x, y)).(color.NRGBA)
-			a := color.NRGBAModel.Convert(actual.At(x, y)).(color.NRGBA)
+			r := reference.NRGBAAt(x, y)
+			a := actual.NRGBAAt(x, y)
 			deltas := []uint8{absDiff(r.R, a.R), absDiff(r.G, a.G), absDiff(r.B, a.B), absDiff(r.A, a.A)}
 			if max(deltas[0], deltas[1], deltas[2], deltas[3]) > threshold {
 				changed++

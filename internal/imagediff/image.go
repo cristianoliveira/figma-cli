@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 	"image/png"
 	"math"
 	"os"
@@ -94,14 +95,28 @@ func CompareImagesWithIgnoredRegions(referencePath, actualPath, maskPath string,
 }
 
 func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, threshold uint8, perceptualThreshold float64, region *Bounds, ignored []Bounds) (ImageComparison, error) {
-	reference, err := decodePNG(referencePath)
-	if err != nil {
-		return ImageComparison{}, fmt.Errorf("decode reference: %w", err)
+	type decodeResult struct {
+		image *image.NRGBA
+		err   error
 	}
-	actual, err := decodePNG(actualPath)
-	if err != nil {
-		return ImageComparison{}, fmt.Errorf("decode actual: %w", err)
+	referenceResult := make(chan decodeResult, 1)
+	actualResult := make(chan decodeResult, 1)
+	go func() {
+		decoded, err := decodeNRGBA(referencePath)
+		referenceResult <- decodeResult{image: decoded, err: err}
+	}()
+	go func() {
+		decoded, err := decodeNRGBA(actualPath)
+		actualResult <- decodeResult{image: decoded, err: err}
+	}()
+	referenceDecoded, actualDecoded := <-referenceResult, <-actualResult
+	if referenceDecoded.err != nil {
+		return ImageComparison{}, fmt.Errorf("decode reference: %w", referenceDecoded.err)
 	}
+	if actualDecoded.err != nil {
+		return ImageComparison{}, fmt.Errorf("decode actual: %w", actualDecoded.err)
+	}
+	reference, actual := referenceDecoded.image, actualDecoded.image
 	if reference.Bounds().Dx() != actual.Bounds().Dx() || reference.Bounds().Dy() != actual.Bounds().Dy() {
 		return ImageComparison{}, fmt.Errorf("image dimensions differ: reference is %dx%d, actual is %dx%d", reference.Bounds().Dx(), reference.Bounds().Dy(), actual.Bounds().Dx(), actual.Bounds().Dy())
 	}
@@ -116,7 +131,10 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 	}
 	width, height := area.Width, area.Height
 	fullImage := Bounds{Width: imageWidth, Height: imageHeight}
-	mask := image.NewNRGBA(image.Rect(0, 0, width, height))
+	var mask *image.NRGBA
+	if maskPath != "" {
+		mask = image.NewNRGBA(image.Rect(0, 0, width, height))
+	}
 	changedPixels := make([]bool, width*height)
 	changedRows := make([]bool, height)
 	changed, perceptualChanged, antialiased, rawOnly, perceptualOnly, both, compared, minX, minY, maxX, maxY := 0, 0, 0, 0, 0, 0, 0, width, height, -1, -1
@@ -129,8 +147,12 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 				continue
 			}
 			compared++
-			r := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+area.X+x, reference.Bounds().Min.Y+area.Y+y)).(color.NRGBA)
-			a := color.NRGBAModel.Convert(actual.At(actual.Bounds().Min.X+area.X+x, actual.Bounds().Min.Y+area.Y+y)).(color.NRGBA)
+			r := reference.NRGBAAt(area.X+x, area.Y+y)
+			a := actual.NRGBAAt(area.X+x, area.Y+y)
+			hasTransparency = hasTransparency || r.A != 255 || a.A != 255
+			if r == a {
+				continue
+			}
 			delta := [4]uint8{absDiff(r.R, a.R), absDiff(r.G, a.G), absDiff(r.B, a.B), absDiff(r.A, a.A)}
 			maxDelta := max(delta[0], delta[1], delta[2], delta[3])
 			for _, value := range delta[:3] {
@@ -145,7 +167,6 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 			if isPerceptualChange {
 				perceptualChanged++
 			}
-			hasTransparency = hasTransparency || r.A != 255 || a.A != 255
 			isRawChange := maxDelta > threshold
 			switch {
 			case isRawChange && isPerceptualChange:
@@ -165,7 +186,9 @@ func CompareImagesWithThresholds(referencePath, actualPath, maskPath string, thr
 			changedPixels[y*width+x] = true
 			changedRows[y] = true
 			minX, minY, maxX, maxY = min(minX, x), min(minY, y), max(maxX, x), max(maxY, y)
-			mask.SetNRGBA(x, y, color.NRGBA{R: 255, A: maxDelta})
+			if mask != nil {
+				mask.SetNRGBA(x, y, color.NRGBA{R: 255, A: maxDelta})
+			}
 		}
 	}
 	if maskPath != "" {
@@ -252,6 +275,17 @@ func decodePNG(path string) (image.Image, error) {
 	return img, closeErr
 }
 
+func decodeNRGBA(path string) (*image.NRGBA, error) {
+	decoded, err := decodePNG(path)
+	if err != nil {
+		return nil, err
+	}
+	bounds := decoded.Bounds()
+	normalized := image.NewNRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
+	draw.Draw(normalized, normalized.Bounds(), decoded, bounds.Min, draw.Src)
+	return normalized, nil
+}
+
 func encodePNG(path string, img image.Image) error {
 	file, err := os.Create(path)
 	if err != nil {
@@ -264,7 +298,7 @@ func encodePNG(path string, img image.Image) error {
 	return file.Close()
 }
 
-func imageEdgeRMSE(reference, actual image.Image, area Bounds, ignored []Bounds) float64 {
+func imageEdgeRMSE(reference, actual *image.NRGBA, area Bounds, ignored []Bounds) float64 {
 	var squaredError float64
 	samples := 0
 	for y := area.Y; y < area.Y+area.Height; y++ {
@@ -272,14 +306,14 @@ func imageEdgeRMSE(reference, actual image.Image, area Bounds, ignored []Bounds)
 			if pointIgnored(x, y, ignored) {
 				continue
 			}
-			referencePixel := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+x, reference.Bounds().Min.Y+y)).(color.NRGBA)
-			actualPixel := color.NRGBAModel.Convert(actual.At(actual.Bounds().Min.X+x, actual.Bounds().Min.Y+y)).(color.NRGBA)
+			referencePixel := reference.NRGBAAt(x, y)
+			actualPixel := actual.NRGBAAt(x, y)
 			for _, previous := range [][2]int{{x - 1, y}, {x, y - 1}} {
 				if previous[0] < area.X || previous[1] < area.Y || pointIgnored(previous[0], previous[1], ignored) {
 					continue
 				}
-				referencePrevious := color.NRGBAModel.Convert(reference.At(reference.Bounds().Min.X+previous[0], reference.Bounds().Min.Y+previous[1])).(color.NRGBA)
-				actualPrevious := color.NRGBAModel.Convert(actual.At(actual.Bounds().Min.X+previous[0], actual.Bounds().Min.Y+previous[1])).(color.NRGBA)
+				referencePrevious := reference.NRGBAAt(previous[0], previous[1])
+				actualPrevious := actual.NRGBAAt(previous[0], previous[1])
 				delta := (visibleLuminance(referencePixel) - visibleLuminance(referencePrevious)) - (visibleLuminance(actualPixel) - visibleLuminance(actualPrevious))
 				squaredError += delta * delta
 				samples++
