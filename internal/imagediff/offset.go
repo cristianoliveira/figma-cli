@@ -6,10 +6,23 @@ import (
 	"sort"
 )
 
+const (
+	candidateTranslationImprovementRatio = 0.10
+	candidateTranslationMinimumOverlap   = 0.70
+)
+
+const (
+	offsetInterpretationInconclusive         = "inconclusive"
+	offsetInterpretationCandidateTranslation = "candidate-translation"
+)
+
 type SuggestedOffset struct {
-	X    int     `json:"x"`
-	Y    int     `json:"y"`
-	RMSE float64 `json:"rmse"`
+	X                int     `json:"x"`
+	Y                int     `json:"y"`
+	RMSE             float64 `json:"rmse"`
+	BaselineRMSE     float64 `json:"baselineRmse"`
+	ImprovementRatio float64 `json:"improvementRatio"`
+	Interpretation   string  `json:"interpretation"`
 }
 
 func SuggestImageOffset(referencePath, actualPath string, radius int, region *Bounds, ignored []Bounds) (SuggestedOffset, error) {
@@ -44,11 +57,34 @@ func (images *DecodedImages) SuggestOffset(radius int, region *Bounds, ignored [
 	})
 	ignoredPixels := newIgnoredPixelMap(reference.Bounds().Dx(), reference.Bounds().Dy(), ignored)
 	best := SuggestedOffset{RMSE: math.Inf(1)}
+	baselineRMSE := math.Inf(1)
 	for _, candidate := range candidates {
 		candidate.RMSE = offsetRMSE(reference, actual, area, ignoredPixels, candidate.X, candidate.Y)
+		if candidate.X == 0 && candidate.Y == 0 {
+			baselineRMSE = candidate.RMSE
+		}
 		if candidate.RMSE < best.RMSE {
 			best = candidate
 		}
+	}
+	return interpretSuggestedOffset(best, baselineRMSE, area)
+}
+
+func interpretSuggestedOffset(best SuggestedOffset, baselineRMSE float64, area Bounds) SuggestedOffset {
+	best.BaselineRMSE = baselineRMSE
+	best.Interpretation = offsetInterpretationInconclusive
+	if baselineRMSE <= 0 || math.IsInf(baselineRMSE, 0) || math.IsNaN(baselineRMSE) {
+		return best
+	}
+
+	best.ImprovementRatio = (baselineRMSE - best.RMSE) / baselineRMSE
+	overlapWidth := max(0, area.Width-absInt(best.X))
+	overlapHeight := max(0, area.Height-absInt(best.Y))
+	overlapRatio := float64(overlapWidth*overlapHeight) / float64(area.Width*area.Height)
+	if (best.X != 0 || best.Y != 0) &&
+		best.ImprovementRatio >= candidateTranslationImprovementRatio &&
+		overlapRatio >= candidateTranslationMinimumOverlap {
+		best.Interpretation = offsetInterpretationCandidateTranslation
 	}
 	return best
 }

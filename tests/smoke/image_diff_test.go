@@ -180,6 +180,9 @@ func TestPixelPerfectBoundaryAndCompositingScenarios(t *testing.T) {
 			require.NotNil(t, result.SuggestedOffset)
 			assert.Equal(t, -1, result.SuggestedOffset.X)
 			assert.Equal(t, 0, result.SuggestedOffset.Y)
+			assert.Greater(t, result.SuggestedOffset.BaselineRMSE, result.SuggestedOffset.RMSE)
+			assert.Equal(t, 1.0, result.SuggestedOffset.ImprovementRatio)
+			assert.Equal(t, "candidate-translation", result.SuggestedOffset.Interpretation)
 		}},
 	}
 	for _, test := range tests {
@@ -197,6 +200,34 @@ func TestPixelPerfectBoundaryAndCompositingScenarios(t *testing.T) {
 			if test.assertResult != nil {
 				test.assertResult(t, comparison)
 			}
+		})
+	}
+}
+
+func TestPixelPerfectOffsetInterpretationRejectsUpstreamNegativeControls(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "upstream", "odiff")
+	tests := []struct {
+		name, reference, actual string
+	}{
+		{name: "antialiasing change", reference: "antialiasing-on.png", actual: "antialiasing-off.png"},
+		{name: "equivalent extreme alpha", reference: "extreme-alpha.png", actual: "extreme-alpha-1.png"},
+		{name: "color and content change", reference: "orange.png", actual: "orange_changed.png"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mask := filepath.Join(t.TempDir(), "mask.png")
+			output, err := exec.Command(binary,
+				filepath.Join(fixtures, test.reference),
+				filepath.Join(fixtures, test.actual),
+				"--suggest-offset", "3",
+				"--output", mask,
+			).CombinedOutput()
+			require.NoError(t, err, string(output))
+			var comparison diff.ImageComparison
+			require.NoError(t, json.Unmarshal(output, &comparison))
+			require.NotNil(t, comparison.SuggestedOffset)
+			assert.Equal(t, "inconclusive", comparison.SuggestedOffset.Interpretation)
 		})
 	}
 }
