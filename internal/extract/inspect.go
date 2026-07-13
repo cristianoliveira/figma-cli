@@ -33,6 +33,7 @@ type relativeBoundsOutput struct {
 
 // InspectOutput is a curated single-node summary, used by `figma inspect`.
 type InspectOutput struct {
+	Depth               int                          `json:"-"`
 	ID                  string                       `json:"id"`
 	Name                string                       `json:"name"`
 	Type                string                       `json:"type"`
@@ -106,7 +107,9 @@ func inspectTree(value any, maxDepth, depth int) []InspectOutput {
 	if !ok {
 		return nil
 	}
-	outputs := []InspectOutput{NodeToInspectOutput(object)}
+	root := NodeToInspectOutput(object)
+	root.Depth = depth
+	outputs := []InspectOutput{root}
 	if maxDepth >= 0 && depth >= maxDepth {
 		return outputs
 	}

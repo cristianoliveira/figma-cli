@@ -122,6 +122,19 @@ pixel-perfect probe reference.png implementation.png --at 316,300
 pixel-perfect scan reference.png implementation.png --y 300
 ```
 
+## Compact implementation outlines
+
+Recursive inspection can render only properties needed for current task, avoiding ad hoc Python filters and large JSON payloads:
+
+```bash
+figma inspect --recursive --depth 3 \
+  --format text \
+  --fields name,type,relativeBounds,layout.mode,layout.gap,layout.paddingTop,layout.paddingRight,layout.paddingBottom,layout.paddingLeft,fills \
+  <figma-node-url>
+```
+
+`--fields` accepts comma-separated inspect JSON properties and nested paths. Child hierarchy remains implicit and is represented by indentation. Unknown fields fail explicitly. JSON remains default output for backward compatibility.
+
 ## The design-to-code loop
 
 The two CLIs integrate without coupling generic image comparison to Figma:

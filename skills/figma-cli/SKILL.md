@@ -18,6 +18,7 @@ Answer one concrete design question with structured, frontend-ready Figma data.
 2. Identify user question and choose smallest command that answers it:
    - implementation handoff: `figma inspect --handoff --depth <n> <url>`
    - bounded recursive node details: `figma inspect --recursive --depth <n> <url>`
+   - token-light selected outline: `figma inspect --recursive --depth <n> --format text --fields name,type,relativeBounds,layout.mode,layout.gap,fills <url>`
    - pixel-diff coordinate context: `figma inspect --recursive --annotations-output <path> <url>`
    - exact vector contour truth: `figma inspect --include-vector-paths <vector-url>`
    - structure and spacing: `figma layout <url>`
@@ -32,7 +33,7 @@ Answer one concrete design question with structured, frontend-ready Figma data.
    - comments: `figma comments <url>`
    - history: `figma versions <url>`, `figma changes`, or `figma diff text`
 3. Prefer node-scoped URLs to reduce output and requests.
-4. Run command and filter structured JSON with `jq` only when narrower output helps.
+4. Prefer `inspect --format text --fields ...` over ad hoc Python/JQ tree formatting when selected recursive node properties are enough. Otherwise filter structured JSON with `jq` only when narrower output helps.
 5. Report command, scope, result, and any missing permissions or ambiguity.
 
 Read [command reference](references/commands.md) only when exact flags, output shape, or advanced behavior are needed.

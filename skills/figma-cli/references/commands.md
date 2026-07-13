@@ -199,16 +199,18 @@ Default results contain only `COMPONENT`, `COMPONENT_SET`, and `INSTANCE` nodes.
 figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1"
 figma inspect --id 42:1 "abc123" # explicit scope for a bare file key
 figma inspect --recursive "url?node-id=42-1" # implementation specs for entire selected tree with relativeBounds
+figma inspect --recursive --depth 3 --format text --fields name,type,relativeBounds,layout.mode,layout.gap,fills "url?node-id=42-1" # compact selected outline
 figma inspect --recursive --annotations-output frame.annotations.json "url?node-id=42-1"
 figma inspect --include-vector-paths "url?node-id=42-1" # exact fill/stroke path commands
 figma inspect --handoff "url?node-id=42-1"   # bounded implementation specs + component usage
 figma inspect --handoff --depth 2 --include-hidden "url?node-id=42-1"
 # → default JSON: { "scope": {...}, "result": { type, name, bounds, paints, layout, effects, componentProperties, propertyDefinitions, styleBindings, resolvedStyles, variableBindings, resolvedVariables } }
 # → recursive JSON: { "scope": {...}, "results": [{...}, {...}] }
+# → recursive text: one indented line per node with fields in requested order
 # → handoff JSON: { "scope": {...}, "result": { "nodes": [{...}], "components": [{ "name", "componentId", "count" }] } }
 ```
 
-Use `--handoff` as the design-to-code default: it limits traversal to depth 4, excludes invisible descendants, and summarizes repeated component instances. `--recursive` remains the unbounded flat implementation inventory and cannot be combined with `--handoff`. Scoped recursive inspect includes `relativeBounds` measured from the requested scope root while preserving absolute `bounds`; use these for local CSS coordinates instead of manual subtraction. Recursive inspect also includes `spacingFromPrevious` for measured auto-layout gaps between direct visible non-absolute siblings. It reports `parentId`, `previousId`, `axis`, `measured`, `declared`, and `matchesDeclared`; missing Figma `itemSpacing` is treated as declared `0`. Use it to catch collapsed text heights or missing DOM spacing before chasing raster offsets.
+Use `--handoff` as the design-to-code default: it limits traversal to depth 4, excludes invisible descendants, and summarizes repeated component instances. `--recursive` remains the unbounded flat implementation inventory and cannot be combined with `--handoff`. Add `--format text --fields <comma-separated-paths>` when only selected recursive properties are needed; nested paths such as `layout.mode` are supported, absent optional values are omitted, and unknown fields fail before network access. JSON remains default. Scoped recursive inspect includes `relativeBounds` measured from the requested scope root while preserving absolute `bounds`; use these for local CSS coordinates instead of manual subtraction. Recursive inspect also includes `spacingFromPrevious` for measured auto-layout gaps between direct visible non-absolute siblings. It reports `parentId`, `previousId`, `axis`, `measured`, `declared`, and `matchesDeclared`; missing Figma `itemSpacing` is treated as declared `0`. Use it to catch collapsed text heights or missing DOM spacing before chasing raster offsets.
 
 `--annotations-output` requires `--recursive` and writes neutral screenshot-relative bounds for selected scope and descendants. Use output with `pixel-perfect --annotations <path>` to attach Figma node IDs and labels to intersecting mismatch regions. This is optional context: it must not change pixel metrics, gates, or exit status. Explicit `--depth` and `--include-hidden` also control annotation traversal.
 

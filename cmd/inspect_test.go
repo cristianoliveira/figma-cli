@@ -139,6 +139,47 @@ func TestInspectCommandWritesGenericCoordinateAnnotations(t *testing.T) {
 	assert.JSONEq(t, `{"version":1,"coordinateSpace":{"width":51,"height":41},"annotations":[{"id":"42:1","label":"Card","bounds":{"x":0,"y":0,"width":51,"height":41},"metadata":{"nodeType":"FRAME","source":"figma"}},{"id":"42:2","label":"Label","bounds":{"x":12,"y":4,"width":21,"height":11},"metadata":{"nodeType":"TEXT","source":"figma"}}]}`, string(content))
 }
 
+func TestInspectCommandRendersSelectedTextFields(t *testing.T) {
+	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Card","type":"FRAME","layoutMode":"VERTICAL","itemSpacing":8,"absoluteBoundingBox":{"x":100,"y":200,"width":320,"height":800},"fills":[{"type":"SOLID","color":{"r":1,"g":1,"b":1,"a":1}}],"children":[{"id":"42:2","name":"Label","type":"TEXT","characters":"Hello","absoluteBoundingBox":{"x":116,"y":212,"width":84,"height":20}}]}}}}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}}
+
+	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }),
+		"https://www.figma.com/design/abc/Name?node-id=42-1",
+		"--recursive", "--format", "text", "--fields", "name,type,relativeBounds,layout.mode,layout.gap,fills",
+	)
+
+	require.NoError(t, result.Err)
+	assert.Equal(t, "Card (FRAME) x:0 y:0 w:320 h:800 layout:VERTICAL gap:8 fills:#FFFFFF\n  Label (TEXT) x:16 y:12 w:84 h:20\n", result.Stdout)
+}
+
+func TestInspectCommandValidatesTextProjectionBeforeLoadingClient(t *testing.T) {
+	tests := []struct {
+		name     string
+		flags    []string
+		expected string
+	}{
+		{name: "unknown format", flags: []string{"--recursive", "--format", "yaml"}, expected: `unknown inspect format "yaml" (want json or text)`},
+		{name: "text requires recursive", flags: []string{"--format", "text"}, expected: "--format text requires --recursive"},
+		{name: "fields require text", flags: []string{"--recursive", "--fields", "name"}, expected: "--fields requires --format text"},
+		{name: "unknown field", flags: []string{"--recursive", "--format", "text", "--fields", "layout.padding"}, expected: `unknown inspect field "layout.padding"`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			loaded := false
+			args := append([]string{"abc", "--id", "1:1"}, test.flags...)
+			result := executeCommand(newInspectCommand(func() (*figma.Client, error) {
+				loaded = true
+				return nil, nil
+			}), args...)
+
+			assert.EqualError(t, result.Err, test.expected)
+			assert.False(t, loaded)
+		})
+	}
+}
+
 func TestInspectCommandRequiresRecursiveForAnnotations(t *testing.T) {
 	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return nil, errors.New("must not load") }), "abc", "--id", "1:1", "--annotations-output", "annotations.json")
 	assert.EqualError(t, result.Err, "--annotations-output requires --recursive")

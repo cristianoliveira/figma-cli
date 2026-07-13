@@ -14,6 +14,11 @@ import (
 
 var inspectCmd = newInspectCommand(cli.LoadClient)
 
+const (
+	inspectFormatJSON = "json"
+	inspectFormatText = "text"
+)
+
 func newInspectCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	return newInspectCommandWithVariables(loadClient, figma.FetchVariables)
 }
@@ -25,7 +30,7 @@ func newInspectCommandWithVariables(
 	command := &cobra.Command{
 		Use:   "inspect [figma-url-or-file-id]",
 		Short: "Show a curated summary of a specific Figma node",
-		Long:  "Show a curated summary of a specific Figma node. With --recursive, bounds stay absolute, relativeBounds are measured from the requested scope node, and spacingFromPrevious reports computed auto-layout sibling gaps.",
+		Long:  "Show a curated summary of a specific Figma node. With --recursive, bounds stay absolute, relativeBounds are measured from the requested scope node, and spacingFromPrevious reports computed auto-layout sibling gaps. Use --format text with --fields to render a compact, selected implementation outline.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			explicitNodeID, err := explicitNodeIDFlag(cmd)
@@ -38,6 +43,20 @@ func newInspectCommandWithVariables(
 			includeVectorPaths, _ := cmd.Flags().GetBool("include-vector-paths")
 			depth, _ := cmd.Flags().GetInt("depth")
 			includeHidden, _ := cmd.Flags().GetBool("include-hidden")
+			inspectFormat, _ := cmd.Flags().GetString("format")
+			fields, _ := cmd.Flags().GetStringSlice("fields")
+			if inspectFormat != inspectFormatJSON && inspectFormat != inspectFormatText {
+				return fmt.Errorf("unknown inspect format %q (want json or text)", inspectFormat)
+			}
+			if inspectFormat == inspectFormatText && !recursive {
+				return fmt.Errorf("--format text requires --recursive")
+			}
+			if cmd.Flags().Changed("fields") && inspectFormat != inspectFormatText {
+				return fmt.Errorf("--fields requires --format text")
+			}
+			if err := extract.ValidateInspectFields(fields); err != nil {
+				return err
+			}
 			if handoff && recursive {
 				return fmt.Errorf("--handoff and --recursive cannot be used together")
 			}
@@ -98,6 +117,13 @@ func newInspectCommandWithVariables(
 					}
 				}
 				enrichInspectNodes(nodes, details.Styles, client, input.FileID, fetchVariables)
+				if inspectFormat == inspectFormatText {
+					text, formatErr := extract.FormatInspectText(nodes, fields)
+					if formatErr != nil {
+						return formatErr
+					}
+					return cli.NewPrinter(cmd).Text("inspect", text)
+				}
 				return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, nodes))
 			}
 			if handoff {
@@ -121,6 +147,8 @@ func newInspectCommandWithVariables(
 	command.Flags().Bool("include-hidden", false, "include invisible descendants in --handoff or --annotations-output")
 	command.Flags().String("annotations-output", "", "write generic screenshot-relative coordinate annotations; requires --recursive")
 	command.Flags().Bool("include-vector-paths", false, "request and include exact Figma fill/stroke geometry; recursive use requires explicit --depth")
+	command.Flags().String("format", inspectFormatJSON, "output format for recursive inspection: json or text")
+	command.Flags().StringSlice("fields", nil, "comma-separated inspect fields for --format text; nested paths are supported")
 	return command
 }
 
