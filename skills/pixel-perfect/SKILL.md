@@ -57,7 +57,14 @@ Measure and localize screenshot differences without silently resizing or alignin
    pixel-perfect scan reference.png implementation.png --row <row>
    pixel-perfect scan reference.png implementation.png --column <column>
    ```
-   It returns compact CSV color runs for reference and actual; use `--format json` when scripting needs RGBA and `inputLine`. Reuse crop/metadata flags when scanning a cropped comparison; scan indexes are comparison/cropped coordinates.
+   For spacing and bounds diagnosis, run a back-to-back cross through same comparison coordinate:
+   ```bash
+   # Horizontal line: widths, left/right edges, and horizontal gaps.
+   pixel-perfect scan reference.png implementation.png --row <y>
+   # Vertical line: heights, top/bottom edges, and vertical gaps.
+   pixel-perfect scan reference.png implementation.png --column <x>
+   ```
+   Choose `<x>,<y>` so both lines cross suspected region while avoiding text or antialiased artwork when possible. Each command scans both reference and actual; a cross requires two commands, not four. Compare run start/end positions and lengths to distinguish shifted edges from wrong spacing. It returns compact CSV color runs by default; use `--format json` when scripting needs RGBA and `inputLine`. Reuse identical crop/metadata flags for both scans when original diff used cropped inputs; scan indexes are comparison/cropped coordinates.
 
 ## Diagnosis
 

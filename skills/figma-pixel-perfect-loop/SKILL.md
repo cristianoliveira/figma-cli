@@ -61,7 +61,7 @@ Recreate Figma web UI as real, accessible DOM and improve measured similarity on
    - A reference/actual dimension mismatch is a signal to verify that `figma export --metadata` and `pixel-perfect --reference-metadata` were used before calculating crops manually.
    - When metadata is unavailable, use `pixel-perfect --reference-crop` / `--actual-crop` for comparison crops. Do not use ImageMagick crop chains: `+repage`/virtual-canvas offsets can silently change later crop geometry. Native CLI crops decode raster pixels directly and preserve `inputs.*.crop` provenance. Annotation coordinate space must match prepared reference dimensions; regenerate annotations for selected scope instead of editing coordinates by hand.
    - If a `pixel-perfect` skill is available, load it for comparison flags and metric diagnosis. Otherwise, inspect `pixel-perfect --help` and use deterministic metrics, masks, and overlays directly.
-   - For exact color or boundary questions, use pixel-perfect `probe`/`scan`, never media description or visual-context prose. Multimodal descriptions may orient review but are not pixel, color, or geometry measurement tools.
+   - For exact color or boundary questions, use pixel-perfect `probe`/`scan`, never media description or visual-context prose. For spacing, run back-to-back `scan --row <y>` and `scan --column <x>` through same suspect coordinate; compare run boundaries and lengths between reference and actual. Multimodal descriptions may orient review but are not pixel, color, or geometry measurement tools.
    - Keep screenshot, mask, overlay, report, and JSON evidence under `output/visual-diff/`.
 
 5. **Change one cause**
