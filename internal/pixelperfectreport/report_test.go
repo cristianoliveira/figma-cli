@@ -36,6 +36,34 @@ func TestRenderEscapesUserProvidedPathsAndEmbedsImages(t *testing.T) {
 	assert.NotContains(t, content, `reference-<script>.png`)
 }
 
+func TestRenderIncludesAdvisoryRegionMovements(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	mask := filepath.Join(dir, "mask.png")
+	writePNG(t, reference)
+	writePNG(t, actual)
+	writePNG(t, mask)
+
+	html, err := Render(Input{
+		ReferencePath: reference,
+		ActualPath:    actual,
+		MaskPath:      mask,
+		Result: imagediff.ImageComparison{MovedRegions: []imagediff.RegionMovement{{
+			Bounds:     imagediff.Bounds{X: 1, Y: 2, Width: 3, Height: 4},
+			DX:         5,
+			DY:         -1,
+			Confidence: 0.75,
+		}}},
+	})
+
+	require.NoError(t, err)
+	content := string(html)
+	assert.Contains(t, content, "Advisory region movements")
+	assert.Contains(t, content, "dx=5 dy=-1")
+	assert.Contains(t, content, "confidence=0.75")
+}
+
 func writePNG(t *testing.T, path string) {
 	t.Helper()
 	file, err := os.Create(path)

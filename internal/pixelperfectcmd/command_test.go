@@ -544,6 +544,7 @@ func TestDiffImageCommandRejectsInvalidAnalysisLimits(t *testing.T) {
 		name, flag, value, expected string
 	}{
 		{name: "negative offset radius", flag: "--suggest-offset", value: "-1", expected: "--suggest-offset must be non-negative"},
+		{name: "negative movement radius", flag: "--suggest-movement", value: "-1", expected: "--suggest-movement must be non-negative"},
 		{name: "negative region gap", flag: "--region-gap", value: "-1", expected: "--region-gap must be non-negative"},
 		{name: "zero minimum region pixels", flag: "--min-region-pixels", value: "0", expected: "--min-region-pixels must be positive"},
 		{name: "negative perceptual threshold", flag: "--perceptual-threshold", value: "-0.1", expected: "--perceptual-threshold must be a finite non-negative number"},

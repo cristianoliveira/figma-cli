@@ -147,6 +147,10 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if offsetRadius < 0 {
 				return fmt.Errorf("--suggest-offset must be non-negative")
 			}
+			movementRadius, _ := cmd.Flags().GetInt("suggest-movement")
+			if movementRadius < 0 {
+				return fmt.Errorf("--suggest-movement must be non-negative")
+			}
 			regionGap, _ := cmd.Flags().GetInt("region-gap")
 			if regionGap < 0 {
 				return fmt.Errorf("--region-gap must be non-negative")
@@ -310,6 +314,13 @@ func newCommand(compare imageComparer) *cobra.Command {
 				result.Regions[index].DominantColorPairs = metrics.DominantColorPairs
 				result.Regions[index].Classification = diff.ClassifyImageRegion(metrics)
 			}
+			if movementRadius > 0 && len(result.Regions) > 0 {
+				regionBounds := make([]diff.Bounds, len(result.Regions))
+				for index := range result.Regions {
+					regionBounds[index] = result.Regions[index].Bounds
+				}
+				result.MovedRegions = decoded.SuggestRegionMovements(regionBounds, movementRadius, ignored)
+			}
 			if maxRMSE >= 0 && result.RMSE > maxRMSE {
 				return fmt.Errorf("image diff validation failed: RMSE %.6f exceeds maximum %.6f", result.RMSE, maxRMSE)
 			}
@@ -378,7 +389,8 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().String("mask", "", "full-size PNG selecting compared pixels (visible non-black includes)")
 	command.Flags().String("overlay", "", "path for directional overlay (reference red, actual green)")
 	command.Flags().String("report", "", "write a self-contained HTML report to this path")
-	command.Flags().Int("suggest-offset", 0, "report best translation within this pixel radius without applying it")
+	command.Flags().Int("suggest-offset", 0, "report best whole-image translation within this pixel radius without applying it")
+	command.Flags().Int("suggest-movement", 0, "report advisory per-region translations within this pixel radius without applying them")
 	command.Flags().Int("region-gap", 0, "group mismatch regions separated by at most this many pixels")
 	command.Flags().Int("min-region-pixels", 1, "omit disconnected regions smaller than this many changed pixels")
 	command.Flags().Float64("max-rmse", -1, "fail when normalized RMSE exceeds this value")

@@ -19,6 +19,7 @@ A single “12% different” score is not enough to fix a UI. You need to know w
 - exact and perceptual changed-pixel measurements
 - RGB, luminance, alpha, edge, and perceptual RMSE
 - connected mismatch regions with dominant color pairs
+- advisory per-region movement candidates without silent alignment
 - deterministic geometry, solid-fill, sparse-raster, and mixed hints
 - transparent masks, directional overlays, and self-contained HTML reports
 - point probes and row/column scans for boundary-level diagnosis
@@ -226,12 +227,14 @@ pixel-perfect reference.png implementation.png \
   --output mask.png \
   --overlay overlay.png \
   --suggest-offset 5 \
+  --suggest-movement 12 \
   --region-gap 8 \
   --min-region-pixels 12
 ```
 
 - `--overlay`: red is stronger/present in reference; green is stronger/present in implementation.
-- `--suggest-offset`: reports best translation within radius but never applies it.
+- `--suggest-offset`: reports best whole-image translation within radius but never applies it.
+- `--suggest-movement`: reports up to five local translation candidates around mismatch regions. `bounds` is the reference search area, `dx`/`dy` describe reference-to-actual movement, and confidence is RMSE improvement. Candidates are advisory and never alter metrics, alignment, or exit status.
 - `--region-gap`: groups nearby clusters, such as glyphs in one text block.
 - `--min-region-pixels`: removes insignificant clusters from region reporting without changing global metrics.
 
@@ -291,6 +294,12 @@ pixel-perfect reference.png implementation.png \
     }
   ],
   "suggestedOffset": {"x": -2, "y": 1, "rmse": 0.041},
+  "movedRegions": [{
+    "bounds": {"x": 510, "y": 270, "width": 224, "height": 72},
+    "dx": 8,
+    "dy": 0,
+    "confidence": 0.96
+  }],
   "mask": "mask.png",
   "overlay": "overlay.png"
 }

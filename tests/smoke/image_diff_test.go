@@ -30,6 +30,26 @@ func TestPixelPerfectStandaloneCLI(t *testing.T) {
 	assert.NotEmpty(t, comparison.Regions[0].Classification)
 }
 
+func TestPixelPerfectReportsAdvisoryRegionMovement(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	fixtures := filepath.Join("fixtures", "image-diff")
+	mask := filepath.Join(t.TempDir(), "mask.png")
+	output, err := exec.Command(binary,
+		filepath.Join(fixtures, "offset-reference.png"),
+		filepath.Join(fixtures, "offset-right-one.png"),
+		"--output", mask,
+		"--suggest-movement", "2",
+	).CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	var comparison diff.ImageComparison
+	require.NoError(t, json.Unmarshal(output, &comparison))
+	require.Len(t, comparison.MovedRegions, 1)
+	assert.Equal(t, 1, comparison.MovedRegions[0].DX)
+	assert.Zero(t, comparison.MovedRegions[0].DY)
+	assert.Greater(t, comparison.MovedRegions[0].Confidence, 0.0)
+}
+
 func TestPixelPerfectProbeCLI(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
@@ -294,6 +314,7 @@ func TestPixelPerfectOffsetInterpretationRejectsUpstreamNegativeControls(t *test
 				filepath.Join(fixtures, test.reference),
 				filepath.Join(fixtures, test.actual),
 				"--suggest-offset", "3",
+				"--suggest-movement", "3",
 				"--output", mask,
 			).CombinedOutput()
 			require.NoError(t, err, string(output))
@@ -301,6 +322,7 @@ func TestPixelPerfectOffsetInterpretationRejectsUpstreamNegativeControls(t *test
 			require.NoError(t, json.Unmarshal(output, &comparison))
 			require.NotNil(t, comparison.SuggestedOffset)
 			assert.Equal(t, "inconclusive", comparison.SuggestedOffset.Interpretation)
+			assert.Empty(t, comparison.MovedRegions)
 		})
 	}
 }
@@ -444,7 +466,7 @@ func TestPixelPerfectHelpDocumentsStandaloneContract(t *testing.T) {
 	require.NoError(t, err, string(output))
 	help := string(output)
 	assert.Contains(t, help, "pixel-perfect <reference.png> <actual.png>")
-	for _, flag := range []string{"--output", "--overlay", "--region", "--reference-crop", "--actual-crop", "--ignore-region", "--mask", "--threshold", "--perceptual-threshold", "--suggest-offset", "--max-rmse", "--max-changed-ratio", "--max-perceptual-changed-ratio"} {
+	for _, flag := range []string{"--output", "--overlay", "--region", "--reference-crop", "--actual-crop", "--ignore-region", "--mask", "--threshold", "--perceptual-threshold", "--suggest-offset", "--suggest-movement", "--max-rmse", "--max-changed-ratio", "--max-perceptual-changed-ratio"} {
 		assert.Contains(t, help, flag)
 	}
 }
@@ -511,6 +533,7 @@ func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
 		{name: "empty ignored region", flags: []string{"--ignore-region", "0,0,0,1"}, expected: "invalid --ignore-region: width and height must be positive"},
 		{name: "negative ignored region size", flags: []string{"--ignore-region", "0,0,1,-1"}, expected: "invalid --ignore-region: width and height must be positive"},
 		{name: "negative offset radius", flags: []string{"--suggest-offset", "-1"}, expected: "--suggest-offset must be non-negative"},
+		{name: "negative movement radius", flags: []string{"--suggest-movement", "-1"}, expected: "--suggest-movement must be non-negative"},
 		{name: "negative region gap", flags: []string{"--region-gap", "-1"}, expected: "--region-gap must be non-negative"},
 		{name: "zero minimum region pixels", flags: []string{"--min-region-pixels", "0"}, expected: "--min-region-pixels must be positive"},
 		{name: "negative perceptual threshold", flags: []string{"--perceptual-threshold", "-0.1"}, expected: "--perceptual-threshold must be a finite non-negative number"},

@@ -110,6 +110,7 @@ type ImageComparison struct {
 	Mask                    string            `json:"mask,omitempty"`
 	Overlay                 string            `json:"overlay,omitempty"`
 	SuggestedOffset         *SuggestedOffset  `json:"suggestedOffset,omitempty"`
+	MovedRegions            []RegionMovement  `json:"movedRegions,omitempty"`
 	Inputs                  *ImageInputs      `json:"inputs,omitempty"`
 }
 
