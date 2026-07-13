@@ -36,6 +36,22 @@ func TestRenderEscapesUserProvidedPathsAndEmbedsImages(t *testing.T) {
 	assert.NotContains(t, content, `reference-<script>.png`)
 }
 
+func TestWriteCreatesMissingParentDirectories(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	mask := filepath.Join(dir, "mask.png")
+	writePNG(t, reference)
+	writePNG(t, actual)
+	writePNG(t, mask)
+	path := filepath.Join(dir, "missing", "reports", "report.html")
+
+	err := Write(path, Input{ReferencePath: reference, ActualPath: actual, MaskPath: mask})
+
+	require.NoError(t, err)
+	assert.FileExists(t, path)
+}
+
 func TestRenderIncludesAdvisoryRegionMovements(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")

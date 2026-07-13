@@ -130,7 +130,7 @@ func TestInspectCommandWritesGenericCoordinateAnnotations(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Card","type":"FRAME","absoluteBoundingBox":{"x":100.25,"y":200.5,"width":50.2,"height":40.1},"children":[{"id":"42:2","name":"Label","type":"TEXT","absoluteBoundingBox":{"x":112.5,"y":205.25,"width":20.1,"height":10.2}}]}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	path := filepath.Join(t.TempDir(), "annotations.json")
+	path := filepath.Join(t.TempDir(), "missing", "annotations", "annotations.json")
 	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive", "--annotations-output", path)
 
 	require.NoError(t, result.Err)

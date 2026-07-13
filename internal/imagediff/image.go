@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	"github.com/cristianoliveira/figma-cli/internal/annotations"
+	"github.com/cristianoliveira/figma-cli/internal/output"
 )
 
 type Bounds struct {
@@ -307,7 +308,7 @@ func decodeNRGBA(path string) (*image.NRGBA, error) {
 }
 
 func encodePNG(path string, img image.Image) error {
-	file, err := os.Create(path)
+	file, err := output.CreateFile(path)
 	if err != nil {
 		return err
 	}

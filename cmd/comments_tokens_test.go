@@ -3,6 +3,7 @@ package cmd
 import (
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -116,6 +117,16 @@ func TestTokensCommandEmitsJSONWrappedArtifact(t *testing.T) {
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"tokens":"{}\n"}`, result.Stdout)
+}
+
+func TestTokensCommandCreatesMissingOutputDirectories(t *testing.T) {
+	client := fixtureClient(t, `{"document":{"id":"0:0","name":"Document","type":"DOCUMENT"}}`)
+	path := filepath.Join(t.TempDir(), "missing", "tokens", "tokens.json")
+
+	result := executeCommand(newTokensCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--source", "scan", "--format", "json", "--output", path)
+
+	require.NoError(t, result.Err)
+	assert.FileExists(t, path)
 }
 
 func TestTokensCommandRejectsUnsupportedTeamBeforeLoadingClient(t *testing.T) {

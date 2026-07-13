@@ -7,6 +7,7 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +67,7 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 			}
 
 			if options.output != "" {
-				if err := os.WriteFile(options.output, []byte(out), 0o644); err != nil {
+				if err := output.WriteFile(options.output, []byte(out), 0o644); err != nil {
 					return err
 				}
 				if err := cli.NewPrinter(cmd).File(options.output, map[string]any{"format": options.format, "bytes": len(out)}); err != nil {

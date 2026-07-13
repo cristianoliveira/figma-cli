@@ -31,6 +31,21 @@ func TestDownloadFile(t *testing.T) {
 	assert.Equal(t, "fake-image-data", string(data))
 }
 
+func TestDownloadFileCreatesMissingParentDirectories(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("fake-image-data"))
+	}))
+	defer server.Close()
+
+	outputPath := filepath.Join(t.TempDir(), "missing", "nested", "export.png")
+	err := DownloadFile(server.Client(), outputPath, server.URL)
+
+	require.NoError(t, err)
+	data, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	assert.Equal(t, "fake-image-data", string(data))
+}
+
 func TestDownloadFileErrorStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

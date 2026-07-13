@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
+
+	"github.com/cristianoliveira/figma-cli/internal/output"
 )
 
 // DefaultExportOutputPath builds the default file path for an exported asset.
@@ -25,7 +26,7 @@ func DownloadFile(httpClient *http.Client, outputPath string, fileURL string) er
 		return fmt.Errorf("download returned status %d: %s", resp.StatusCode, body)
 	}
 
-	file, err := os.Create(outputPath)
+	file, err := output.CreateFile(outputPath)
 	if err != nil {
 		return fmt.Errorf("creating output file: %w", err)
 	}

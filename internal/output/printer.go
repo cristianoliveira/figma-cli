@@ -1,4 +1,4 @@
-// Package output encapsulates how command results are written to stdout.
+// Package output encapsulates command result rendering and filesystem artifact writes.
 //
 // Every command produces one of three kinds of result:
 //

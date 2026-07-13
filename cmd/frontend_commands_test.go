@@ -3,6 +3,7 @@ package cmd
 import (
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -67,6 +68,16 @@ func TestCSSCommandEmitsJSONWrappedArtifact(t *testing.T) {
 	require.NoError(t, result.Err)
 	assert.Contains(t, result.Stdout, `"css"`)
 	assert.Contains(t, result.Stdout, `display: flex`)
+}
+
+func TestCSSCommandCreatesMissingOutputDirectories(t *testing.T) {
+	client := fixtureClient(t, `{"nodes":{"1:1":{"document":{"id":"1:1","name":"Frame","type":"FRAME","layoutMode":"HORIZONTAL"}}}}`)
+	path := filepath.Join(t.TempDir(), "missing", "styles", "frame.css")
+
+	result := executeCommand(newCSSCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--id", "1:1", "--output", path)
+
+	require.NoError(t, result.Err)
+	assert.FileExists(t, path)
 }
 
 func TestLayoutCommandEmitsScopedDetail(t *testing.T) {

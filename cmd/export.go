@@ -14,6 +14,7 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/assets"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -232,7 +233,7 @@ func writeExportMetadata(client *figma.Client, fileID, nodeID, format string, sc
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(metadataPath, append(encoded, '\n'), 0o600)
+	return output.WriteFile(metadataPath, append(encoded, '\n'), 0o600)
 }
 
 func optionalRequestedWidth(width float64) *float64 {

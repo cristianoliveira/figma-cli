@@ -54,3 +54,5 @@ tmp/
 # bv (beads viewer) local config and caches
 .bv/
 output/
+!internal/output/
+!internal/output/**

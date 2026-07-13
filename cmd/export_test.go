@@ -140,7 +140,7 @@ func TestExportCommandRejectsInvalidScale(t *testing.T) {
 	assert.False(t, loaded)
 }
 
-func TestExportCommandWritesMetadataSidecar(t *testing.T) {
+func TestExportCommandCreatesParentDirectoriesForOutputAndMetadata(t *testing.T) {
 	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
 		body := `<svg width="336" height="182" viewBox="0 0 336 182"><path d="M8 6H320C320 6 320 29.8986 320 51C320 60 328 63.935 328 75C328 86.065 320 88.9604 320 99C320 113.466 320 172 320 172H8L8 6Z" /></svg>`
 		switch {
@@ -154,8 +154,8 @@ func TestExportCommandWritesMetadataSidecar(t *testing.T) {
 	httpClient := &http.Client{Transport: transport}
 	client := &figma.Client{HTTP: httpClient}
 	dir := t.TempDir()
-	outputPath := dir + "/rectangle.svg"
-	metadataPath := dir + "/rectangle.export.json"
+	outputPath := filepath.Join(dir, "exports", "rectangle.svg")
+	metadataPath := filepath.Join(dir, "metadata", "rectangle.export.json")
 
 	result := executeCommand(
 		newExportCommand(func() (*figma.Client, error) { return client, nil }, nil),

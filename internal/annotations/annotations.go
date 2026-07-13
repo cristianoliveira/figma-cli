@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/cristianoliveira/figma-cli/internal/output"
 )
 
 type Size struct {
@@ -41,7 +43,7 @@ type Match struct {
 }
 
 func Write(path string, document Document) error {
-	file, err := os.Create(path)
+	file, err := output.CreateFile(path)
 	if err != nil {
 		return fmt.Errorf("write annotations: %w", err)
 	}
