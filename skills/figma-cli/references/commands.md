@@ -325,6 +325,10 @@ Node-scoped commands infer `node-id` from a Figma URL. Use optional `--id` with 
 
 ## Output Convention
 
+Collection commands return an effective `query`, pre-limit `total`, and returned
+`results`; `truncated: true` means use `--full` only when every local match is
+needed. Set `--limit` explicitly when working within a token budget.
+
 All commands produce structured JSON (except `css`, `tokens`, `export`, and
 non-`--json` `assets` which produce text). Pipe into `jq` for filtering:
 
