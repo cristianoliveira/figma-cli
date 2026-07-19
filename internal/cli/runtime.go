@@ -5,6 +5,7 @@ package cli
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -54,6 +55,9 @@ func ExitCode(err error) int {
 	}
 	var usage *UsageError
 	if errors.As(err, &usage) {
+		return 2
+	}
+	if err != nil && strings.HasPrefix(err.Error(), "unknown command ") {
 		return 2
 	}
 	return 1

@@ -19,18 +19,17 @@ func newMetaCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
+			}
+			apiURL, err := figma.BuildFileURL(input.FileID, input.NodeIDs, "", "1")
+			if err != nil {
+				return cli.NewUsageError(err)
 			}
 			client, err := loadClient()
 			if err != nil {
 				return err
 			}
 			client = client.WithContext(cmd.Context())
-
-			apiURL, err := figma.BuildFileURL(input.FileID, input.NodeIDs, "", "1")
-			if err != nil {
-				return err
-			}
 
 			result, err := client.FetchJSON(apiURL)
 			if err != nil {

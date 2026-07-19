@@ -1,13 +1,35 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRootNoArgsShowsCompactReadinessAndNextSteps(t *testing.T) {
+	t.Setenv("FIGMA_ACCESS_TOKEN", "")
+	root := newRootCommand(&cobra.Command{Use: "inspect"})
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	var stdout strings.Builder
+	root.SetOut(&stdout)
+	root.SetArgs(nil)
+
+	require.NoError(t, root.Execute())
+	result := stdout.String()
+	assert.Contains(t, result, "figma")
+	assert.Contains(t, result, "Authentication: missing FIGMA_ACCESS_TOKEN")
+	assert.Contains(t, result, "figma me")
+	assert.Contains(t, result, "figma inspect")
+	assert.Contains(t, result, "figma --help")
+	assert.NotContains(t, result, "Available Commands:")
+	assert.Less(t, len(result), 400)
+}
 
 func TestRootHelpIsCompactAndPointsToDecisionRelevantCommands(t *testing.T) {
 	result := executeCommand(newRootCommand(
@@ -75,19 +97,57 @@ func TestChangeAnalysisCommandsProvideLocalExamples(t *testing.T) {
 	}
 }
 
-func TestUnknownFlagErrorIncludesAvailableOptions(t *testing.T) {
+func TestUnknownCommandUsesUsageExitCode(t *testing.T) {
+	root := newRootCommand(&cobra.Command{Use: "inspect"})
+	root.SetArgs([]string{"inspec"})
+
+	err := root.Execute()
+
+	require.Error(t, err)
+	assert.ErrorContains(t, err, `unknown command "inspec"`)
+	assert.Equal(t, 2, cli.ExitCode(err))
+}
+
+func TestCommandOwnedInputErrorsUseUsageExitCode(t *testing.T) {
+	tests := []struct {
+		name    string
+		command *cobra.Command
+		args    []string
+	}{
+		{name: "assets kind", command: newAssetsCommand(nil, nil), args: []string{"abc", "--id", "1:2", "--kind", "unsupported"}},
+		{name: "changes versions", command: newChangesCommand(nil), args: []string{"abc"}},
+		{name: "comments state", command: newCommentsCommand(nil), args: []string{"abc", "--state", "unsupported"}},
+		{name: "components kind", command: newComponentsCommand(nil), args: []string{"abc", "--kind", "unsupported"}},
+		{name: "find filters", command: newFindCommand(nil), args: []string{"abc"}},
+		{name: "frames scope", command: newFramesCommand(nil), args: []string{"abc"}},
+		{name: "inspect format", command: newInspectCommand(nil), args: []string{"abc", "--id", "1:2", "--format", "unsupported"}},
+		{name: "layout comparison", command: newLayoutCompareCommand(nil), args: []string{"abc", "--id", "1:2"}},
+		{name: "tokens team", command: newTokensCommand(nil), args: []string{"abc", "--team", "123"}},
+		{name: "tokens format", command: newTokensCommand(nil), args: []string{"abc", "--format", "unsupported"}},
+		{name: "tokens source", command: newTokensCommand(nil), args: []string{"abc", "--source", "unsupported"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := executeCommand(test.command, test.args...)
+
+			require.Error(t, result.Err)
+			assert.Equal(t, 2, cli.ExitCode(result.Err))
+		})
+	}
+}
+
+func TestUnknownFlagErrorSuggestsNearestLocalOptionWithoutDumpingHelp(t *testing.T) {
 	command := newInspectCommand(func() (*figma.Client, error) { return nil, nil })
-	result := executeCommand(command, "abc", "--bogus")
+	result := executeCommand(command, "abc", "--nide", "1:2")
 
 	require.Error(t, result.Err)
 	message := result.Err.Error()
-	assert.Contains(t, message, "unknown flag: --bogus")
-	assert.Contains(t, message, "Available flags for \"figma inspect\"")
-	assert.Contains(t, message, "--id string")
-	assert.Contains(t, message, "--node string")
-	assert.Contains(t, message, "Global flags:")
-	assert.Contains(t, message, "--json")
-	assert.Contains(t, message, "Run `figma inspect --help` for details.")
+	assert.Contains(t, message, "unknown flag: --nide")
+	assert.Contains(t, message, "Did you mean `--node`?")
+	assert.Contains(t, message, "Run `figma inspect --help` for valid flags.")
+	assert.NotContains(t, message, "Available flags")
+	assert.Less(t, len(message), 180)
 }
 
 func TestNewRootCommandDoesNotLeakPersistentFlags(t *testing.T) {

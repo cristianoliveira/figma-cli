@@ -33,20 +33,20 @@ func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 			toVersion, _ := cmd.Flags().GetString("to")
 			explicitNodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			terse, _ := cmd.Flags().GetBool("terse")
 			limit, _ := cmd.Flags().GetInt("limit")
 			if fromVersion == "" || toVersion == "" {
-				return fmt.Errorf("--from and --to are required")
+				return cli.NewUsageError(fmt.Errorf("--from and --to are required"))
 			}
 			if limit <= 0 {
-				return fmt.Errorf("--limit must be greater than zero")
+				return cli.NewUsageError(fmt.Errorf("--limit must be greater than zero"))
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			nodeIDs := figma.ResolveNodeIDs(input, explicitNodeID)
 			client, err := loadClient()

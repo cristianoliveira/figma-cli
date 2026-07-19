@@ -12,23 +12,36 @@ import (
 
 	"github.com/spf13/cobra"
 
+	clipkg "github.com/cristianoliveira/figma-cli/internal/cli"
 	diff "github.com/cristianoliveira/figma-cli/internal/imagediff"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func TestCommandNoArgsShowsCompactNextSteps(t *testing.T) {
+	result := executeCommand(NewCommand())
+
+	require.NoError(t, result.Err)
+	assert.Contains(t, result.Stdout, "pixel-perfect compares PNG screenshots")
+	assert.Contains(t, result.Stdout, "pixel-perfect reference.png actual.png")
+	assert.Contains(t, result.Stdout, "pixel-perfect probe --help")
+	assert.Contains(t, result.Stdout, "pixel-perfect scan --help")
+	assert.Less(t, len(result.Stdout), 400)
+}
+
 func TestCommandUsageErrorsShowCorrectionsAndLocalExamples(t *testing.T) {
-	missing := executeCommand(NewCommand())
+	missing := executeCommand(NewCommand(), "reference.png")
 	require.Error(t, missing.Err)
 	assert.ErrorContains(t, missing.Err, "requires <reference.png> and <actual.png>")
 	assert.ErrorContains(t, missing.Err, "pixel-perfect reference.png actual.png")
 
-	unknown := executeCommand(NewCommand(), "reference.png", "actual.png", "--bogus")
+	unknown := executeCommand(NewCommand(), "reference.png", "actual.png", "--threshol", "8")
 	require.Error(t, unknown.Err)
-	assert.ErrorContains(t, unknown.Err, "unknown flag: --bogus")
-	assert.ErrorContains(t, unknown.Err, "Available flags for \"pixel-perfect\"")
-	assert.ErrorContains(t, unknown.Err, "--threshold uint8")
-	assert.ErrorContains(t, unknown.Err, "Run `pixel-perfect --help` for details.")
+	assert.ErrorContains(t, unknown.Err, "unknown flag: --threshol")
+	assert.ErrorContains(t, unknown.Err, "Did you mean `--threshold`?")
+	assert.ErrorContains(t, unknown.Err, "Run `pixel-perfect --help` for valid flags.")
+	assert.NotContains(t, unknown.Err.Error(), "Available flags")
+	assert.Less(t, len(unknown.Err.Error()), 180)
 
 	help := executeCommand(NewCommand(), "probe", "--help")
 	require.NoError(t, help.Err)
@@ -82,15 +95,27 @@ func TestProbeCommandExpandsAndDeduplicatesRadius(t *testing.T) {
 }
 
 func TestProbeCommandRejectsIncompleteLineAndInvalidOptions(t *testing.T) {
-	command := NewCommand()
-	fromOnly := executeCommand(command, "probe", "ref.png", "actual.png", "--from", "0,0")
-	assert.ErrorContains(t, fromOnly.Err, "--from and --to must be provided together")
+	tests := []struct {
+		name, expected string
+		args           []string
+	}{
+		{name: "incomplete line", args: []string{"--from", "0,0"}, expected: "--from and --to must be provided together"},
+		{name: "invalid step", args: []string{"--from", "0,0", "--to", "1,1", "--step", "0"}, expected: "--step must be positive"},
+		{name: "invalid radius", args: []string{"--at", "0,0", "--radius", "-1"}, expected: "--radius must be non-negative"},
+		{name: "invalid format", args: []string{"--at", "0,0", "--format", "yaml"}, expected: `invalid --format "yaml": expected csv or json`},
+	}
 
-	invalidStep := executeCommand(NewCommand(), "probe", "ref.png", "actual.png", "--from", "0,0", "--to", "1,1", "--step", "0")
-	assert.ErrorContains(t, invalidStep.Err, "--step must be positive")
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args := append([]string{"probe", "missing-reference.png", "missing-actual.png"}, test.args...)
+			result := executeCommand(NewCommand(), args...)
 
-	invalidRadius := executeCommand(NewCommand(), "probe", "ref.png", "actual.png", "--at", "0,0", "--radius", "-1")
-	assert.ErrorContains(t, invalidRadius.Err, "--radius must be non-negative")
+			require.Error(t, result.Err)
+			assert.ErrorContains(t, result.Err, test.expected)
+			assert.Equal(t, 2, clipkg.ExitCode(result.Err))
+			assert.NotContains(t, result.Err.Error(), "decode reference")
+		})
+	}
 }
 
 func TestProbeCommandWritesJSONFormat(t *testing.T) {
@@ -182,17 +207,28 @@ func TestScanCommandAppliesInputCrops(t *testing.T) {
 	assert.Equal(t, "image,axis,index,start,end,length,hex,input_axis,input_index\nref,x,0,0,0,1,#0A141E,x,0\nref,x,0,1,1,1,#141E28,x,0\nact,x,0,0,0,1,#0B151F,x,0\nact,x,0,1,1,1,#151F29,x,0\n", result.Stdout)
 }
 
-func TestScanCommandRequiresOneAxis(t *testing.T) {
-	dir := t.TempDir()
-	reference := filepath.Join(dir, "reference.png")
-	actual := filepath.Join(dir, "actual.png")
-	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 2, 2)))
-	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 2, 2)))
+func TestScanCommandValidatesOptionsBeforeReadingImages(t *testing.T) {
+	tests := []struct {
+		name, expected string
+		args           []string
+	}{
+		{name: "missing axis", expected: "provide exactly one of --x/--column or --y/--row"},
+		{name: "multiple axes", args: []string{"--x", "0", "--y", "0"}, expected: "provide exactly one of --x/--column or --y/--row"},
+		{name: "negative axis", args: []string{"--x", "-1"}, expected: "--x must be non-negative"},
+		{name: "invalid format", args: []string{"--x", "0", "--format", "yaml"}, expected: `invalid --format "yaml": expected csv or json`},
+	}
 
-	result := executeCommand(NewCommand(), "scan", reference, actual, "--x", "0", "--y", "0")
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args := append([]string{"scan", "missing-reference.png", "missing-actual.png"}, test.args...)
+			result := executeCommand(NewCommand(), args...)
 
-	require.Error(t, result.Err)
-	assert.Contains(t, result.Err.Error(), "provide exactly one of --x/--column or --y/--row")
+			require.Error(t, result.Err)
+			assert.ErrorContains(t, result.Err, test.expected)
+			assert.Equal(t, 2, clipkg.ExitCode(result.Err))
+			assert.NotContains(t, result.Err.Error(), "decode reference")
+		})
+	}
 }
 
 func TestProbeCommandRejectsDimensionMismatch(t *testing.T) {
@@ -482,6 +518,15 @@ func TestDiffImageCommandRejectsReportPathCollisions(t *testing.T) {
 	assert.EqualError(t, result.Err, "--report must not overwrite an input, mask, or overlay")
 }
 
+func TestDiffImageCommandValidatesVisualContextProviderBeforeReadingImages(t *testing.T) {
+	result := executeCommand(NewCommand(), "missing-reference.png", "missing-actual.png", "--visual-context", "--visual-context-provider", "unsupported")
+
+	require.Error(t, result.Err)
+	assert.ErrorContains(t, result.Err, `unsupported visual context provider "unsupported"`)
+	assert.Equal(t, 2, clipkg.ExitCode(result.Err))
+	assert.NotContains(t, result.Err.Error(), "decode reference")
+}
+
 func TestDiffImageCommandAddsDisclaimerWhenVisualContextIsNotConfigured(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("PI_SPECTACLES_CONFIG", filepath.Join(dir, "missing.json"))
@@ -515,12 +560,35 @@ func TestLimitImageRegionsReportsTruncationAndSupportsFullOutput(t *testing.T) {
 	assert.False(t, truncated)
 }
 
-func TestDiffImageCommandValidatesRegionLimitBeforeReadingImages(t *testing.T) {
-	result := executeCommand(NewCommand(), "missing-reference.png", "missing-actual.png", "--max-regions", "0")
+func TestDiffImageCommandClassifiesInvalidOptionsAsUsageErrorsBeforeReadingImages(t *testing.T) {
+	tests := []struct {
+		name  string
+		args  []string
+		error string
+	}{
+		{name: "region limit", args: []string{"--max-regions", "0"}, error: "--max-regions must be positive"},
+		{name: "changed ratio", args: []string{"--max-changed-ratio", "2"}, error: "--max-changed-ratio must be -1 or between 0 and 1"},
+		{name: "output collision", args: []string{"--output", "missing-reference.png"}, error: "--output must not overwrite an input image"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args := append([]string{"missing-reference.png", "missing-actual.png"}, test.args...)
+			result := executeCommand(NewCommand(), args...)
+
+			require.Error(t, result.Err)
+			assert.ErrorContains(t, result.Err, test.error)
+			assert.Equal(t, 2, clipkg.ExitCode(result.Err))
+			assert.NotContains(t, result.Err.Error(), "decode reference")
+		})
+	}
+}
+
+func TestDiffImageCommandClassifiesMissingInputAsOperationalError(t *testing.T) {
+	result := executeCommand(NewCommand(), "missing-reference.png", "missing-actual.png")
 
 	require.Error(t, result.Err)
-	assert.ErrorContains(t, result.Err, "--max-regions must be positive")
-	assert.NotContains(t, result.Err.Error(), "decode reference")
+	assert.Equal(t, 1, clipkg.ExitCode(result.Err))
 }
 
 func TestGroupImageRegionsMergesNearbyClusters(t *testing.T) {
@@ -609,7 +677,7 @@ func TestDiffImageCommandRejectsInvalidAnalysisLimits(t *testing.T) {
 	}
 }
 
-func TestDiffImageCommandFailsValidationThreshold(t *testing.T) {
+func TestDiffImageCommandFailsValidationThresholdWithStructuredEvidence(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")
 	actual := filepath.Join(dir, "actual.png")
@@ -619,9 +687,18 @@ func TestDiffImageCommandFailsValidationThreshold(t *testing.T) {
 	changed.Set(0, 0, image.White)
 	writeTestPNG(t, actual, changed)
 
-	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--output", mask, "--max-changed-ratio", "0.1")
+	result := executeCommand(newCommand(diff.CompareImagesWithThresholds), reference, actual, "--output", mask, "--max-changed-ratio", "0.1", "--max-perceptual-changed-ratio", "0")
 
 	assert.EqualError(t, result.Err, "image diff validation failed: changed ratio 0.250000 exceeds maximum 0.100000")
+	var output outputEnvelope
+	require.NoError(t, json.Unmarshal([]byte(result.Stdout), &output))
+	assert.Equal(t, 0.25, output.ChangedRatio)
+	require.NotNil(t, output.Validation)
+	assert.False(t, output.Validation.Passed)
+	assert.Equal(t, []comparisonValidationFailure{
+		{Metric: "changedRatio", Actual: 0.25, Maximum: 0.1},
+	}, output.Validation.Failed)
+	assert.Equal(t, mask, output.Mask)
 }
 
 func extractFirstRegion(t *testing.T, output string) diff.Region {
@@ -642,6 +719,8 @@ func writeTestPNG(t *testing.T, path string, img image.Image) {
 
 func executeCommand(command *cobra.Command, args ...string) commandResult {
 	var stdout, stderr bytes.Buffer
+	command.SilenceErrors = true
+	command.SilenceUsage = true
 	command.SetOut(&stdout)
 	command.SetErr(&stderr)
 	command.SetArgs(args)

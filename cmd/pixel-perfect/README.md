@@ -219,6 +219,7 @@ pixel-perfect reference.png implementation.png \
 - `--region x,y,width,height` compares one area while retaining absolute coordinates in JSON.
 - `--threshold` ignores channel differences at or below the supplied value.
 - `--max-rmse`, `--max-changed-ratio`, and `--max-perceptual-changed-ratio` make the process exit non-zero when a limit is exceeded.
+- A failed gate still writes comparison JSON to stdout with `validation.passed: false` and every failed metric; the actionable diagnostic stays on stderr.
 
 ## Diagnosis
 

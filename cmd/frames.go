@@ -22,15 +22,19 @@ func newFramesCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			resultLimit, err := readResultLimit(cmd)
+			if err != nil {
 				return err
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 			if len(nodeIDs) == 0 {
-				return fmt.Errorf("frames requires a page or section node ID from the URL or --id")
+				return cli.NewUsageError(fmt.Errorf("frames requires a page or section node ID from the URL or --id"))
 			}
 
 			client, err := loadClient()
@@ -41,14 +45,14 @@ func newFramesCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			result := output.NewQuery(
-				output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs},
-				extract.DiscoverFrames(document),
-			)
+			frames := extract.DiscoverFrames(document)
+			frames, total := limitResults(resultLimit, frames)
+			result := output.NewLimitedQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, nil, total, frames)
 			return cli.NewPrinter(cmd).JSON(result)
 		},
 	}
 	addNodeIDFlag(command, "page or section node ID; defaults to URL node-id")
+	addResultLimitFlags(command)
 	return command
 }
 

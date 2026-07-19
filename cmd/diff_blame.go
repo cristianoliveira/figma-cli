@@ -107,18 +107,18 @@ Examples:
 		fromVersion, _ := cmd.Flags().GetString("from")
 		explicitNodeID, err := explicitNodeIDFlag(cmd)
 		if err != nil {
-			return err
+			return cli.NewUsageError(err)
 		}
 		if toVersion == "" {
-			return fmt.Errorf("--to is required")
+			return cli.NewUsageError(fmt.Errorf("--to is required"))
 		}
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			return err
+			return cli.NewUsageError(err)
 		}
 		nodeID, err := figma.ResolveSingleNodeID(input, explicitNodeID, "diff blame")
 		if err != nil {
-			return err
+			return cli.NewUsageError(err)
 		}
 		client, err := cli.LoadClient()
 		if err != nil {

@@ -37,7 +37,7 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			outputDirectory, _ := cmd.Flags().GetString("output")
 			format, _ := cmd.Flags().GetString("format")
@@ -48,22 +48,22 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 			allowPartial, _ := cmd.Flags().GetBool("allow-partial")
 			if format != assetFormatAuto {
 				if err := figma.ValidateExportFormat(format); err != nil {
-					return err
+					return cli.NewUsageError(err)
 				}
 			}
 			if kind != assetKindAll && kind != assetKindIcon && kind != assetKindImage && kind != assetKindInstance && kind != assetKindVector {
-				return fmt.Errorf("invalid kind %q: expected all, icon, image, instance, or vector", kind)
+				return cli.NewUsageError(fmt.Errorf("invalid kind %q: expected all, icon, image, instance, or vector", kind))
 			}
 			if filenameMode != "name" && filenameMode != "name-id" {
-				return fmt.Errorf("invalid filename mode %q: expected name or name-id", filenameMode)
+				return cli.NewUsageError(fmt.Errorf("invalid filename mode %q: expected name or name-id", filenameMode))
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "assets")
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			client, err := loadClient()
 			if err != nil {

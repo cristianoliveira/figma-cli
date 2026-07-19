@@ -37,43 +37,43 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 		RunE: func(cmd *cobra.Command, args []string) error {
 			format, _ := cmd.Flags().GetString("format")
 			if err := figma.ValidateExportFormat(format); err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			scale, _ := cmd.Flags().GetFloat64("scale")
 			requestedWidth, _ := cmd.Flags().GetFloat64("width")
 			if cmd.Flags().Changed("width") && cmd.Flags().Changed("scale") {
-				return fmt.Errorf("--width cannot be combined with --scale")
+				return cli.NewUsageError(fmt.Errorf("--width cannot be combined with --scale"))
 			}
 			if err := validateExportWidth(format, requestedWidth); err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			if requestedWidth == 0 {
 				if err := validateExportScale(format, scale); err != nil {
-					return err
+					return cli.NewUsageError(err)
 				}
 			}
 			outputPath, _ := cmd.Flags().GetString("output")
 			metadataPath, _ := cmd.Flags().GetString("metadata")
 			if metadataPath != "" && sameExportPath(metadataPath, outputPath) {
-				return fmt.Errorf("--metadata must differ from --output")
+				return cli.NewUsageError(fmt.Errorf("--metadata must differ from --output"))
 			}
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			resolvedNodeID, err := figma.ResolveSingleNodeID(input, nodeID, "export")
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			if outputPath == "" {
 				outputPath = assets.DefaultExportOutputPath(input.FileID, resolvedNodeID, format)
 			}
 			if metadataPath != "" && sameExportPath(metadataPath, outputPath) {
-				return fmt.Errorf("--metadata must differ from --output")
+				return cli.NewUsageError(fmt.Errorf("--metadata must differ from --output"))
 			}
 			client, err := loadClient()
 			if err != nil {

@@ -21,16 +21,16 @@ func newLayoutCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			measureSpacing, _ := cmd.Flags().GetBool("measure-spacing")
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			resolvedNodeID, err := figma.ResolveSingleNodeID(input, nodeID, "layout")
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 
 			client, err := loadClient()

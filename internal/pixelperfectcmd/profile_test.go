@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -52,9 +53,14 @@ func TestComparisonProfileRejectsUnknownFieldsAndVersions(t *testing.T) {
 	require.NoError(t, os.WriteFile(unknown, []byte(`{"version":1,"magic":2}`), 0o600))
 	result := executeCommand(NewCommand(), "reference.png", "actual.png", "--profile", unknown)
 	assert.ErrorContains(t, result.Err, `unknown field "magic"`)
+	assert.Equal(t, 2, cli.ExitCode(result.Err))
 
 	unsupported := filepath.Join(dir, "unsupported.json")
 	require.NoError(t, os.WriteFile(unsupported, []byte(`{"version":2}`), 0o600))
 	result = executeCommand(NewCommand(), "reference.png", "actual.png", "--profile", unsupported)
 	assert.EqualError(t, result.Err, "unsupported --profile version 2")
+	assert.Equal(t, 2, cli.ExitCode(result.Err))
+
+	missing := executeCommand(NewCommand(), "reference.png", "actual.png", "--profile", filepath.Join(dir, "missing.json"))
+	assert.Equal(t, 1, cli.ExitCode(missing.Err))
 }

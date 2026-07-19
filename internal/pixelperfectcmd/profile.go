@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -46,10 +47,10 @@ func applyComparisonProfile(command *cobra.Command) (*comparisonConfiguration, e
 	decoder.DisallowUnknownFields()
 	var profile comparisonProfile
 	if err := decoder.Decode(&profile); err != nil {
-		return nil, fmt.Errorf("decode --profile: %w", err)
+		return nil, cli.NewUsageError(fmt.Errorf("decode --profile: %w", err))
 	}
 	if profile.Version != 1 {
-		return nil, fmt.Errorf("unsupported --profile version %d", profile.Version)
+		return nil, cli.NewUsageError(fmt.Errorf("unsupported --profile version %d", profile.Version))
 	}
 
 	sources := map[string]string{}
@@ -70,7 +71,7 @@ func applyComparisonProfile(command *cobra.Command) (*comparisonConfiguration, e
 			continue
 		}
 		if err := command.Flags().Set(option.flag, strconv.Itoa(*option.value)); err != nil {
-			return nil, err
+			return nil, cli.NewUsageError(err)
 		}
 		sources[option.flag] = "profile"
 	}

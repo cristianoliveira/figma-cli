@@ -48,11 +48,15 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateCommentFilters(state, after, before); err != nil {
+				return cli.NewUsageError(err)
+			}
+			resultLimit, err := readResultLimit(cmd)
+			if err != nil {
 				return err
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			client, err := loadClient()
 			if err != nil {
@@ -78,7 +82,17 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 			}
 			threads := extract.GroupCommentThreads(outputs)
 			threads = extract.FilterCommentThreads(threads, state, author, after, before)
-			result := output.NewQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, threads)
+			threads, total := limitResults(resultLimit, threads)
+			query := map[string]any{
+				"state":            state,
+				"author":           author,
+				"after":            after,
+				"before":           before,
+				"recursive":        recursive,
+				"includeAncestors": includeAncestors,
+				"commentId":        input.CommentID,
+			}
+			result := output.NewLimitedQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, query, total, threads)
 			if err := cli.NewPrinter(cmd).JSON(result); err != nil {
 				return err
 			}
@@ -92,6 +106,7 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 	command.Flags().StringVar(&after, "after", "", "include threads created at or after RFC3339 timestamp")
 	command.Flags().StringVar(&before, "before", "", "include threads created at or before RFC3339 timestamp")
 	command.Flags().BoolVar(&includeAncestors, "include-ancestors", false, "include comments attached to ancestor nodes")
+	addResultLimitFlags(command)
 	return command
 }
 

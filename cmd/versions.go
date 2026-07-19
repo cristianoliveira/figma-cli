@@ -41,6 +41,7 @@ type versionsPaginationOutput struct {
 }
 
 type versionsOutput struct {
+	Count      int                      `json:"count"`
 	Versions   []versionOutput          `json:"versions"`
 	Pagination versionsPaginationOutput `json:"pagination"`
 }
@@ -72,7 +73,7 @@ func newVersionsOutput(response api.GetFileVersionsResponse) versionsOutput {
 		}
 	}
 
-	return versionsOutput{Versions: versions, Pagination: pagination}
+	return versionsOutput{Count: len(versions), Versions: versions, Pagination: pagination}
 }
 
 // formatVersionsTable renders a human-readable view of version history:
@@ -151,7 +152,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			return err
+			return cli.NewUsageError(err)
 		}
 		apiURL, err := figma.BuildVersionsURL(input.FileID, figma.VersionsQuery{
 			PageSize: versionsPageSize,
@@ -159,7 +160,7 @@ Examples:
 			After:    versionsAfter,
 		})
 		if err != nil {
-			return err
+			return cli.NewUsageError(err)
 		}
 		client, err := cli.LoadClient()
 		if err != nil {

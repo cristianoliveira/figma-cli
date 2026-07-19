@@ -38,7 +38,7 @@ func newInspectCommandWithVariables(
 		RunE: func(cmd *cobra.Command, args []string) error {
 			explicitNodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			handoff, _ := cmd.Flags().GetBool("handoff")
@@ -49,36 +49,43 @@ func newInspectCommandWithVariables(
 			inspectFormat, _ := cmd.Flags().GetString("format")
 			fields, _ := cmd.Flags().GetStringSlice("fields")
 			if inspectFormat != inspectFormatJSON && inspectFormat != inspectFormatText {
-				return fmt.Errorf("unknown inspect format %q (want json or text)", inspectFormat)
+				return cli.NewUsageError(fmt.Errorf("unknown inspect format %q (want json or text)", inspectFormat))
 			}
 			if inspectFormat == inspectFormatText && !recursive {
-				return fmt.Errorf("--format text requires --recursive")
+				return cli.NewUsageError(fmt.Errorf("--format text requires --recursive"))
 			}
 			if cmd.Flags().Changed("fields") && inspectFormat != inspectFormatText {
-				return fmt.Errorf("--fields requires --format text")
+				return cli.NewUsageError(fmt.Errorf("--fields requires --format text"))
 			}
 			if err := extract.ValidateInspectFields(fields); err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			if handoff && recursive {
-				return fmt.Errorf("--handoff and --recursive cannot be used together")
+				return cli.NewUsageError(fmt.Errorf("--handoff and --recursive cannot be used together"))
 			}
 			if annotationsOutput != "" && !recursive {
-				return fmt.Errorf("--annotations-output requires --recursive")
+				return cli.NewUsageError(fmt.Errorf("--annotations-output requires --recursive"))
 			}
 			if includeVectorPaths && recursive && !cmd.Flags().Changed("depth") {
-				return fmt.Errorf("--include-vector-paths with --recursive requires explicit --depth")
+				return cli.NewUsageError(fmt.Errorf("--include-vector-paths with --recursive requires explicit --depth"))
 			}
 			if depth < 0 {
-				return fmt.Errorf("--depth must be zero or greater")
+				return cli.NewUsageError(fmt.Errorf("--depth must be zero or greater"))
+			}
+			if !recursive && (cmd.Flags().Changed("limit") || cmd.Flags().Changed("full")) {
+				return cli.NewUsageError(fmt.Errorf("--limit and --full require --recursive"))
+			}
+			resultLimit, err := readResultLimit(cmd)
+			if err != nil {
+				return err
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			nodeID, err := inspectNodeID(input, explicitNodeID)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			client, err := loadClient()
 			if err != nil {
@@ -119,15 +126,19 @@ func newInspectCommandWithVariables(
 						return err
 					}
 				}
+				nodes, total := limitResults(resultLimit, nodes)
 				enrichInspectNodes(nodes, details.Styles, client, input.FileID, fetchVariables)
 				if inspectFormat == inspectFormatText {
 					text, formatErr := extract.FormatInspectText(nodes, fields)
 					if formatErr != nil {
 						return formatErr
 					}
+					if len(nodes) < total {
+						text = fmt.Sprintf("Showing %d of %d nodes. Run with --full for all nodes.\n\n%s", len(nodes), total, text)
+					}
 					return cli.NewPrinter(cmd).Text("inspect", text)
 				}
-				return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, nodes))
+				return cli.NewPrinter(cmd).JSON(output.NewLimitedQuery(scope, nil, total, nodes))
 			}
 			if handoff {
 				result := extract.ExtractHandoff(document, extract.HandoffOptions{MaxDepth: depth, IncludeHidden: includeHidden})
@@ -152,6 +163,7 @@ func newInspectCommandWithVariables(
 	command.Flags().Bool("include-vector-paths", false, "request and include exact Figma fill/stroke geometry; recursive use requires explicit --depth")
 	command.Flags().String("format", inspectFormatJSON, "output format for recursive inspection: json or text")
 	command.Flags().StringSlice("fields", nil, "comma-separated inspect fields for --format text; nested paths are supported")
+	addResultLimitFlags(command)
 	return command
 }
 

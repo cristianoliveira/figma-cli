@@ -15,7 +15,7 @@ func TestTextsCommandEmitsScopedCopySemantics(t *testing.T) {
 	result := executeCommand(newTextsCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=1-1")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["1:1"]},"results":[{"id":"1:2","name":"Items","text":"One\nTwo","nodeKind":"textBlock","depth":1,"order":0,"parentName":"List","lines":[{"index":0,"text":"One","listType":"ORDERED"},{"index":1,"text":"Two","listType":"ORDERED","indentation":1}]}]}`, result.Stdout)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["1:1"]},"query":{"layer":"","recursive":false},"total":1,"results":[{"id":"1:2","name":"Items","text":"One\nTwo","nodeKind":"textBlock","depth":1,"order":0,"parentName":"List","lines":[{"index":0,"text":"One","listType":"ORDERED"},{"index":1,"text":"Two","listType":"ORDERED","indentation":1}]}]}`, result.Stdout)
 }
 
 func TestTextsCommandRejectsMissingScopeBeforeLoadingClient(t *testing.T) {

@@ -26,6 +26,7 @@ func TestExitCodeErrorRecognizedByErrorsAs(t *testing.T) {
 func TestExitCodeClassifiesUsageOperationalAndExplicitErrors(t *testing.T) {
 	assert.Equal(t, 2, ExitCode(NewUsageError(errors.New("bad arguments"))))
 	assert.Equal(t, 1, ExitCode(errors.New("network unavailable")))
+	assert.Equal(t, 2, ExitCode(errors.New(`unknown command "reed" for "tool"`)))
 	assert.Equal(t, 7, ExitCode(&ExitCodeError{Code: 7}))
 }
 

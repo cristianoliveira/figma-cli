@@ -25,6 +25,8 @@ func TestComponentsCommandEmitsStableScopedResults(t *testing.T) {
 	require.NoError(t, command.Execute())
 	assert.JSONEq(t, `{
 		"scope":{"fileKey":"abc","nodeIds":["42:1"]},
+		"query":{"name":"button","kind":"instance","raw":false,"usage":false},
+		"total":1,
 		"results":[{"id":"42:2","name":"Button","type":"INSTANCE","componentId":"1:1","path":["Screen","Button"],"paints":{},"bounds":{},"layout":{},"typography":{}}]
 	}`, stdout.String())
 }
@@ -37,7 +39,7 @@ func TestComponentsCommandGroupsUsageByExactComponentID(t *testing.T) {
 	result := executeCommand(newComponentsCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--usage")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"results":[{"componentId":"1:1","name":"Primary","count":2,"instances":[{"id":"42:2","name":"Primary","path":["Screen","Primary"],"variantProperties":{"Size":"Large"}},{"id":"42:3","name":"Secondary","path":["Screen","Secondary"]}]},{"componentId":"2:1","name":"Primary","count":1,"instances":[{"id":"42:4","name":"Primary","path":["Screen","Primary"]}]}]}`, result.Stdout)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"query":{"name":"","kind":"","raw":false,"usage":true},"total":2,"results":[{"componentId":"1:1","name":"Primary","count":2,"instances":[{"id":"42:2","name":"Primary","path":["Screen","Primary"],"variantProperties":{"Size":"Large"}},{"id":"42:3","name":"Secondary","path":["Screen","Secondary"]}]},{"componentId":"2:1","name":"Primary","count":1,"instances":[{"id":"42:4","name":"Primary","path":["Screen","Primary"]}]}]}`, result.Stdout)
 }
 
 func TestComponentsCommandRejectsUsageWithRawWithoutLoadingClient(t *testing.T) {

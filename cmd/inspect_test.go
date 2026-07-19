@@ -57,7 +57,7 @@ func TestInspectCommandRecursivelyEmitsImplementationSpecs(t *testing.T) {
 	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"results":[{"id":"42:1","name":"Button","type":"COMPONENT","propertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"bounds":{"x":100,"y":200,"width":50,"height":40},"relativeBounds":{"x":0,"y":0,"width":50,"height":40,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","text":"Save","bounds":{"x":112.5,"y":205.25,"width":20,"height":10},"relativeBounds":{"x":12.5,"y":5.25,"width":20,"height":10,"relativeTo":"42:1"},"layout":{},"typography":{}}]}`, result.Stdout)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"total":2,"results":[{"id":"42:1","name":"Button","type":"COMPONENT","propertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"bounds":{"x":100,"y":200,"width":50,"height":40},"relativeBounds":{"x":0,"y":0,"width":50,"height":40,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","text":"Save","bounds":{"x":112.5,"y":205.25,"width":20,"height":10},"relativeBounds":{"x":12.5,"y":5.25,"width":20,"height":10,"relativeTo":"42:1"},"layout":{},"typography":{}}]}`, result.Stdout)
 }
 
 func TestInspectCommandBoundsRecursiveTraversalWithDepth(t *testing.T) {
@@ -81,7 +81,7 @@ func TestInspectCommandRecursiveEmitsComputedSiblingSpacing(t *testing.T) {
 	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"results":[{"id":"42:1","name":"Stack","type":"FRAME","bounds":{"width":100,"height":100},"relativeBounds":{"x":0,"y":0,"width":100,"height":100,"relativeTo":"42:1"},"layout":{"mode":"VERTICAL"},"typography":{}},{"id":"42:2","name":"Copy","type":"TEXT","bounds":{"y":10,"width":80,"height":48},"relativeBounds":{"x":0,"y":10,"width":80,"height":48,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:3","name":"Link","type":"TEXT","bounds":{"y":58,"width":40,"height":24},"relativeBounds":{"x":0,"y":58,"width":40,"height":24,"relativeTo":"42:1"},"layout":{},"typography":{},"spacingFromPrevious":{"parentId":"42:1","previousId":"42:2","axis":"vertical","measured":0,"declared":0,"matchesDeclared":true}}]}`, result.Stdout)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"total":3,"results":[{"id":"42:1","name":"Stack","type":"FRAME","bounds":{"width":100,"height":100},"relativeBounds":{"x":0,"y":0,"width":100,"height":100,"relativeTo":"42:1"},"layout":{"mode":"VERTICAL"},"typography":{}},{"id":"42:2","name":"Copy","type":"TEXT","bounds":{"y":10,"width":80,"height":48},"relativeBounds":{"x":0,"y":10,"width":80,"height":48,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:3","name":"Link","type":"TEXT","bounds":{"y":58,"width":40,"height":24},"relativeBounds":{"x":0,"y":58,"width":40,"height":24,"relativeTo":"42:1"},"layout":{},"typography":{},"spacingFromPrevious":{"parentId":"42:1","previousId":"42:2","axis":"vertical","measured":0,"declared":0,"matchesDeclared":true}}]}`, result.Stdout)
 }
 
 func TestInspectCommandAcceptsNodeAliasForExplicitID(t *testing.T) {
@@ -111,7 +111,7 @@ func TestInspectCommandRecursiveExplicitIDEmitsRelativeBounds(t *testing.T) {
 	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--id", "42:1", "--recursive")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"results":[{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{"x":100,"y":200,"width":50,"height":40},"relativeBounds":{"x":0,"y":0,"width":50,"height":40,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","bounds":{"x":112.5,"y":205.25,"width":20,"height":10},"relativeBounds":{"x":12.5,"y":5.25,"width":20,"height":10,"relativeTo":"42:1"},"layout":{},"typography":{}}]}`, result.Stdout)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"total":2,"results":[{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{"x":100,"y":200,"width":50,"height":40},"relativeBounds":{"x":0,"y":0,"width":50,"height":40,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","bounds":{"x":112.5,"y":205.25,"width":20,"height":10},"relativeBounds":{"x":12.5,"y":5.25,"width":20,"height":10,"relativeTo":"42:1"},"layout":{},"typography":{}}]}`, result.Stdout)
 }
 
 func TestInspectCommandEmitsBoundedHandoff(t *testing.T) {

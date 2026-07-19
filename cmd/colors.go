@@ -20,15 +20,19 @@ func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			resultLimit, err := readResultLimit(cmd)
+			if err != nil {
 				return err
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "colors")
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			client, err := loadClient()
 			if err != nil {
@@ -40,7 +44,8 @@ func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 				return err
 			}
 			palette := extract.CollectColors(doc)
-			result := output.NewQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, palette)
+			palette, total := limitResults(resultLimit, palette)
+			result := output.NewLimitedQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, nil, total, palette)
 			if err := cli.NewPrinter(cmd).JSON(result); err != nil {
 				return err
 			}
@@ -48,6 +53,7 @@ func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 		},
 	}
 	addNodeIDFlag(command, "node ID to extract colors from; defaults to URL node-id")
+	addResultLimitFlags(command)
 	return command
 }
 

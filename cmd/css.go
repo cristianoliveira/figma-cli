@@ -33,17 +33,17 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			outputPath, _ := cmd.Flags().GetString("output")
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			nodeIDs, err := figma.ResolveRequiredNodeIDs(input, nodeID, "css")
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			client, err := loadClient()
 			if err != nil {

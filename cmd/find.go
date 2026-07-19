@@ -25,14 +25,18 @@ func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			nodeType, _ := cmd.Flags().GetString("type")
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			if layerName == "" && nodeType == "" {
-				return fmt.Errorf("at least one of --name or --type is required")
+				return cli.NewUsageError(fmt.Errorf("at least one of --name or --type is required"))
+			}
+			resultLimit, err := readResultLimit(cmd)
+			if err != nil {
+				return err
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			client, err := loadClient()
 			if err != nil {
@@ -45,7 +49,9 @@ func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 				return err
 			}
 			matches := extract.Search(doc, extract.SearchCriteria{Name: layerName, Type: nodeType})
-			result := output.NewQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, matches)
+			matches, total := limitResults(resultLimit, matches)
+			query := map[string]any{"name": layerName, "type": nodeType}
+			result := output.NewLimitedQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, query, total, matches)
 			if err := cli.NewPrinter(cmd).JSON(result); err != nil {
 				return err
 			}
@@ -55,6 +61,7 @@ func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command.Flags().String("name", "", "substring of layer name to find (case-insensitive)")
 	command.Flags().String("type", "", "node type to find, e.g. FRAME, COMPONENT, INSTANCE, SECTION (case-insensitive)")
 	addNodeIDFlag(command, "node ID to search within; defaults to URL node-id")
+	addResultLimitFlags(command)
 	return command
 }
 

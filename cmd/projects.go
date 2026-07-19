@@ -16,8 +16,10 @@ type projectOutput struct {
 }
 
 type projectsOutput struct {
-	Team     string          `json:"team"`
-	Projects []projectOutput `json:"projects"`
+	Team      string          `json:"team"`
+	Total     int             `json:"total"`
+	Truncated bool            `json:"truncated,omitempty"`
+	Projects  []projectOutput `json:"projects"`
 }
 
 func resolveTeamInput(args []string, getenv func(string) string) (string, error) {
@@ -36,7 +38,7 @@ func newProjectsOutput(response api.GetTeamProjectsResponse) projectsOutput {
 	for _, project := range response.Projects {
 		projects = append(projects, projectOutput{ID: project.Id, Name: project.Name})
 	}
-	return projectsOutput{Team: response.Name, Projects: projects}
+	return projectsOutput{Team: response.Name, Total: len(projects), Projects: projects}
 }
 
 var projectsCmd = &cobra.Command{
@@ -51,9 +53,13 @@ a Figma team URL, or set FIGMA_TEAM_ID. An explicit argument overrides the
 environment default. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		teamID, err := resolveTeamInput(args, os.Getenv)
+		resultLimit, err := readResultLimit(cmd)
 		if err != nil {
 			return err
+		}
+		teamID, err := resolveTeamInput(args, os.Getenv)
+		if err != nil {
+			return cli.NewUsageError(err)
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
@@ -64,10 +70,14 @@ environment default. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
 		if err != nil {
 			return err
 		}
-		return cli.NewPrinter(cmd).JSON(newProjectsOutput(response))
+		result := newProjectsOutput(response)
+		result.Projects, result.Total = limitResults(resultLimit, result.Projects)
+		result.Truncated = len(result.Projects) < result.Total
+		return cli.NewPrinter(cmd).JSON(result)
 	},
 }
 
 func init() {
+	addResultLimitFlags(projectsCmd)
 	rootCmd.AddCommand(projectsCmd)
 }

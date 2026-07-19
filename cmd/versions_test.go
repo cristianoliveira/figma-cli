@@ -45,6 +45,7 @@ func TestNewVersionsOutputMapsFields(t *testing.T) {
 	got := newVersionsOutput(response)
 
 	require.Len(t, got.Versions, 2)
+	assert.Equal(t, 2, got.Count)
 
 	first := got.Versions[0]
 	assert.Equal(t, "v1", first.ID)
@@ -70,6 +71,7 @@ func TestNewVersionsOutputEmptyVersions(t *testing.T) {
 
 	assert.Empty(t, got.Versions)
 	assert.NotNil(t, got.Versions)
+	assert.Zero(t, got.Count)
 	assert.False(t, got.Pagination.HasMore)
 	assert.False(t, got.Pagination.HasPrev)
 	assert.Empty(t, got.Pagination.NextAfter)

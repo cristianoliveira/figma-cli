@@ -18,7 +18,7 @@ func TestCommentsCommandEmitsScopedEmptyResults(t *testing.T) {
 	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "abc")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"results":[]}`, result.Stdout)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"query":{"state":"all","author":"","after":"","before":"","recursive":true,"includeAncestors":false,"commentId":""},"total":0,"results":[]}`, result.Stdout)
 }
 
 func TestCommentsCommandGroupsReviewThreads(t *testing.T) {
@@ -30,7 +30,7 @@ func TestCommentsCommandGroupsReviewThreads(t *testing.T) {
 	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--state", "open", "--author", "cristian")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"results":[{"root":{"id":"root","message":"Adjust spacing","created_at":"2026-01-01 00:00:00 +0000 UTC","resolved":false,"user":"Ada","url":"https://www.figma.com/design/abc?m=dev#root"},"replies":[{"id":"reply","message":"Fixed","created_at":"2026-01-02 00:00:00 +0000 UTC","resolved":false,"user":"Cristian","parent_id":"root","url":"https://www.figma.com/design/abc?m=dev#reply"}]}]}`, result.Stdout)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"query":{"state":"open","author":"cristian","after":"","before":"","recursive":true,"includeAncestors":false,"commentId":""},"total":1,"results":[{"root":{"id":"root","message":"Adjust spacing","created_at":"2026-01-01 00:00:00 +0000 UTC","resolved":false,"user":"Ada","url":"https://www.figma.com/design/abc?m=dev#root"},"replies":[{"id":"reply","message":"Fixed","created_at":"2026-01-02 00:00:00 +0000 UTC","resolved":false,"user":"Cristian","parent_id":"root","url":"https://www.figma.com/design/abc?m=dev#reply"}]}]}`, result.Stdout)
 }
 
 func TestCommentsCommandSelectsNumericURLFragmentBeforeNodeScope(t *testing.T) {

@@ -132,84 +132,89 @@ func newCommand(compare imageComparer) *cobra.Command {
 			threshold, _ := cmd.Flags().GetUint8("threshold")
 			overlay, _ := cmd.Flags().GetString("overlay")
 			report, _ := cmd.Flags().GetString("report")
+			visualContextEnabled, _ := cmd.Flags().GetBool("visual-context")
+			provider, _ := cmd.Flags().GetString("visual-context-provider")
+			if visualContextEnabled && provider != "openrouter" && provider != "openai" {
+				return cli.NewUsageError(fmt.Errorf("unsupported visual context provider %q", provider))
+			}
 			if output != "" && (samePath(output, args[0]) || samePath(output, args[1])) {
-				return fmt.Errorf("--output must not overwrite an input image")
+				return cli.NewUsageError(fmt.Errorf("--output must not overwrite an input image"))
 			}
 			if overlay != "" && (samePath(overlay, args[0]) || samePath(overlay, args[1])) {
-				return fmt.Errorf("--overlay must not overwrite an input image")
+				return cli.NewUsageError(fmt.Errorf("--overlay must not overwrite an input image"))
 			}
 			if overlay != "" && output != "" && samePath(overlay, output) {
-				return fmt.Errorf("--overlay must differ from --output")
+				return cli.NewUsageError(fmt.Errorf("--overlay must differ from --output"))
 			}
 			if report != "" && (samePath(report, args[0]) || samePath(report, args[1]) || (output != "" && samePath(report, output)) || samePath(report, overlay)) {
-				return fmt.Errorf("--report must not overwrite an input, mask, or overlay")
+				return cli.NewUsageError(fmt.Errorf("--report must not overwrite an input, mask, or overlay"))
 			}
 			offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
 			if offsetRadius < 0 {
-				return fmt.Errorf("--suggest-offset must be non-negative")
+				return cli.NewUsageError(fmt.Errorf("--suggest-offset must be non-negative"))
 			}
 			movementRadius, _ := cmd.Flags().GetInt("suggest-movement")
 			if movementRadius < 0 {
-				return fmt.Errorf("--suggest-movement must be non-negative")
+				return cli.NewUsageError(fmt.Errorf("--suggest-movement must be non-negative"))
 			}
 			regionGap, _ := cmd.Flags().GetInt("region-gap")
 			if regionGap < 0 {
-				return fmt.Errorf("--region-gap must be non-negative")
+				return cli.NewUsageError(fmt.Errorf("--region-gap must be non-negative"))
 			}
 			minRegionPixels, _ := cmd.Flags().GetInt("min-region-pixels")
 			if minRegionPixels < 1 {
-				return fmt.Errorf("--min-region-pixels must be positive")
+				return cli.NewUsageError(fmt.Errorf("--min-region-pixels must be positive"))
 			}
 			maxRegions, _ := cmd.Flags().GetInt("max-regions")
 			if maxRegions < 1 {
-				return fmt.Errorf("--max-regions must be positive")
+				return cli.NewUsageError(fmt.Errorf("--max-regions must be positive"))
 			}
 			full, _ := cmd.Flags().GetBool("full")
 			perceptualThreshold, _ := cmd.Flags().GetFloat64("perceptual-threshold")
 			if perceptualThreshold < 0 || math.IsNaN(perceptualThreshold) || math.IsInf(perceptualThreshold, 0) {
-				return fmt.Errorf("--perceptual-threshold must be a finite non-negative number")
+				return cli.NewUsageError(fmt.Errorf("--perceptual-threshold must be a finite non-negative number"))
 			}
 			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
 			if maxRMSE != -1 && (maxRMSE < 0 || math.IsNaN(maxRMSE) || math.IsInf(maxRMSE, 0)) {
-				return fmt.Errorf("--max-rmse must be -1 or a finite non-negative number")
+				return cli.NewUsageError(fmt.Errorf("--max-rmse must be -1 or a finite non-negative number"))
 			}
 			maxChangedRatio, _ := cmd.Flags().GetFloat64("max-changed-ratio")
 			if maxChangedRatio != -1 && (maxChangedRatio < 0 || maxChangedRatio > 1 || math.IsNaN(maxChangedRatio) || math.IsInf(maxChangedRatio, 0)) {
-				return fmt.Errorf("--max-changed-ratio must be -1 or between 0 and 1")
+				return cli.NewUsageError(fmt.Errorf("--max-changed-ratio must be -1 or between 0 and 1"))
 			}
 			maxPerceptualChangedRatio, _ := cmd.Flags().GetFloat64("max-perceptual-changed-ratio")
 			if maxPerceptualChangedRatio != -1 && (maxPerceptualChangedRatio < 0 || maxPerceptualChangedRatio > 1 || math.IsNaN(maxPerceptualChangedRatio) || math.IsInf(maxPerceptualChangedRatio, 0)) {
-				return fmt.Errorf("--max-perceptual-changed-ratio must be -1 or between 0 and 1")
+				return cli.NewUsageError(fmt.Errorf("--max-perceptual-changed-ratio must be -1 or between 0 and 1"))
 			}
 			region, err := parseImageRegion(cmd.Flags().Lookup("region").Value.String())
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			ignoredValues, _ := cmd.Flags().GetStringArray("ignore-region")
 			ignored := make([]diff.Bounds, 0, len(ignoredValues))
 			for _, value := range ignoredValues {
 				ignoredRegion, parseErr := parseImageRegion(value)
 				if parseErr != nil {
-					return fmt.Errorf("invalid --ignore-region: %w", parseErr)
+					return cli.NewUsageError(fmt.Errorf("invalid --ignore-region: %w", parseErr))
 				}
 				if ignoredRegion.Width < 1 || ignoredRegion.Height < 1 {
-					return fmt.Errorf("invalid --ignore-region: width and height must be positive")
+					return cli.NewUsageError(fmt.Errorf("invalid --ignore-region: width and height must be positive"))
 				}
 				ignored = append(ignored, *ignoredRegion)
 			}
 			referenceCrop, err := parseOptionalCrop(cmd, "reference-crop")
 			if err != nil {
-				return err
-			}
-			referenceMetadataPath, _ := cmd.Flags().GetString("reference-metadata")
-			referenceMetadata, err := loadExportMetadata(referenceMetadataPath)
-			if err != nil {
-				return err
-			}
-			if referenceCrop != nil && referenceMetadata != nil {
-				return fmt.Errorf("--reference-crop and --reference-metadata cannot be used together")
+				return cli.NewUsageError(err)
 			}
 			actualCrop, err := parseOptionalCrop(cmd, "actual-crop")
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			referenceMetadataPath, _ := cmd.Flags().GetString("reference-metadata")
+			if referenceCrop != nil && referenceMetadataPath != "" {
+				return cli.NewUsageError(fmt.Errorf("--reference-crop and --reference-metadata cannot be used together"))
+			}
+			referenceMetadata, err := loadExportMetadata(referenceMetadataPath)
 			if err != nil {
 				return err
 			}
@@ -327,14 +332,19 @@ func newCommand(compare imageComparer) *cobra.Command {
 				}
 				result.MovedRegions = decoded.SuggestRegionMovements(regionBounds, movementRadius, ignored)
 			}
-			if maxRMSE >= 0 && result.RMSE > maxRMSE {
-				return fmt.Errorf("image diff validation failed: RMSE %.6f exceeds maximum %.6f", result.RMSE, maxRMSE)
+			validation, validationErr := evaluateComparisonValidation(result, maxRMSE, maxChangedRatio, maxPerceptualChangedRatio)
+			outputResult := outputEnvelope{
+				ImageComparison:  result,
+				RegionCount:      regionCount,
+				RegionsTruncated: regionsTruncated,
+				Configuration:    configuration,
+				Validation:       validation,
 			}
-			if maxChangedRatio >= 0 && result.ChangedRatio > maxChangedRatio {
-				return fmt.Errorf("image diff validation failed: changed ratio %.6f exceeds maximum %.6f", result.ChangedRatio, maxChangedRatio)
-			}
-			if maxPerceptualChangedRatio >= 0 && result.PerceptualChangedRatio > maxPerceptualChangedRatio {
-				return fmt.Errorf("image diff validation failed: perceptual changed ratio %.6f exceeds maximum %.6f", result.PerceptualChangedRatio, maxPerceptualChangedRatio)
+			if validationErr != nil {
+				if err := writeJSON(cmd, outputResult); err != nil {
+					return err
+				}
+				return validationErr
 			}
 			if report != "" {
 				if err := pixelperfectreport.Write(report, pixelperfectreport.Input{
@@ -350,15 +360,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 					return err
 				}
 			}
-			outputResult := outputEnvelope{
-				ImageComparison:  result,
-				RegionCount:      regionCount,
-				RegionsTruncated: regionsTruncated,
-				Configuration:    configuration,
-			}
-			visualContextEnabled, _ := cmd.Flags().GetBool("visual-context")
 			if visualContextEnabled {
-				provider, _ := cmd.Flags().GetString("visual-context-provider")
 				model, _ := cmd.Flags().GetString("visual-context-model")
 				visualContextPrompt, _ := cmd.Flags().GetString("visual-context-prompt")
 				config, configErr := imagecontext.LoadProviderConfig(provider, model)
@@ -429,7 +431,11 @@ func newProbeCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			points, err := probePointsFromFlags(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
+			}
+			format, err := tabularFormat(cmd)
+			if err != nil {
+				return cli.NewUsageError(err)
 			}
 			inputs, err := prepareCommandImageInputs(cmd, args[0], args[1])
 			if err != nil {
@@ -443,10 +449,6 @@ func newProbeCommand() *cobra.Command {
 			output.Inputs = inputs.metadata
 			for index := range output.Points {
 				output.Points[index].InputPoint = inputPoint(output.Points[index].Point, inputs.metadata)
-			}
-			format, err := tabularFormat(cmd)
-			if err != nil {
-				return err
 			}
 			if format == outputpkg.FormatJSON {
 				return writeJSON(cmd, output)
@@ -472,15 +474,10 @@ func newScanCommand() *cobra.Command {
 		Example: `  pixel-perfect scan reference.png actual.png --row 24
   pixel-perfect scan reference.png actual.png --column 12 --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			inputs, err := prepareCommandImageInputs(cmd, args[0], args[1])
-			if err != nil {
-				return err
-			}
-			defer inputs.cleanup()
 			xChanged := cmd.Flags().Changed("x") || cmd.Flags().Changed("column")
 			yChanged := cmd.Flags().Changed("y") || cmd.Flags().Changed("row")
 			if xChanged == yChanged {
-				return fmt.Errorf("provide exactly one of --x/--column or --y/--row")
+				return cli.NewUsageError(fmt.Errorf("provide exactly one of --x/--column or --y/--row"))
 			}
 			axis := "y"
 			index, _ := cmd.Flags().GetInt("x")
@@ -495,18 +492,23 @@ func newScanCommand() *cobra.Command {
 				}
 			}
 			if index < 0 {
-				return fmt.Errorf("--%s must be non-negative", map[string]string{"x": "y", "y": "x"}[axis])
+				return cli.NewUsageError(fmt.Errorf("--%s must be non-negative", map[string]string{"x": "y", "y": "x"}[axis]))
 			}
+			format, err := tabularFormat(cmd)
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			inputs, err := prepareCommandImageInputs(cmd, args[0], args[1])
+			if err != nil {
+				return err
+			}
+			defer inputs.cleanup()
 			output, err := scanImages(inputs.referencePath, inputs.actualPath, axis, index)
 			if err != nil {
 				return err
 			}
 			output.Inputs = inputs.metadata
 			output.InputLine = inputLine(axis, index, inputs.metadata)
-			format, err := tabularFormat(cmd)
-			if err != nil {
-				return err
-			}
 			if format == outputpkg.FormatJSON {
 				return writeJSON(cmd, output)
 			}
@@ -716,7 +718,7 @@ func scanImages(referencePath, actualPath string, axis string, index int) (scanO
 	if index >= map[string]int{"x": referenceHeight, "y": referenceWidth}[axis] {
 		flag := map[string]string{"x": "--y", "y": "--x"}[axis]
 		limit := map[string]int{"x": referenceHeight, "y": referenceWidth}[axis]
-		return scanOutput{}, fmt.Errorf("%s index %d is outside image bounds %dx%d (valid 0-%d)", flag, index, referenceWidth, referenceHeight, limit-1)
+		return scanOutput{}, cli.NewUsageError(fmt.Errorf("%s index %d is outside image bounds %dx%d (valid 0-%d)", flag, index, referenceWidth, referenceHeight, limit-1))
 	}
 	referenceRuns, err := scanPNGRuns(referencePath, axis, index, length)
 	if err != nil {
@@ -771,7 +773,7 @@ func probeImages(referencePath, actualPath string, points []probePoint) (probeOu
 	output := probeOutput{Points: make([]probePointOutput, 0, len(points))}
 	for _, point := range points {
 		if point.X >= referenceWidth || point.Y >= referenceHeight {
-			return probeOutput{}, fmt.Errorf("--at point %d,%d is outside image bounds %dx%d", point.X, point.Y, referenceWidth, referenceHeight)
+			return probeOutput{}, cli.NewUsageError(fmt.Errorf("--at point %d,%d is outside image bounds %dx%d", point.X, point.Y, referenceWidth, referenceHeight))
 		}
 		referenceColor, err := probePNGColor(referencePath, point)
 		if err != nil {
@@ -864,17 +866,17 @@ func addInputPreparationFlags(command *cobra.Command) {
 func prepareCommandImageInputs(cmd *cobra.Command, referencePath, actualPath string) (preparedImageInputs, error) {
 	referenceCrop, err := parseOptionalCrop(cmd, "reference-crop")
 	if err != nil {
-		return preparedImageInputs{}, err
-	}
-	referenceMetadataPath, _ := cmd.Flags().GetString("reference-metadata")
-	referenceMetadata, err := loadExportMetadata(referenceMetadataPath)
-	if err != nil {
-		return preparedImageInputs{}, err
-	}
-	if referenceCrop != nil && referenceMetadata != nil {
-		return preparedImageInputs{}, fmt.Errorf("--reference-crop and --reference-metadata cannot be used together")
+		return preparedImageInputs{}, cli.NewUsageError(err)
 	}
 	actualCrop, err := parseOptionalCrop(cmd, "actual-crop")
+	if err != nil {
+		return preparedImageInputs{}, cli.NewUsageError(err)
+	}
+	referenceMetadataPath, _ := cmd.Flags().GetString("reference-metadata")
+	if referenceCrop != nil && referenceMetadataPath != "" {
+		return preparedImageInputs{}, cli.NewUsageError(fmt.Errorf("--reference-crop and --reference-metadata cannot be used together"))
+	}
+	referenceMetadata, err := loadExportMetadata(referenceMetadataPath)
 	if err != nil {
 		return preparedImageInputs{}, err
 	}
@@ -892,7 +894,7 @@ func prepareImageInputs(referencePath, actualPath string, referenceCrop, actualC
 	}
 	if referenceMetadata != nil {
 		if int(referenceMetadata.ExportBounds.Width) != referenceWidth || int(referenceMetadata.ExportBounds.Height) != referenceHeight {
-			return preparedImageInputs{}, fmt.Errorf("--reference-metadata export bounds %gx%g do not match reference image %dx%d", referenceMetadata.ExportBounds.Width, referenceMetadata.ExportBounds.Height, referenceWidth, referenceHeight)
+			return preparedImageInputs{}, cli.NewUsageError(fmt.Errorf("--reference-metadata export bounds %gx%g do not match reference image %dx%d", referenceMetadata.ExportBounds.Width, referenceMetadata.ExportBounds.Height, referenceWidth, referenceHeight))
 		}
 		referenceCrop = cropFromExportMetadata(*referenceMetadata)
 	}
@@ -900,10 +902,10 @@ func prepareImageInputs(referencePath, actualPath string, referenceCrop, actualC
 		return preparedImageInputs{referencePath: referencePath, actualPath: actualPath, cleanup: func() {}}, nil
 	}
 	if err := validateCrop(referenceCrop, referenceWidth, referenceHeight); err != nil {
-		return preparedImageInputs{}, fmt.Errorf("invalid --reference-crop: %w", err)
+		return preparedImageInputs{}, cli.NewUsageError(fmt.Errorf("invalid --reference-crop: %w", err))
 	}
 	if err := validateCrop(actualCrop, actualWidth, actualHeight); err != nil {
-		return preparedImageInputs{}, fmt.Errorf("invalid --actual-crop: %w", err)
+		return preparedImageInputs{}, cli.NewUsageError(fmt.Errorf("invalid --actual-crop: %w", err))
 	}
 	metadata := &diff.ImageInputs{
 		Reference: diff.ImageInput{Width: referenceWidth, Height: referenceHeight, Crop: referenceCrop},
@@ -912,7 +914,7 @@ func prepareImageInputs(referencePath, actualPath string, referenceCrop, actualC
 	referenceCompareWidth, referenceCompareHeight := croppedDimensions(referenceWidth, referenceHeight, referenceCrop)
 	actualCompareWidth, actualCompareHeight := croppedDimensions(actualWidth, actualHeight, actualCrop)
 	if referenceCompareWidth != actualCompareWidth || referenceCompareHeight != actualCompareHeight {
-		return preparedImageInputs{}, fmt.Errorf("cropped image dimensions differ: reference is %dx%d, actual is %dx%d", referenceCompareWidth, referenceCompareHeight, actualCompareWidth, actualCompareHeight)
+		return preparedImageInputs{}, cli.NewUsageError(fmt.Errorf("cropped image dimensions differ: reference is %dx%d, actual is %dx%d", referenceCompareWidth, referenceCompareHeight, actualCompareWidth, actualCompareHeight))
 	}
 	tempDir, err := os.MkdirTemp("", "pixel-perfect-crops-*")
 	if err != nil {
@@ -1070,12 +1072,55 @@ func samePath(first, second string) bool {
 	return filepath.Clean(firstAbsolute) == filepath.Clean(secondAbsolute)
 }
 
+type comparisonValidationFailure struct {
+	Metric  string  `json:"metric"`
+	Actual  float64 `json:"actual"`
+	Maximum float64 `json:"maximum"`
+}
+
+type comparisonValidation struct {
+	Passed bool                          `json:"passed"`
+	Failed []comparisonValidationFailure `json:"failed"`
+}
+
 type outputEnvelope struct {
 	diff.ImageComparison
 	RegionCount      int                      `json:"regionCount,omitempty"`
 	RegionsTruncated bool                     `json:"regionsTruncated,omitempty"`
 	VisualContext    *imagecontext.Result     `json:"visualContext,omitempty"`
 	Configuration    *comparisonConfiguration `json:"configuration,omitempty"`
+	Validation       *comparisonValidation    `json:"validation,omitempty"`
+}
+
+func evaluateComparisonValidation(result diff.ImageComparison, maxRMSE, maxChangedRatio, maxPerceptualChangedRatio float64) (*comparisonValidation, error) {
+	configured := maxRMSE >= 0 || maxChangedRatio >= 0 || maxPerceptualChangedRatio >= 0
+	if !configured {
+		return nil, nil
+	}
+
+	failed := make([]comparisonValidationFailure, 0, 3)
+	if maxRMSE >= 0 && result.RMSE > maxRMSE {
+		failed = append(failed, comparisonValidationFailure{Metric: "rmse", Actual: result.RMSE, Maximum: maxRMSE})
+	}
+	if maxChangedRatio >= 0 && result.ChangedRatio > maxChangedRatio {
+		failed = append(failed, comparisonValidationFailure{Metric: "changedRatio", Actual: result.ChangedRatio, Maximum: maxChangedRatio})
+	}
+	if maxPerceptualChangedRatio >= 0 && result.PerceptualChangedRatio > maxPerceptualChangedRatio {
+		failed = append(failed, comparisonValidationFailure{Metric: "perceptualChangedRatio", Actual: result.PerceptualChangedRatio, Maximum: maxPerceptualChangedRatio})
+	}
+
+	validation := &comparisonValidation{Passed: len(failed) == 0, Failed: failed}
+	if validation.Passed {
+		return validation, nil
+	}
+
+	failure := failed[0]
+	label := map[string]string{
+		"rmse":                   "RMSE",
+		"changedRatio":           "changed ratio",
+		"perceptualChangedRatio": "perceptual changed ratio",
+	}[failure.Metric]
+	return validation, fmt.Errorf("image diff validation failed: %s %.6f exceeds maximum %.6f", label, failure.Actual, failure.Maximum)
 }
 
 func writeProbeCSV(command *cobra.Command, output probeOutput) error {
@@ -1153,9 +1198,28 @@ func NewCommand() *cobra.Command {
 	command.Example = `  pixel-perfect reference.png actual.png
   pixel-perfect reference.png actual.png --overlay overlay.png
   pixel-perfect reference.png actual.png --max-changed-ratio 0.01`
-	command.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
-		return cli.NewUsageError(fmt.Errorf("%w\n\n%s", err, availableFlagHelp(cmd)))
-	})
+	validateArgs := command.Args
+	command.Args = func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 && cmd.Flags().NFlag() == 0 {
+			return nil
+		}
+		return validateArgs(cmd, args)
+	}
+	run := command.RunE
+	command.RunE = func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			return run(cmd, args)
+		}
+		_, err := fmt.Fprint(cmd.OutOrStdout(), `pixel-perfect compares PNG screenshots.
+Usage: pixel-perfect <reference.png> <actual.png>
+Next:
+  pixel-perfect reference.png actual.png
+  pixel-perfect probe --help
+  pixel-perfect scan --help
+`)
+		return err
+	}
+	command.SetFlagErrorFunc(cli.NewFlagUsageError)
 	cli.MarkUsageErrors(command)
 	return command
 }
@@ -1167,17 +1231,4 @@ func requireImagePair(action, example string) cobra.PositionalArgs {
 		}
 		return fmt.Errorf("%s requires <reference.png> and <actual.png>; received %d argument(s)\n\nExample: %s", action, len(args), example)
 	}
-}
-
-func availableFlagHelp(command *cobra.Command) string {
-	var builder strings.Builder
-	fmt.Fprintf(&builder, "Available flags for %q:\n", command.CommandPath())
-	flags := strings.TrimRight(command.LocalFlags().FlagUsages(), "\n")
-	if flags == "" {
-		builder.WriteString("  (none)")
-	} else {
-		builder.WriteString(flags)
-	}
-	fmt.Fprintf(&builder, "\n\nRun `%s --help` for details.", command.CommandPath())
-	return builder.String()
 }

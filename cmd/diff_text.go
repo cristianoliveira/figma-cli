@@ -27,15 +27,15 @@ var diffTextCmd = &cobra.Command{
 		toVersion, _ := cmd.Flags().GetString("to")
 		explicitNodeID, err := explicitNodeIDFlag(cmd)
 		if err != nil {
-			return err
+			return cli.NewUsageError(err)
 		}
 		if fromVersion == "" || toVersion == "" {
-			return fmt.Errorf("--from and --to are required")
+			return cli.NewUsageError(fmt.Errorf("--from and --to are required"))
 		}
 
 		input, err := figma.ParseInput(args[0])
 		if err != nil {
-			return err
+			return cli.NewUsageError(err)
 		}
 		nodeIDs := figma.ResolveNodeIDs(input, explicitNodeID)
 		client, err := cli.LoadClient()

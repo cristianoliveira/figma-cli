@@ -1,6 +1,7 @@
 package smoke
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"image/png"
@@ -452,6 +453,17 @@ func TestPixelPerfectRejectsWrongSizeComparisonMask(t *testing.T) {
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
 }
 
+func TestPixelPerfectNoArgsShowsCompactNextSteps(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+
+	output, err := exec.Command(binary).CombinedOutput()
+
+	require.NoError(t, err, string(output))
+	assert.Contains(t, string(output), "pixel-perfect compares PNG screenshots")
+	assert.Contains(t, string(output), "pixel-perfect reference.png actual.png")
+	assert.Less(t, len(output), 400)
+}
+
 func TestPixelPerfectCLIErrorContracts(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
@@ -461,7 +473,7 @@ func TestPixelPerfectCLIErrorContracts(t *testing.T) {
 		name, expected string
 		args           func(*testing.T) []string
 	}{
-		{name: "missing arguments", expected: "error: accepts 2 arg(s), received 0", args: func(*testing.T) []string { return nil }},
+		{name: "missing argument", expected: "error: compare requires <reference.png> and <actual.png>; received 1 argument(s)", args: func(*testing.T) []string { return []string{"reference.png"} }},
 		{name: "unknown flag", expected: "error: unknown flag: --unknown", args: func(*testing.T) []string { return []string{reference, actual, "--unknown"} }},
 		{name: "malformed PNG", expected: "error:", args: func(t *testing.T) []string {
 			invalid := filepath.Join(t.TempDir(), "invalid.png")
@@ -694,16 +706,29 @@ func TestPixelPerfectValidationGateBoundaries(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mask := filepath.Join(t.TempDir(), "mask.png")
-			output, err := exec.Command(binary, reference, actual, "--output", mask, test.flag, fmt.Sprintf("%.17g", test.limit)).CombinedOutput()
+			command := exec.Command(binary, reference, actual, "--output", mask, test.flag, fmt.Sprintf("%.17g", test.limit))
+			var stdout, stderr bytes.Buffer
+			command.Stdout = &stdout
+			command.Stderr = &stderr
+			err := command.Run()
 			if test.passes {
-				require.NoError(t, err, string(output))
+				require.NoError(t, err, stderr.String())
 				var comparison diff.ImageComparison
-				require.NoError(t, json.Unmarshal(output, &comparison))
+				require.NoError(t, json.Unmarshal(stdout.Bytes(), &comparison))
 				return
 			}
 			require.Error(t, err)
-			assert.Contains(t, string(output), "image diff validation failed")
-			assert.Contains(t, string(output), test.expected)
+			assert.Contains(t, stderr.String(), "image diff validation failed")
+			assert.Contains(t, stderr.String(), test.expected)
+			var evidence struct {
+				Validation struct {
+					Passed bool  `json:"passed"`
+					Failed []any `json:"failed"`
+				} `json:"validation"`
+			}
+			require.NoError(t, json.Unmarshal(stdout.Bytes(), &evidence))
+			assert.False(t, evidence.Validation.Passed)
+			assert.NotEmpty(t, evidence.Validation.Failed)
 			assertPNGDimensions(t, mask, 4, 3)
 		})
 	}

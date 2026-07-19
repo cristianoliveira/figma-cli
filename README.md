@@ -171,7 +171,7 @@ Now a mismatch is not merely “some pixels changed.” It can be localized to a
 - Accepts full Figma URLs or bare file keys.
 - Infers node scope from `node-id` in URLs.
 - Normalizes user-facing and API-facing node ID formats.
-- Emits structured, stable JSON for query commands.
+- Emits structured, stable JSON for query commands, including exact query context and result counts.
 - Supports global `--json` envelopes for text and file-producing commands.
 - Uses deterministic formatting for generated CSS and tokens.
 - Fails explicitly on invalid input and unsupported ambiguity.

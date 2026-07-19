@@ -55,6 +55,7 @@ This is a Go Cobra CLI for querying Figma and producing agent-friendly JSON, ass
 - Use TDD for behavior changes: add/adjust tests before implementation.
 - Prefer package-level tests near changed logic.
 - Run `go test ./...` before finalizing code changes.
+- Run smoke tests with `-count=1`; they invoke `go build` in subprocesses, which Go test caching does not reliably invalidate when command sources change.
 - Enter the reproducible toolchain with direnv (`.envrc` uses `flake.nix`); it provides the Go, `golangci-lint`, and `goimports` versions expected here.
 - Run `goimports -w <changed-go-files>`, `golangci-lint run ./...`, and `go test ./...` before finalizing.
 - Mock HTTP with test servers or injected clients; do not require real Figma tokens in tests.

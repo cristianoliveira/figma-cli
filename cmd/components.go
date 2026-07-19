@@ -31,7 +31,7 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			nameFilter, _ := cmd.Flags().GetString("name")
 			kind, _ := cmd.Flags().GetString("kind")
@@ -40,29 +40,33 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 			diff, _ := cmd.Flags().GetBool("diff")
 			codebase, _ := cmd.Flags().GetString("codebase")
 			if diff && codebase == "" {
-				return fmt.Errorf("--diff requires --codebase")
+				return cli.NewUsageError(fmt.Errorf("--diff requires --codebase"))
 			}
 			if !diff && codebase != "" {
-				return fmt.Errorf("--codebase requires --diff")
+				return cli.NewUsageError(fmt.Errorf("--codebase requires --diff"))
 			}
-			if diff && (nodeID != "" || nameFilter != "" || kind != "" || raw || usage) {
-				return fmt.Errorf("--diff cannot be used with --id, --name, --kind, --raw, or --usage")
+			if diff && (nodeID != "" || nameFilter != "" || kind != "" || raw || usage || cmd.Flags().Changed("limit") || cmd.Flags().Changed("full")) {
+				return cli.NewUsageError(fmt.Errorf("--diff cannot be used with --id, --name, --kind, --raw, --usage, --limit, or --full"))
 			}
 			if usage && raw {
-				return fmt.Errorf("--usage and --raw cannot be used together")
+				return cli.NewUsageError(fmt.Errorf("--usage and --raw cannot be used together"))
 			}
 			if usage && kind != "" && kind != "instance" {
-				return fmt.Errorf("--usage only supports --kind instance")
+				return cli.NewUsageError(fmt.Errorf("--usage only supports --kind instance"))
 			}
 			if kind != "" && kind != "component" && kind != "set" && kind != "instance" {
-				return fmt.Errorf("invalid component kind %q: expected component, set, or instance", kind)
+				return cli.NewUsageError(fmt.Errorf("invalid component kind %q: expected component, set, or instance", kind))
 			}
-			input, err := figma.ParseInput(args[0])
+			resultLimit, err := readResultLimit(cmd)
 			if err != nil {
 				return err
 			}
+			input, err := figma.ParseInput(args[0])
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
 			if diff && len(input.NodeIDs) > 0 {
-				return fmt.Errorf("--diff compares a whole Figma file; remove node-id from the URL")
+				return cli.NewUsageError(fmt.Errorf("--diff compares a whole Figma file; remove node-id from the URL"))
 			}
 			var nodeIDs []string
 			var codeComponents []components.CodeComponent
@@ -74,7 +78,7 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 			} else {
 				nodeIDs, err = figma.ResolveRequiredNodeIDs(input, nodeID, "components")
 				if err != nil {
-					return err
+					return cli.NewUsageError(err)
 				}
 			}
 			client, err := loadClient()
@@ -99,13 +103,15 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 				return err
 			}
 			scope := output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}
+			query := map[string]any{"name": nameFilter, "kind": kind, "raw": raw, "usage": usage}
 			if raw {
 				results := extract.ExtractRawComponentsFromDocuments(documents)
 				results = extract.FilterRawComponentsByKind(results, kind)
 				if nameFilter != "" {
 					results = extract.FilterByName(results, nameFilter).([]map[string]any)
 				}
-				return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, results))
+				results, total := limitResults(resultLimit, results)
+				return cli.NewPrinter(cmd).JSON(output.NewLimitedQuery(scope, query, total, results))
 			}
 
 			results := extract.ExtractComponentsFromDocuments(documents)
@@ -114,9 +120,12 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 				results = extract.FilterByName(results, nameFilter).([]extract.ComponentOutput)
 			}
 			if usage {
-				return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, extract.AggregateComponentUsage(results)))
+				usageResults := extract.AggregateComponentUsage(results)
+				usageResults, total := limitResults(resultLimit, usageResults)
+				return cli.NewPrinter(cmd).JSON(output.NewLimitedQuery(scope, query, total, usageResults))
 			}
-			return cli.NewPrinter(cmd).JSON(output.NewQuery(scope, results))
+			results, total := limitResults(resultLimit, results)
+			return cli.NewPrinter(cmd).JSON(output.NewLimitedQuery(scope, query, total, results))
 		},
 	}
 	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")
@@ -126,6 +135,7 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 	command.Flags().Bool("usage", false, "group component instances by exact component ID")
 	command.Flags().Bool("diff", false, "compare published Figma components with a frontend codebase")
 	command.Flags().String("codebase", "", "frontend component source directory (required with --diff)")
+	addResultLimitFlags(command)
 	return command
 }
 

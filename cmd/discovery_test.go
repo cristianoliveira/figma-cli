@@ -41,7 +41,7 @@ func TestNewProjectsOutput(t *testing.T) {
 
 	got := newProjectsOutput(response)
 
-	assert.Equal(t, projectsOutput{Team: "Wire", Projects: []projectOutput{{ID: "123", Name: "Design System"}}}, got)
+	assert.Equal(t, projectsOutput{Team: "Wire", Total: 1, Projects: []projectOutput{{ID: "123", Name: "Design System"}}}, got)
 }
 
 func TestNewFilesOutput(t *testing.T) {
@@ -52,6 +52,7 @@ func TestNewFilesOutput(t *testing.T) {
 
 	require.Len(t, got.Files, 1)
 	assert.Equal(t, "Design System", got.Project)
+	assert.Equal(t, 1, got.Total)
 	assert.Equal(t, "abc", got.Files[0].Key)
 	assert.Equal(t, "2026-07-07T12:00:00Z", got.Files[0].LastModified)
 	assert.Equal(t, "https://example.com/thumb.png", *got.Files[0].ThumbnailURL)

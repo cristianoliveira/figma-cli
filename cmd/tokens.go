@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const tokenSourceAuto = "auto"
+
 type tokensOptions struct {
 	format       string
 	source       string
@@ -41,16 +43,19 @@ on by default so raw-fill files still produce output. Pass --scan-fallback=false
 for named tokens only. Pin --source in CI for deterministic output.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateTokensOptions(options); err != nil {
+				return cli.NewUsageError(err)
+			}
 			if options.teamURL != "" {
-				return fmt.Errorf("--team is not supported yet; pass a file URL or file key")
+				return cli.NewUsageError(fmt.Errorf("--team is not supported yet; pass a file URL or file key"))
 			}
 			explicitNodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			client, err := loadClient()
 			if err != nil {
@@ -86,13 +91,23 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 	}
 	addNodeIDFlag(command, "node ID to scan; defaults to URL node-id")
 	command.Flags().StringVar(&options.format, "format", "css", "output format: css, tailwind, or json")
-	command.Flags().StringVar(&options.source, "source", "auto", "token source: variables, styles, scan, or auto")
+	command.Flags().StringVar(&options.source, "source", tokenSourceAuto, "token source: variables, styles, scan, or auto")
 	command.Flags().BoolVar(&options.scanFallback, "scan-fallback", true, "in auto mode, fall back to a document node scan when no Styles/Variables exist (tokens named by value); use --scan-fallback=false for named-only")
 	command.Flags().StringVar(&options.mode, "mode", "", "named mode to read (Variables only); default is the collection default")
 	command.Flags().StringVar(&options.prefix, "prefix", "", "CSS custom property prefix, e.g. \"fig-\"")
 	command.Flags().StringVar(&options.output, "output", "", "write to file instead of stdout")
 	command.Flags().StringVar(&options.teamURL, "team", "", "pull from a team library (not yet supported)")
 	return command
+}
+
+func validateTokensOptions(options tokensOptions) error {
+	if options.format != "css" && options.format != "tailwind" && options.format != "json" {
+		return fmt.Errorf("unknown format %q (want css, tailwind, or json)", options.format)
+	}
+	if options.source != "" && options.source != tokenSourceAuto && options.source != "variables" && options.source != "styles" && options.source != "scan" {
+		return fmt.Errorf("unknown --source %q (want variables, styles, scan, or auto)", options.source)
+	}
+	return nil
 }
 
 // collectTokens resolves tokens for a file according to the requested source.
@@ -106,7 +121,7 @@ func collectTokens(client *figma.Client, fileID string, nodeIDs []string, source
 		return tokensFromStyles(client, fileID)
 	case "scan":
 		return tokensFromScan(client, fileID, nodeIDs)
-	case "", "auto":
+	case "", tokenSourceAuto:
 		if tokens, err := tokensFromVariables(client, fileID, mode); err == nil && len(tokens) > 0 {
 			return tokens, nil
 		}

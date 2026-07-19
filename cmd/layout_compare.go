@@ -25,34 +25,34 @@ func newLayoutCompareCommand(loadClient func() (*figma.Client, error)) *cobra.Co
 		RunE: func(cmd *cobra.Command, args []string) error {
 			requestedIDs, err := explicitNodeIDsFlag(cmd)
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			requestedNames, _ := cmd.Flags().GetStringArray("name")
 			if len(requestedIDs) > 0 && len(requestedNames) > 0 {
-				return fmt.Errorf("layout compare accepts either --id or --name, not both")
+				return cli.NewUsageError(fmt.Errorf("layout compare accepts either --id or --name, not both"))
 			}
 			if len(requestedIDs) < 2 && len(requestedNames) < 2 {
-				return fmt.Errorf("layout compare requires at least two --id or --name values")
+				return cli.NewUsageError(fmt.Errorf("layout compare requires at least two --id or --name values"))
 			}
 			nodeIDs := make([]string, 0, len(requestedIDs))
 			seen := make(map[string]struct{}, len(requestedIDs))
 			for _, requestedID := range requestedIDs {
 				nodeID := figma.NormalizeNodeID(requestedID)
 				if _, exists := seen[nodeID]; exists {
-					return fmt.Errorf("layout compare requires distinct frame IDs; %s is repeated", nodeID)
+					return cli.NewUsageError(fmt.Errorf("layout compare requires distinct frame IDs; %s is repeated", nodeID))
 				}
 				seen[nodeID] = struct{}{}
 				nodeIDs = append(nodeIDs, nodeID)
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 			var sectionNodeID string
 			if len(requestedNames) > 0 {
 				sectionNodeID, err = figma.ResolveSingleNodeID(input, "", "layout compare by name")
 				if err != nil {
-					return err
+					return cli.NewUsageError(err)
 				}
 			}
 			client, err := loadClient()

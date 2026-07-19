@@ -17,8 +17,10 @@ type fileOutput struct {
 }
 
 type filesOutput struct {
-	Project string       `json:"project"`
-	Files   []fileOutput `json:"files"`
+	Project   string       `json:"project"`
+	Total     int          `json:"total"`
+	Truncated bool         `json:"truncated,omitempty"`
+	Files     []fileOutput `json:"files"`
 }
 
 func newFilesOutput(response api.GetProjectFilesResponse) filesOutput {
@@ -31,7 +33,7 @@ func newFilesOutput(response api.GetProjectFilesResponse) filesOutput {
 			ThumbnailURL: file.ThumbnailUrl,
 		})
 	}
-	return filesOutput{Project: response.Name, Files: files}
+	return filesOutput{Project: response.Name, Total: len(files), Files: files}
 }
 
 var branches bool
@@ -47,9 +49,13 @@ Pass a numeric project ID or a Figma project URL. Use --branches to request
 branch data from Figma. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		projectID, err := figma.ParseProjectInput(args[0])
+		resultLimit, err := readResultLimit(cmd)
 		if err != nil {
 			return err
+		}
+		projectID, err := figma.ParseProjectInput(args[0])
+		if err != nil {
+			return cli.NewUsageError(err)
 		}
 		client, err := cli.LoadClient()
 		if err != nil {
@@ -60,11 +66,15 @@ branch data from Figma. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
 		if err != nil {
 			return err
 		}
-		return cli.NewPrinter(cmd).JSON(newFilesOutput(response))
+		result := newFilesOutput(response)
+		result.Files, result.Total = limitResults(resultLimit, result.Files)
+		result.Truncated = len(result.Files) < result.Total
+		return cli.NewPrinter(cmd).JSON(result)
 	},
 }
 
 func init() {
 	filesCmd.Flags().BoolVar(&branches, "branches", false, "include branch data")
+	addResultLimitFlags(filesCmd)
 	rootCmd.AddCommand(filesCmd)
 }

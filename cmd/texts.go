@@ -11,8 +11,11 @@ import (
 )
 
 type textQuery struct {
-	Scope   output.Scope `json:"scope"`
-	Results any          `json:"results"`
+	Scope     output.Scope   `json:"scope"`
+	Query     map[string]any `json:"query"`
+	Total     int            `json:"total"`
+	Truncated bool           `json:"truncated,omitempty"`
+	Results   any            `json:"results"`
 }
 
 var textsCmd = newTextsCommand(cli.LoadClient)
@@ -30,18 +33,22 @@ func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			resultLimit, err := readResultLimit(cmd)
+			if err != nil {
 				return err
 			}
 			input, err := figma.ParseInput(args[0])
 			if err != nil {
-				return err
+				return cli.NewUsageError(err)
 			}
 
 			nodeIDs := figma.ResolveNodeIDs(input, nodeID)
 			if layerName == "" {
 				resolvedNodeID, resolveErr := figma.ResolveSingleNodeID(input, nodeID, "texts")
 				if resolveErr != nil {
-					return fmt.Errorf("--layer or a node ID is required")
+					return cli.NewUsageError(fmt.Errorf("--layer or a node ID is required"))
 				}
 				nodeIDs = []string{resolvedNodeID}
 			}
@@ -70,14 +77,41 @@ func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			results, total := limitTextResults(resultLimit, results)
 			scope := output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}
-			return cli.NewPrinter(cmd).JSON(textQuery{Scope: scope, Results: results})
+			query := map[string]any{"layer": layerName, "recursive": recursive}
+			return cli.NewPrinter(cmd).JSON(textQuery{Scope: scope, Query: query, Total: total, Truncated: textResultCount(results) < total, Results: results})
 		},
 	}
 	command.Flags().String("layer", "", "layer name to extract text from")
 	addNodeIDFlag(command, "node ID to extract descendant text from; defaults to URL node-id")
 	command.Flags().Bool("recursive", false, "include text from all descendant nodes")
+	addResultLimitFlags(command)
 	return command
+}
+
+func limitTextResults(options resultLimit, results any) (any, int) {
+	switch values := results.(type) {
+	case []extract.OrderedTextOutput:
+		limited, total := limitResults(options, values)
+		return limited, total
+	case []extract.LayerTextOutput:
+		limited, total := limitResults(options, values)
+		return limited, total
+	default:
+		return results, 0
+	}
+}
+
+func textResultCount(results any) int {
+	switch values := results.(type) {
+	case []extract.OrderedTextOutput:
+		return len(values)
+	case []extract.LayerTextOutput:
+		return len(values)
+	default:
+		return 0
+	}
 }
 
 func textResult(doc any, input *figma.FileInput, layerName string, recursive bool) (any, error) {
