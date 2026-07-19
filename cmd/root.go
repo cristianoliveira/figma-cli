@@ -67,7 +67,7 @@ func flagErrorWithAvailableOptions(cmd *cobra.Command, err error) error {
 	if err == nil {
 		return nil
 	}
-	return fmt.Errorf("%w\n\n%s", err, availableFlagHelp(cmd))
+	return cli.NewUsageError(fmt.Errorf("%w\n\n%s", err, availableFlagHelp(cmd)))
 }
 
 func availableFlagHelp(cmd *cobra.Command) string {
@@ -95,13 +95,14 @@ func availableFlagHelp(cmd *cobra.Command) string {
 func Execute() {
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = true
+	cli.MarkUsageErrors(rootCmd)
 	err := rootCmd.Execute()
 	if err != nil {
 		var exitErr *cli.ExitCodeError
 		if errors.As(err, &exitErr) {
-			os.Exit(exitErr.Code)
+			os.Exit(cli.ExitCode(err))
 		}
 		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
+		os.Exit(cli.ExitCode(err))
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/cristianoliveira/figma-cli/internal/annotations"
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/imagecontext"
 	diff "github.com/cristianoliveira/figma-cli/internal/imagediff"
 	outputpkg "github.com/cristianoliveira/figma-cli/internal/output"
@@ -1122,5 +1123,9 @@ func writeJSON(command *cobra.Command, value any) error {
 func NewCommand() *cobra.Command {
 	command := newCommand(nil)
 	command.Use = "pixel-perfect <reference.png> <actual.png>"
+	command.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
+		return cli.NewUsageError(err)
+	})
+	cli.MarkUsageErrors(command)
 	return command
 }

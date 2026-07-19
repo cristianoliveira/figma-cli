@@ -4,6 +4,8 @@
 package cli
 
 import (
+	"errors"
+
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/output"
@@ -27,6 +29,50 @@ type ExitCodeError struct {
 }
 
 func (e *ExitCodeError) Error() string { return "" }
+
+// UsageError marks invalid command syntax or arguments. Process entrypoints map
+// it to exit code 2 while preserving the original actionable diagnostic.
+type UsageError struct {
+	err error
+}
+
+func NewUsageError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &UsageError{err: err}
+}
+
+func (e *UsageError) Error() string { return e.err.Error() }
+func (e *UsageError) Unwrap() error { return e.err }
+
+// ExitCode maps command errors to the CLI process contract.
+func ExitCode(err error) int {
+	var explicit *ExitCodeError
+	if errors.As(err, &explicit) {
+		return explicit.Code
+	}
+	var usage *UsageError
+	if errors.As(err, &usage) {
+		return 2
+	}
+	return 1
+}
+
+// MarkUsageErrors classifies Cobra's positional-argument failures.
+// Flag handlers must mark their errors while preserving command-specific help.
+// RunE errors remain operational unless command code explicitly marks them.
+func MarkUsageErrors(command *cobra.Command) {
+	if command.Args != nil {
+		validateArgs := command.Args
+		command.Args = func(cmd *cobra.Command, args []string) error {
+			return NewUsageError(validateArgs(cmd, args))
+		}
+	}
+	for _, child := range command.Commands() {
+		MarkUsageErrors(child)
+	}
+}
 
 // LoadClient builds a Figma API client from the configured access token.
 // Centralizing construction means HTTP config (timeouts, base URL, retries)
