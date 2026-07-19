@@ -18,6 +18,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPrepareComparisonInputsRejectsConflictingCropBeforeFileAccess(t *testing.T) {
+	command := newCommand(nil)
+	require.NoError(t, command.Flags().Set("reference-crop", "0,0,1,1"))
+	require.NoError(t, command.Flags().Set("reference-metadata", "missing.json"))
+
+	_, _, err := prepareComparisonInputs(command, []string{"missing-reference.png", "missing-actual.png"}, nil)
+
+	require.Error(t, err)
+	assert.Equal(t, 2, clipkg.ExitCode(err))
+	assert.ErrorContains(t, err, "--reference-crop and --reference-metadata cannot be used together")
+	assert.NotContains(t, err.Error(), "missing.json")
+}
+
 func TestParseIgnoredRegionsRejectsMalformedAndEmptyRegions(t *testing.T) {
 	ignored, err := parseIgnoredRegions([]string{"1,2,3,4", "5,6,7,8"})
 	require.NoError(t, err)
