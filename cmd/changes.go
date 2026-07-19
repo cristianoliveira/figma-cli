@@ -25,7 +25,9 @@ func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 	command := &cobra.Command{
 		Use:   "changes [figma-url-or-file-id] --from version-id --to version-id",
 		Short: "Diff frontend-relevant structure between Figma versions",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma changes --from <version-id> --to <version-id> <url>
+  figma changes --from <version-id> --to <version-id> --id 42:1 <file-key>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fromVersion, _ := cmd.Flags().GetString("from")
 			toVersion, _ := cmd.Flags().GetString("to")

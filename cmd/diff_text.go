@@ -19,7 +19,9 @@ func hasTextChanges(d extract.TextOutput) bool {
 var diffTextCmd = &cobra.Command{
 	Use:   "text [file-id-or-url] --from version-id --to version-id",
 	Short: "Diff text nodes between two Figma file versions",
-	Args:  cobra.ExactArgs(1),
+	Example: `  figma diff text --from <version-id> --to <version-id> <url>
+  figma diff text --from <version-id> --to <version-id> --quiet <file-key>`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fromVersion, _ := cmd.Flags().GetString("from")
 		toVersion, _ := cmd.Flags().GetString("to")

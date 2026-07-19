@@ -83,6 +83,8 @@ func formatBlameDate(rfc3339 string) string {
 var diffBlameCmd = &cobra.Command{
 	Use:   "blame [file-id-or-url] --to version-id",
 	Short: "Find the version that introduced the current text at a node",
+	Example: `  figma diff blame --to <version-id> --id 42:1 <url>
+  figma diff blame --to <version-id> "<url>?node-id=42-1"`,
 	Long: `Find the version that introduced the current text at a node.
 
 Searches the file's version history backward from --to, binary-searching for

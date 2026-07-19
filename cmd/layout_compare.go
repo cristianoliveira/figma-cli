@@ -19,7 +19,9 @@ func newLayoutCompareCommand(loadClient func() (*figma.Client, error)) *cobra.Co
 	command := &cobra.Command{
 		Use:   "compare [figma-url-or-file-id] (--id/--node frame-id --id/--node frame-id | --name frame --name frame)",
 		Short: "Compare explicitly selected responsive frames",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma layout compare --id 42:1 --id 42:2 <file-key>
+  figma layout compare --name "Desktop" --name "Mobile" <url>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			requestedIDs, err := explicitNodeIDsFlag(cmd)
 			if err != nil {

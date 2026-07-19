@@ -58,6 +58,23 @@ func TestWorkspaceDiscoveryCommandsProvideLocalExamples(t *testing.T) {
 	}
 }
 
+func TestChangeAnalysisCommandsProvideLocalExamples(t *testing.T) {
+	commands := map[string]*cobra.Command{
+		"figma changes":        newChangesCommand(nil),
+		"figma diff":           diffCmd,
+		"figma diff text":      diffTextCmd,
+		"figma diff blame":     diffBlameCmd,
+		"figma layout compare": newLayoutCompareCommand(nil),
+	}
+
+	for prefix, command := range commands {
+		t.Run(command.CommandPath(), func(t *testing.T) {
+			assert.NotEmpty(t, command.Example)
+			assert.Contains(t, command.Example, prefix)
+		})
+	}
+}
+
 func TestUnknownFlagErrorIncludesAvailableOptions(t *testing.T) {
 	command := newInspectCommand(func() (*figma.Client, error) { return nil, nil })
 	result := executeCommand(command, "abc", "--bogus")
