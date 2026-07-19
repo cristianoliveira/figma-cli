@@ -9,6 +9,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRootHelpIsCompactAndPointsToDecisionRelevantCommands(t *testing.T) {
+	result := executeCommand(newRootCommand(
+		&cobra.Command{Use: "inspect"},
+		&cobra.Command{Use: "export"},
+	), "--help")
+
+	require.NoError(t, result.Err)
+	assert.Less(t, len(result.Stdout), 1800)
+	assert.Contains(t, result.Stdout, "figma inspect")
+	assert.Contains(t, result.Stdout, "figma export")
+	assert.Contains(t, result.Stdout, "figma <command> --help")
+	assert.NotContains(t, result.Stdout, "What is this file about?")
+}
+
 func TestUnknownFlagErrorIncludesAvailableOptions(t *testing.T) {
 	command := newInspectCommand(func() (*figma.Client, error) { return nil, nil })
 	result := executeCommand(command, "abc", "--bogus")
