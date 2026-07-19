@@ -45,3 +45,14 @@ Create one typed error contract with category, concise message, offending input 
 ## Implementation freedom
 
 Choose envelope field names from the contract decision. Do not expose internal Go error type names.
+
+
+## Completion evidence
+
+- Shared `cli.ErrorOutput` renders deterministic TOON or compatibility JSON on stdout.
+- Usage and operational categories preserve exit codes 2 and 1.
+- Missing credentials, filesystem failures, invalid PNGs, Figma authorization, and rate limits map to redacted domain language and one recovery step.
+- Unknown flags preserve nearest suggestion and local help recovery.
+- Figma response bodies are no longer retained in returned errors.
+- Pixel validation gates retain structured comparison evidence, stderr diagnosis, and exit 1; grep-style exits remain silent.
+- Built-binary smoke tests assert stdout, stderr, and exit status.

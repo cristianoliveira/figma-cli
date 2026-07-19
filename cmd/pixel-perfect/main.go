@@ -13,7 +13,9 @@ func main() {
 	command.SilenceErrors = true
 	command.SilenceUsage = true
 	if err := command.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		if renderErr := cli.RenderError(command, err); renderErr != nil {
+			fmt.Fprintln(os.Stderr, "failed to render structured error")
+		}
 		os.Exit(cli.ExitCode(err))
 	}
 }

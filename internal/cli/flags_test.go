@@ -23,6 +23,9 @@ func TestNewFlagUsageErrorSuggestsNearestFlagCompactly(t *testing.T) {
 	assert.ErrorContains(t, err, "Did you mean `--node`?")
 	assert.ErrorContains(t, err, "Run `tool inspect --help` for valid flags.")
 	assert.NotContains(t, err.Error(), "output format")
+	contract, render := ErrorContract(err)
+	require.True(t, render)
+	assert.Equal(t, "--nide", contract.Error.Input)
 }
 
 func TestNewFlagUsageErrorOmitsUnrelatedSuggestion(t *testing.T) {

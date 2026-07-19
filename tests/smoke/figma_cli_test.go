@@ -2,6 +2,7 @@ package smoke
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -32,9 +33,9 @@ func TestFigmaCLIExitCodeContracts(t *testing.T) {
 		args           []string
 		exitCode       int
 	}{
-		{name: "unknown command", args: []string{"inspec"}, exitCode: 2, expected: `unknown command "inspec"`},
-		{name: "invalid option", args: []string{"assets", "abc", "--id", "1:2", "--kind", "unsupported"}, exitCode: 2, expected: `invalid kind "unsupported"`},
-		{name: "missing dependency", args: []string{"meta", "abc"}, exitCode: 1, expected: "FIGMA_ACCESS_TOKEN environment variable not set"},
+		{name: "unknown command", args: []string{"inspec"}, exitCode: 2, expected: "unknown command"},
+		{name: "invalid option", args: []string{"assets", "abc", "--id", "1:2", "--kind", "unsupported"}, exitCode: 2, expected: "invalid kind"},
+		{name: "missing dependency", args: []string{"meta", "abc"}, exitCode: 1, expected: "Figma authentication is not configured."},
 	}
 
 	for _, test := range tests {
@@ -50,10 +51,28 @@ func TestFigmaCLIExitCodeContracts(t *testing.T) {
 			var exitError *exec.ExitError
 			require.ErrorAs(t, err, &exitError)
 			assert.Equal(t, test.exitCode, exitError.ExitCode())
-			assert.Empty(t, stdout.String())
-			assert.Contains(t, stderr.String(), test.expected)
+			assert.Empty(t, stderr.String())
+			assert.Contains(t, stdout.String(), "error:")
+			assert.Contains(t, stdout.String(), "exitCode: "+fmt.Sprint(test.exitCode))
+			assert.Contains(t, stdout.String(), test.expected)
 		})
 	}
+}
+
+func TestFigmaCLIErrorSupportsJSONCompatibility(t *testing.T) {
+	binary := buildCommand(t, "figma")
+	command := exec.Command(binary, "--json", "inspec")
+	var stdout, stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+
+	err := command.Run()
+
+	var exitError *exec.ExitError
+	require.ErrorAs(t, err, &exitError)
+	assert.Equal(t, 2, exitError.ExitCode())
+	assert.Empty(t, stderr.String())
+	assert.JSONEq(t, `{"error":{"category":"usage","message":"unknown command \"inspec\" for \"figma\"","exitCode":2,"recovery":"Run the command with --help to list valid commands."}}`, stdout.String())
 }
 
 func withoutEnvironmentVariable(environment []string, name string) []string {

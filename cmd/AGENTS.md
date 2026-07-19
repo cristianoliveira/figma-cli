@@ -9,7 +9,7 @@
 - Keep command files thin: flags/args, input parsing, client loading, package calls, JSON printing.
 - Do not put document traversal or extraction logic here; move it to `internal/extract`.
 - Do not put HTTP or Figma URL construction details here unless command-specific glue is unavoidable; prefer `internal/figma`.
-- Return errors from Cobra `RunE`; root execution owns consistent stderr formatting and exit behavior.
+- Return errors from Cobra `RunE`; root execution owns structured stdout error rendering and exit behavior. Stderr is for progress/debug diagnostics and deliberate result-bearing gate diagnoses.
 - Register commands in `init()` with `rootCmd.AddCommand(...)`.
 - Keep structured domain fields stable. TOON is default; global `--json` preserves compatibility JSON.
 - Parse file URLs once with `figma.ParseInput`; resolve URL node scope and optional `--id` through shared `figma` helpers.

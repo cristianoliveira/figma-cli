@@ -22,13 +22,28 @@ states the stable semantics consumers may rely on.
 | Outcome | stdout | stderr | exit |
 | --- | --- | --- | --- |
 | Success, including empty query | command result | diagnostics only | 0 |
-| Invalid arguments or flags | no result data | concise correction | 2 |
-| Dependency or operational failure | no result data, unless a result was deliberately rendered first | actionable diagnosis | 1 |
+| Invalid arguments or flags | structured usage error | empty by default | 2 |
+| Dependency or operational failure | structured redacted error | empty by default | 1 |
 | Pixel validation gate failed | structured comparison result | failed-metric diagnosis | 1 |
+| Intentional grep-style no-match | empty | empty | documented non-zero |
 
-Result data belongs on stdout. Diagnostics, including Cobra errors, belong on
-stderr. Commands do not print raw dependency errors, credentials, or progress
-in structured result output.
+Result and error envelopes belong on stdout. Progress, debug diagnostics, and
+the deliberate pixel validation diagnosis belong on stderr. Commands do not
+print raw dependency errors, credentials, absolute private paths, or stack traces.
+
+Error envelopes have one stable shape:
+
+```toon
+error:
+  category: usage
+  message: unknown flag: --nide
+  input: --nide
+  exitCode: 2
+  recovery: Run `figma inspect --help` for valid flags.
+```
+
+`category` is `usage` or `operational`. `input` appears only when offending input
+is safely known. `recovery` is omitted when no specific, safe action is known. Global `--json` renders same fields as compatibility JSON.
 
 ## TOON migration
 

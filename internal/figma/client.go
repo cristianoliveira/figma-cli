@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 )
@@ -18,6 +17,17 @@ type Client struct {
 	Token   string
 	HTTP    *http.Client
 	context context.Context
+}
+
+// ResponseError reports only status needed for domain-level recovery. Provider
+// response bodies are intentionally not retained because they may contain
+// implementation details or secrets.
+type ResponseError struct {
+	StatusCode int
+}
+
+func (e *ResponseError) Error() string {
+	return fmt.Sprintf("Figma API returned status %d", e.StatusCode)
 }
 
 // NewClient creates a Figma API client with an explicit request timeout.
@@ -64,8 +74,7 @@ func (c *Client) Fetch(url string, target any) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, body)
+		return &ResponseError{StatusCode: resp.StatusCode}
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(target); err != nil {

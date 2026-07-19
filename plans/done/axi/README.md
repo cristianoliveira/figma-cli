@@ -23,6 +23,7 @@ Core AXI contracts now exist, but five risks remain:
 5. [Add opt-in live Figma smoke tests](05-live-figma-smoke-tests.md)
 6. [Choose strict-alignment compatibility profile](06-strict-alignment-contract-profile.md)
 7. [Add TOON output boundary](07-toon-output-migration.md)
+8. [Add structured, redacted errors](08-structured-errors.md)
 
 ```text
 contract guardrails ──> layout contract ──> skill sync

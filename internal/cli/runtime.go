@@ -36,18 +36,36 @@ func (e *ExitCodeError) Error() string { return "" }
 // UsageError marks invalid command syntax or arguments. Process entrypoints map
 // it to exit code 2 while preserving the original actionable diagnostic.
 type UsageError struct {
-	err error
+	err      error
+	input    string
+	recovery string
 }
 
 func NewUsageError(err error) error {
+	return NewUsageErrorWithRecovery(err, "")
+}
+
+func NewUsageErrorWithRecovery(err error, recovery string) error {
+	return NewUsageErrorWithDetails(err, "", recovery)
+}
+
+func NewUsageErrorWithDetails(err error, input, recovery string) error {
 	if err == nil {
 		return nil
 	}
-	return &UsageError{err: err}
+	return &UsageError{err: err, input: input, recovery: recovery}
 }
 
-func (e *UsageError) Error() string { return e.err.Error() }
-func (e *UsageError) Unwrap() error { return e.err }
+func (e *UsageError) Error() string {
+	if e.recovery == "" {
+		return e.err.Error()
+	}
+	return e.err.Error() + "\n\n" + e.recovery
+}
+func (e *UsageError) Unwrap() error    { return e.err }
+func (e *UsageError) Message() string  { return e.err.Error() }
+func (e *UsageError) Input() string    { return e.input }
+func (e *UsageError) Recovery() string { return e.recovery }
 
 // ExitCode maps command errors to the CLI process contract.
 func ExitCode(err error) int {
@@ -72,7 +90,7 @@ func MarkUsageErrors(command *cobra.Command) {
 	if command.Args != nil {
 		validateArgs := command.Args
 		command.Args = func(cmd *cobra.Command, args []string) error {
-			return NewUsageError(validateArgs(cmd, args))
+			return NewUsageErrorWithRecovery(validateArgs(cmd, args), "Run `"+cmd.CommandPath()+" --help` for valid usage.")
 		}
 	}
 	for _, child := range command.Commands() {

@@ -78,6 +78,10 @@ func TestClientFetchErrorStatus(t *testing.T) {
 	err := client.Fetch(server.URL, &got)
 
 	require.Error(t, err, "Fetch() expected error for 404")
+	var responseError *ResponseError
+	require.ErrorAs(t, err, &responseError)
+	assert.Equal(t, http.StatusNotFound, responseError.StatusCode)
+	assert.NotContains(t, err.Error(), "not found")
 }
 
 func TestClientFetchJSON(t *testing.T) {

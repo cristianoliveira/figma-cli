@@ -19,16 +19,15 @@ The [compatibility profile](../../done/axi/06-strict-alignment-contract-profile.
 
 ## Recommended remaining order
 
-The compatibility decision and TOON output migration are complete.
+The compatibility decision, TOON output migration, and structured error contract are complete.
 
-1. Add structured, redacted error output.
-2. Bound pixel inspection output and improve truncation recovery.
-3. Complete executable discovery and measure agent efficiency.
+1. Bound pixel inspection output and improve truncation recovery.
+2. Complete executable discovery and measure agent efficiency.
 
 ```text
 contract decision ──> TOON migration (complete)
         │
-        ├────────────> structured errors
+        ├────────────> structured errors (complete)
         │
         └────────────> bounds and hints ──> discovery + measurement
 ```

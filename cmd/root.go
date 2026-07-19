@@ -4,7 +4,6 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -50,19 +49,18 @@ commands that access Figma. Run figma <command> --help for local options.`,
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-// Commands return errors via RunE; Execute prints them with an "error:" prefix
-// to stderr (matching the prior cli.Die behaviour) and exits non-zero.
+// Commands return errors via RunE; Execute owns structured process-level error
+// rendering and stable exit codes.
 func Execute() {
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = true
 	cli.MarkUsageErrors(rootCmd)
 	err := rootCmd.Execute()
-	if err != nil {
-		var exitErr *cli.ExitCodeError
-		if errors.As(err, &exitErr) {
-			os.Exit(cli.ExitCode(err))
-		}
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(cli.ExitCode(err))
+	if err == nil {
+		return
 	}
+	if renderErr := cli.RenderError(rootCmd, err); renderErr != nil {
+		fmt.Fprintln(os.Stderr, "failed to render structured error")
+	}
+	os.Exit(cli.ExitCode(err))
 }

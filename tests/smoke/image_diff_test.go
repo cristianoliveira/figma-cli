@@ -118,7 +118,7 @@ func TestPixelPerfectProbeCLIErrorContracts(t *testing.T) {
 	output, err := pixelPerfectCommand(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "unequal-dimensions.png"), "--at", "0,0").CombinedOutput()
 
 	require.Error(t, err)
-	assert.Contains(t, string(output), "image dimensions differ")
+	assert.Contains(t, string(output), `"message": "Command could not complete."`)
 }
 
 func TestPixelPerfectStandaloneCLIDefaultMask(t *testing.T) {
@@ -448,7 +448,7 @@ func TestPixelPerfectRejectsWrongSizeComparisonMask(t *testing.T) {
 	).CombinedOutput()
 
 	require.Error(t, err)
-	assert.Contains(t, string(output), "comparison mask dimensions differ")
+	assert.Contains(t, string(output), `"message": "Command could not complete."`)
 	_, statErr := os.Stat(mask)
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
 }
@@ -473,14 +473,14 @@ func TestPixelPerfectCLIErrorContracts(t *testing.T) {
 		name, expected string
 		args           func(*testing.T) []string
 	}{
-		{name: "missing argument", expected: "error: compare requires <reference.png> and <actual.png>; received 1 argument(s)", args: func(*testing.T) []string { return []string{"reference.png"} }},
-		{name: "unknown flag", expected: "error: unknown flag: --unknown", args: func(*testing.T) []string { return []string{reference, actual, "--unknown"} }},
-		{name: "malformed PNG", expected: "error:", args: func(t *testing.T) []string {
+		{name: "missing argument", expected: `"category": "usage"`, args: func(*testing.T) []string { return []string{"reference.png"} }},
+		{name: "unknown flag", expected: `"message": "unknown flag: --unknown"`, args: func(*testing.T) []string { return []string{reference, actual, "--unknown"} }},
+		{name: "malformed PNG", expected: `"message": "Could not decode an input image."`, args: func(t *testing.T) []string {
 			invalid := filepath.Join(t.TempDir(), "invalid.png")
 			require.NoError(t, os.WriteFile(invalid, []byte("not a png"), 0o600))
 			return []string{reference, invalid, "--output", filepath.Join(t.TempDir(), "mask.png")}
 		}},
-		{name: "output is directory", expected: "error:", args: func(t *testing.T) []string {
+		{name: "output is directory", expected: `"message": "Could not access a required file."`, args: func(t *testing.T) []string {
 			return []string{reference, actual, "--output", t.TempDir()}
 		}},
 	}
@@ -491,6 +491,26 @@ func TestPixelPerfectCLIErrorContracts(t *testing.T) {
 			assert.Contains(t, string(output), test.expected)
 		})
 	}
+}
+
+func TestPixelPerfectMissingFileErrorRedactsAbsolutePath(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	missing := filepath.Join(t.TempDir(), "private-reference.png")
+	output, err := pixelPerfectCommand(binary, missing, "actual.png").CombinedOutput()
+
+	require.Error(t, err)
+	assert.Contains(t, string(output), `"message": "Could not access a required file."`)
+	assert.NotContains(t, string(output), missing)
+}
+
+func TestPixelPerfectUnknownFlagRetainsCorrectionAndRecovery(t *testing.T) {
+	binary := buildCommand(t, "pixel-perfect")
+	output, err := pixelPerfectCommand(binary, "reference.png", "actual.png", "--threshol", "8").CombinedOutput()
+
+	require.Error(t, err)
+	assert.Contains(t, string(output), "Did you mean `--threshold`?")
+	assert.Contains(t, string(output), "Run `pixel-perfect --help` for valid flags.")
+	assert.Contains(t, string(output), `"exitCode": 2`)
 }
 
 func TestPixelPerfectHelpDocumentsStandaloneContract(t *testing.T) {
@@ -516,7 +536,7 @@ func TestPixelPerfectRejectsRegionsOutsideImage(t *testing.T) {
 			output, err := pixelPerfectCommand(binary, reference, actual, "--output", mask, "--region", region).CombinedOutput()
 
 			require.Error(t, err)
-			assert.Contains(t, string(output), "is outside image bounds 4x3")
+			assert.Contains(t, string(output), `"message": "Command could not complete."`)
 			_, statErr := os.Stat(mask)
 			assert.ErrorIs(t, statErr, os.ErrNotExist)
 		})
@@ -746,7 +766,7 @@ func TestPixelPerfectRealUIValidationGate(t *testing.T) {
 	).CombinedOutput()
 
 	require.Error(t, err)
-	assert.Contains(t, string(output), "error: image diff validation failed: changed ratio")
+	assert.Contains(t, string(output), "image diff validation failed: changed ratio")
 	assertPNGDimensions(t, mask, 575, 477)
 }
 
@@ -761,7 +781,7 @@ func TestPixelPerfectRejectsRealUIWithUnequalDimensions(t *testing.T) {
 	).CombinedOutput()
 
 	require.Error(t, err)
-	assert.Contains(t, string(output), "dimensions")
+	assert.Contains(t, string(output), `"message": "Command could not complete."`)
 	_, statErr := os.Stat(mask)
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
 }

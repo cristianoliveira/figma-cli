@@ -18,13 +18,15 @@ func NewFlagUsageError(command *cobra.Command, err error) error {
 	}
 
 	message := err.Error()
+	input := ""
 	if unknown := unknownFlagName(message); unknown != "" {
+		input = "--" + unknown
 		if suggestion := nearestFlag(command, unknown); suggestion != "" {
 			message += fmt.Sprintf("\n\nDid you mean `--%s`?", suggestion)
 		}
 	}
-	message += fmt.Sprintf("\n\nRun `%s --help` for valid flags.", command.CommandPath())
-	return NewUsageError(fmt.Errorf("%s", message))
+	recovery := fmt.Sprintf("Run `%s --help` for valid flags.", command.CommandPath())
+	return NewUsageErrorWithDetails(fmt.Errorf("%s", message), input, recovery)
 }
 
 func unknownFlagName(message string) string {

@@ -268,7 +268,7 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		if err := writeStructured(cmd, outputResult); err != nil {
 			return err
 		}
-		return validationErr
+		return cli.NewResultError(validationErr)
 	}
 	if err := writeComparisonReport(report, inputs, output, overlay, threshold, perceptualThreshold, region, result); err != nil {
 		return err
