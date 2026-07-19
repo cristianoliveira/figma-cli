@@ -115,278 +115,294 @@ type probeDelta struct {
 	A int `json:"a"`
 }
 
+func runComparisonCommand(cmd *cobra.Command, args []string, compare imageComparer) error {
+	configuration, err := applyComparisonProfile(cmd)
+	if err != nil {
+		return err
+	}
+	output, _ := cmd.Flags().GetString("output")
+	if output == "" {
+		output = defaultMaskPath(args[1])
+	}
+	threshold, _ := cmd.Flags().GetUint8("threshold")
+	overlay, _ := cmd.Flags().GetString("overlay")
+	report, _ := cmd.Flags().GetString("report")
+	visualContextEnabled, _ := cmd.Flags().GetBool("visual-context")
+	provider, _ := cmd.Flags().GetString("visual-context-provider")
+	if visualContextEnabled && provider != "openrouter" && provider != "openai" {
+		return cli.NewUsageError(fmt.Errorf("unsupported visual context provider %q", provider))
+	}
+	if output != "" && (samePath(output, args[0]) || samePath(output, args[1])) {
+		return cli.NewUsageError(fmt.Errorf("--output must not overwrite an input image"))
+	}
+	if overlay != "" && (samePath(overlay, args[0]) || samePath(overlay, args[1])) {
+		return cli.NewUsageError(fmt.Errorf("--overlay must not overwrite an input image"))
+	}
+	if overlay != "" && output != "" && samePath(overlay, output) {
+		return cli.NewUsageError(fmt.Errorf("--overlay must differ from --output"))
+	}
+	if report != "" && (samePath(report, args[0]) || samePath(report, args[1]) || (output != "" && samePath(report, output)) || samePath(report, overlay)) {
+		return cli.NewUsageError(fmt.Errorf("--report must not overwrite an input, mask, or overlay"))
+	}
+	offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
+	if offsetRadius < 0 {
+		return cli.NewUsageError(fmt.Errorf("--suggest-offset must be non-negative"))
+	}
+	movementRadius, _ := cmd.Flags().GetInt("suggest-movement")
+	if movementRadius < 0 {
+		return cli.NewUsageError(fmt.Errorf("--suggest-movement must be non-negative"))
+	}
+	regionGap, _ := cmd.Flags().GetInt("region-gap")
+	if regionGap < 0 {
+		return cli.NewUsageError(fmt.Errorf("--region-gap must be non-negative"))
+	}
+	minRegionPixels, _ := cmd.Flags().GetInt("min-region-pixels")
+	if minRegionPixels < 1 {
+		return cli.NewUsageError(fmt.Errorf("--min-region-pixels must be positive"))
+	}
+	maxRegions, _ := cmd.Flags().GetInt("max-regions")
+	if maxRegions < 1 {
+		return cli.NewUsageError(fmt.Errorf("--max-regions must be positive"))
+	}
+	full, _ := cmd.Flags().GetBool("full")
+	perceptualThreshold, _ := cmd.Flags().GetFloat64("perceptual-threshold")
+	if perceptualThreshold < 0 || math.IsNaN(perceptualThreshold) || math.IsInf(perceptualThreshold, 0) {
+		return cli.NewUsageError(fmt.Errorf("--perceptual-threshold must be a finite non-negative number"))
+	}
+	maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
+	if maxRMSE != -1 && (maxRMSE < 0 || math.IsNaN(maxRMSE) || math.IsInf(maxRMSE, 0)) {
+		return cli.NewUsageError(fmt.Errorf("--max-rmse must be -1 or a finite non-negative number"))
+	}
+	maxChangedRatio, _ := cmd.Flags().GetFloat64("max-changed-ratio")
+	if maxChangedRatio != -1 && (maxChangedRatio < 0 || maxChangedRatio > 1 || math.IsNaN(maxChangedRatio) || math.IsInf(maxChangedRatio, 0)) {
+		return cli.NewUsageError(fmt.Errorf("--max-changed-ratio must be -1 or between 0 and 1"))
+	}
+	maxPerceptualChangedRatio, _ := cmd.Flags().GetFloat64("max-perceptual-changed-ratio")
+	if maxPerceptualChangedRatio != -1 && (maxPerceptualChangedRatio < 0 || maxPerceptualChangedRatio > 1 || math.IsNaN(maxPerceptualChangedRatio) || math.IsInf(maxPerceptualChangedRatio, 0)) {
+		return cli.NewUsageError(fmt.Errorf("--max-perceptual-changed-ratio must be -1 or between 0 and 1"))
+	}
+	region, err := parseImageRegion(cmd.Flags().Lookup("region").Value.String())
+	if err != nil {
+		return cli.NewUsageError(err)
+	}
+	ignoredValues, _ := cmd.Flags().GetStringArray("ignore-region")
+	ignored := make([]diff.Bounds, 0, len(ignoredValues))
+	for _, value := range ignoredValues {
+		ignoredRegion, parseErr := parseImageRegion(value)
+		if parseErr != nil {
+			return cli.NewUsageError(fmt.Errorf("invalid --ignore-region: %w", parseErr))
+		}
+		if ignoredRegion.Width < 1 || ignoredRegion.Height < 1 {
+			return cli.NewUsageError(fmt.Errorf("invalid --ignore-region: width and height must be positive"))
+		}
+		ignored = append(ignored, *ignoredRegion)
+	}
+	referenceCrop, err := parseOptionalCrop(cmd, "reference-crop")
+	if err != nil {
+		return cli.NewUsageError(err)
+	}
+	actualCrop, err := parseOptionalCrop(cmd, "actual-crop")
+	if err != nil {
+		return cli.NewUsageError(err)
+	}
+	referenceMetadataPath, _ := cmd.Flags().GetString("reference-metadata")
+	if referenceCrop != nil && referenceMetadataPath != "" {
+		return cli.NewUsageError(fmt.Errorf("--reference-crop and --reference-metadata cannot be used together"))
+	}
+	referenceMetadata, err := loadExportMetadata(referenceMetadataPath)
+	if err != nil {
+		return err
+	}
+	inputs, err := prepareImageInputs(args[0], args[1], referenceCrop, actualCrop, referenceMetadata)
+	if err != nil {
+		return err
+	}
+	defer inputs.cleanup()
+	comparisonMask, _ := cmd.Flags().GetString("mask")
+	if comparisonMask != "" {
+		maskedRegions, maskErr := diff.IgnoredRegionsFromMask(comparisonMask, inputs.referencePath)
+		if maskErr != nil {
+			return maskErr
+		}
+		ignored = append(ignored, maskedRegions...)
+	}
+	var decoded *diff.DecodedImages
+	var result diff.ImageComparison
+	if compare == nil {
+		decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
+		if err != nil {
+			return err
+		}
+		result, err = decoded.Compare(output, threshold, perceptualThreshold, region, ignored)
+	} else {
+		result, err = compare(inputs.referencePath, inputs.actualPath, output, threshold, perceptualThreshold, region, ignored)
+	}
+	if err != nil {
+		return err
+	}
+	result.Inputs = inputs.metadata
+	annotationsPath, _ := cmd.Flags().GetString("annotations")
+	var annotationDocument *annotations.Document
+	if annotationsPath != "" {
+		annotationDocument, err = annotations.Load(annotationsPath)
+		if err != nil {
+			return err
+		}
+		imageWidth, imageHeight, dimensionsErr := diff.PNGDimensions(inputs.referencePath)
+		if dimensionsErr != nil {
+			return dimensionsErr
+		}
+		if err := annotationDocument.ValidateDimensions(imageWidth, imageHeight); err != nil {
+			return err
+		}
+	}
+	if overlay != "" {
+		if decoded == nil {
+			decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
+			if err != nil {
+				return err
+			}
+		}
+		if err := decoded.WriteOverlay(overlay, region, ignored); err != nil {
+			return err
+		}
+		result.Overlay = overlay
+	}
+	if offsetRadius > 0 {
+		if decoded == nil {
+			decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
+			if err != nil {
+				return err
+			}
+		}
+		suggestedOffset := decoded.SuggestOffset(offsetRadius, region, ignored)
+		if !math.IsInf(suggestedOffset.RMSE, 0) && !math.IsNaN(suggestedOffset.RMSE) {
+			result.SuggestedOffset = &suggestedOffset
+		}
+	}
+	result.Regions = groupImageRegions(result.Regions, regionGap)
+	result.Regions = filterImageRegions(result.Regions, minRegionPixels)
+	var regionCount int
+	var regionsTruncated bool
+	result.Regions, regionCount, regionsTruncated = limitImageRegions(result.Regions, maxRegions, full)
+	regionMetrics := make([]diff.RegionMetrics, len(result.Regions))
+	if len(result.Regions) > 0 {
+		regionBounds := make([]diff.Bounds, len(result.Regions))
+		for index := range result.Regions {
+			regionBounds[index] = result.Regions[index].Bounds
+		}
+		if decoded == nil {
+			decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
+			if err != nil {
+				return err
+			}
+		}
+		regionMetrics, err = decoded.MeasureRegions(regionBounds, threshold, perceptualThreshold, ignored)
+		if err != nil {
+			return err
+		}
+	}
+	for index := range result.Regions {
+		result.Regions[index].InputBounds = inputBounds(result.Regions[index].Bounds, inputs.metadata)
+		if annotationDocument != nil {
+			bounds := result.Regions[index].Bounds
+			result.Regions[index].Annotations = annotationDocument.Intersections(annotations.Bounds{X: bounds.X, Y: bounds.Y, Width: bounds.Width, Height: bounds.Height})
+		}
+		metrics := regionMetrics[index]
+		result.Regions[index].ChangedPixels = metrics.ChangedPixels
+		result.Regions[index].ChangedRatio = metrics.ChangedRatio
+		result.Regions[index].RMSE = metrics.RMSE
+		result.Regions[index].EdgeRMSE = metrics.EdgeRMSE
+		result.Regions[index].PerceptualRMSE = metrics.PerceptualRMSE
+		result.Regions[index].PerceptualChangedPixels = metrics.PerceptualChangedPixels
+		result.Regions[index].PerceptualChangedRatio = metrics.PerceptualChangedRatio
+		result.Regions[index].AntialiasedPixels = metrics.AntialiasedPixels
+		result.Regions[index].DominantColorPairs = metrics.DominantColorPairs
+		result.Regions[index].Classification = diff.ClassifyImageRegion(metrics)
+	}
+	if movementRadius > 0 && len(result.Regions) > 0 {
+		regionBounds := make([]diff.Bounds, len(result.Regions))
+		for index := range result.Regions {
+			regionBounds[index] = result.Regions[index].Bounds
+		}
+		result.MovedRegions = decoded.SuggestRegionMovements(regionBounds, movementRadius, ignored)
+	}
+	validation, validationErr := evaluateComparisonValidation(result, maxRMSE, maxChangedRatio, maxPerceptualChangedRatio)
+	outputResult := outputEnvelope{
+		ImageComparison:  result,
+		RegionCount:      regionCount,
+		RegionsTruncated: regionsTruncated,
+		Configuration:    configuration,
+		Validation:       validation,
+	}
+	if validationErr != nil {
+		if err := writeJSON(cmd, outputResult); err != nil {
+			return err
+		}
+		return validationErr
+	}
+	if err := writeComparisonReport(report, inputs, output, overlay, threshold, perceptualThreshold, region, result); err != nil {
+		return err
+	}
+	model, _ := cmd.Flags().GetString("visual-context-model")
+	visualContextPrompt, _ := cmd.Flags().GetString("visual-context-prompt")
+	if err := addVisualContext(visualContextEnabled, provider, model, visualContextPrompt, inputs, result, &outputResult); err != nil {
+		return err
+	}
+	return writeJSON(cmd, outputResult)
+}
+
+func writeComparisonReport(report string, inputs preparedImageInputs, maskPath, overlayPath string, threshold uint8, perceptualThreshold float64, region *diff.Bounds, result diff.ImageComparison) error {
+	if report == "" {
+		return nil
+	}
+	return pixelperfectreport.Write(report, pixelperfectreport.Input{
+		ReferencePath:       inputs.referencePath,
+		ActualPath:          inputs.actualPath,
+		MaskPath:            maskPath,
+		OverlayPath:         overlayPath,
+		Threshold:           threshold,
+		PerceptualThreshold: perceptualThreshold,
+		ComparedRegion:      region,
+		Result:              result,
+	})
+}
+
+func addVisualContext(enabled bool, provider, model, prompt string, inputs preparedImageInputs, result diff.ImageComparison, output *outputEnvelope) error {
+	if !enabled {
+		return nil
+	}
+	config, err := imagecontext.LoadProviderConfig(provider, model)
+	if errors.Is(err, imagecontext.ErrNotConfigured) {
+		output.VisualContext = &imagecontext.Result{Provider: provider, Advisory: true, Disclaimer: fmt.Sprintf("Visual context unavailable: configure %s credentials in the Pi Spectacles config or environment.", provider)}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	regions := make([]imagecontext.Region, len(result.Regions))
+	for index, region := range result.Regions {
+		regions[index] = imagecontext.Region{ID: fmt.Sprintf("r%d", index+1), Bounds: imagecontext.Bounds{X: region.Bounds.X, Y: region.Bounds.Y, Width: region.Bounds.Width, Height: region.Bounds.Height}}
+	}
+	client, err := imagecontext.NewClient(provider, config)
+	if err != nil {
+		return err
+	}
+	visualContext, err := client.Describe(context.Background(), imagecontext.Input{ReferencePath: inputs.referencePath, ActualPath: inputs.actualPath, Regions: regions, Prompt: prompt})
+	if err != nil {
+		return err
+	}
+	output.VisualContext = &visualContext
+	return nil
+}
+
 func newCommand(compare imageComparer) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "image <reference.png> <actual.png>",
 		Short: "Compare equal-sized PNGs and write a changed-pixel mask",
 		Args:  requireImagePair("compare", "pixel-perfect reference.png actual.png"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			configuration, err := applyComparisonProfile(cmd)
-			if err != nil {
-				return err
-			}
-			output, _ := cmd.Flags().GetString("output")
-			if output == "" {
-				output = defaultMaskPath(args[1])
-			}
-			threshold, _ := cmd.Flags().GetUint8("threshold")
-			overlay, _ := cmd.Flags().GetString("overlay")
-			report, _ := cmd.Flags().GetString("report")
-			visualContextEnabled, _ := cmd.Flags().GetBool("visual-context")
-			provider, _ := cmd.Flags().GetString("visual-context-provider")
-			if visualContextEnabled && provider != "openrouter" && provider != "openai" {
-				return cli.NewUsageError(fmt.Errorf("unsupported visual context provider %q", provider))
-			}
-			if output != "" && (samePath(output, args[0]) || samePath(output, args[1])) {
-				return cli.NewUsageError(fmt.Errorf("--output must not overwrite an input image"))
-			}
-			if overlay != "" && (samePath(overlay, args[0]) || samePath(overlay, args[1])) {
-				return cli.NewUsageError(fmt.Errorf("--overlay must not overwrite an input image"))
-			}
-			if overlay != "" && output != "" && samePath(overlay, output) {
-				return cli.NewUsageError(fmt.Errorf("--overlay must differ from --output"))
-			}
-			if report != "" && (samePath(report, args[0]) || samePath(report, args[1]) || (output != "" && samePath(report, output)) || samePath(report, overlay)) {
-				return cli.NewUsageError(fmt.Errorf("--report must not overwrite an input, mask, or overlay"))
-			}
-			offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
-			if offsetRadius < 0 {
-				return cli.NewUsageError(fmt.Errorf("--suggest-offset must be non-negative"))
-			}
-			movementRadius, _ := cmd.Flags().GetInt("suggest-movement")
-			if movementRadius < 0 {
-				return cli.NewUsageError(fmt.Errorf("--suggest-movement must be non-negative"))
-			}
-			regionGap, _ := cmd.Flags().GetInt("region-gap")
-			if regionGap < 0 {
-				return cli.NewUsageError(fmt.Errorf("--region-gap must be non-negative"))
-			}
-			minRegionPixels, _ := cmd.Flags().GetInt("min-region-pixels")
-			if minRegionPixels < 1 {
-				return cli.NewUsageError(fmt.Errorf("--min-region-pixels must be positive"))
-			}
-			maxRegions, _ := cmd.Flags().GetInt("max-regions")
-			if maxRegions < 1 {
-				return cli.NewUsageError(fmt.Errorf("--max-regions must be positive"))
-			}
-			full, _ := cmd.Flags().GetBool("full")
-			perceptualThreshold, _ := cmd.Flags().GetFloat64("perceptual-threshold")
-			if perceptualThreshold < 0 || math.IsNaN(perceptualThreshold) || math.IsInf(perceptualThreshold, 0) {
-				return cli.NewUsageError(fmt.Errorf("--perceptual-threshold must be a finite non-negative number"))
-			}
-			maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
-			if maxRMSE != -1 && (maxRMSE < 0 || math.IsNaN(maxRMSE) || math.IsInf(maxRMSE, 0)) {
-				return cli.NewUsageError(fmt.Errorf("--max-rmse must be -1 or a finite non-negative number"))
-			}
-			maxChangedRatio, _ := cmd.Flags().GetFloat64("max-changed-ratio")
-			if maxChangedRatio != -1 && (maxChangedRatio < 0 || maxChangedRatio > 1 || math.IsNaN(maxChangedRatio) || math.IsInf(maxChangedRatio, 0)) {
-				return cli.NewUsageError(fmt.Errorf("--max-changed-ratio must be -1 or between 0 and 1"))
-			}
-			maxPerceptualChangedRatio, _ := cmd.Flags().GetFloat64("max-perceptual-changed-ratio")
-			if maxPerceptualChangedRatio != -1 && (maxPerceptualChangedRatio < 0 || maxPerceptualChangedRatio > 1 || math.IsNaN(maxPerceptualChangedRatio) || math.IsInf(maxPerceptualChangedRatio, 0)) {
-				return cli.NewUsageError(fmt.Errorf("--max-perceptual-changed-ratio must be -1 or between 0 and 1"))
-			}
-			region, err := parseImageRegion(cmd.Flags().Lookup("region").Value.String())
-			if err != nil {
-				return cli.NewUsageError(err)
-			}
-			ignoredValues, _ := cmd.Flags().GetStringArray("ignore-region")
-			ignored := make([]diff.Bounds, 0, len(ignoredValues))
-			for _, value := range ignoredValues {
-				ignoredRegion, parseErr := parseImageRegion(value)
-				if parseErr != nil {
-					return cli.NewUsageError(fmt.Errorf("invalid --ignore-region: %w", parseErr))
-				}
-				if ignoredRegion.Width < 1 || ignoredRegion.Height < 1 {
-					return cli.NewUsageError(fmt.Errorf("invalid --ignore-region: width and height must be positive"))
-				}
-				ignored = append(ignored, *ignoredRegion)
-			}
-			referenceCrop, err := parseOptionalCrop(cmd, "reference-crop")
-			if err != nil {
-				return cli.NewUsageError(err)
-			}
-			actualCrop, err := parseOptionalCrop(cmd, "actual-crop")
-			if err != nil {
-				return cli.NewUsageError(err)
-			}
-			referenceMetadataPath, _ := cmd.Flags().GetString("reference-metadata")
-			if referenceCrop != nil && referenceMetadataPath != "" {
-				return cli.NewUsageError(fmt.Errorf("--reference-crop and --reference-metadata cannot be used together"))
-			}
-			referenceMetadata, err := loadExportMetadata(referenceMetadataPath)
-			if err != nil {
-				return err
-			}
-			inputs, err := prepareImageInputs(args[0], args[1], referenceCrop, actualCrop, referenceMetadata)
-			if err != nil {
-				return err
-			}
-			defer inputs.cleanup()
-			comparisonMask, _ := cmd.Flags().GetString("mask")
-			if comparisonMask != "" {
-				maskedRegions, maskErr := diff.IgnoredRegionsFromMask(comparisonMask, inputs.referencePath)
-				if maskErr != nil {
-					return maskErr
-				}
-				ignored = append(ignored, maskedRegions...)
-			}
-			var decoded *diff.DecodedImages
-			var result diff.ImageComparison
-			if compare == nil {
-				decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
-				if err != nil {
-					return err
-				}
-				result, err = decoded.Compare(output, threshold, perceptualThreshold, region, ignored)
-			} else {
-				result, err = compare(inputs.referencePath, inputs.actualPath, output, threshold, perceptualThreshold, region, ignored)
-			}
-			if err != nil {
-				return err
-			}
-			result.Inputs = inputs.metadata
-			annotationsPath, _ := cmd.Flags().GetString("annotations")
-			var annotationDocument *annotations.Document
-			if annotationsPath != "" {
-				annotationDocument, err = annotations.Load(annotationsPath)
-				if err != nil {
-					return err
-				}
-				imageWidth, imageHeight, dimensionsErr := diff.PNGDimensions(inputs.referencePath)
-				if dimensionsErr != nil {
-					return dimensionsErr
-				}
-				if err := annotationDocument.ValidateDimensions(imageWidth, imageHeight); err != nil {
-					return err
-				}
-			}
-			if overlay != "" {
-				if decoded == nil {
-					decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
-					if err != nil {
-						return err
-					}
-				}
-				if err := decoded.WriteOverlay(overlay, region, ignored); err != nil {
-					return err
-				}
-				result.Overlay = overlay
-			}
-			if offsetRadius > 0 {
-				if decoded == nil {
-					decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
-					if err != nil {
-						return err
-					}
-				}
-				suggestedOffset := decoded.SuggestOffset(offsetRadius, region, ignored)
-				if !math.IsInf(suggestedOffset.RMSE, 0) && !math.IsNaN(suggestedOffset.RMSE) {
-					result.SuggestedOffset = &suggestedOffset
-				}
-			}
-			result.Regions = groupImageRegions(result.Regions, regionGap)
-			result.Regions = filterImageRegions(result.Regions, minRegionPixels)
-			var regionCount int
-			var regionsTruncated bool
-			result.Regions, regionCount, regionsTruncated = limitImageRegions(result.Regions, maxRegions, full)
-			regionMetrics := make([]diff.RegionMetrics, len(result.Regions))
-			if len(result.Regions) > 0 {
-				regionBounds := make([]diff.Bounds, len(result.Regions))
-				for index := range result.Regions {
-					regionBounds[index] = result.Regions[index].Bounds
-				}
-				if decoded == nil {
-					decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
-					if err != nil {
-						return err
-					}
-				}
-				regionMetrics, err = decoded.MeasureRegions(regionBounds, threshold, perceptualThreshold, ignored)
-				if err != nil {
-					return err
-				}
-			}
-			for index := range result.Regions {
-				result.Regions[index].InputBounds = inputBounds(result.Regions[index].Bounds, inputs.metadata)
-				if annotationDocument != nil {
-					bounds := result.Regions[index].Bounds
-					result.Regions[index].Annotations = annotationDocument.Intersections(annotations.Bounds{X: bounds.X, Y: bounds.Y, Width: bounds.Width, Height: bounds.Height})
-				}
-				metrics := regionMetrics[index]
-				result.Regions[index].ChangedPixels = metrics.ChangedPixels
-				result.Regions[index].ChangedRatio = metrics.ChangedRatio
-				result.Regions[index].RMSE = metrics.RMSE
-				result.Regions[index].EdgeRMSE = metrics.EdgeRMSE
-				result.Regions[index].PerceptualRMSE = metrics.PerceptualRMSE
-				result.Regions[index].PerceptualChangedPixels = metrics.PerceptualChangedPixels
-				result.Regions[index].PerceptualChangedRatio = metrics.PerceptualChangedRatio
-				result.Regions[index].AntialiasedPixels = metrics.AntialiasedPixels
-				result.Regions[index].DominantColorPairs = metrics.DominantColorPairs
-				result.Regions[index].Classification = diff.ClassifyImageRegion(metrics)
-			}
-			if movementRadius > 0 && len(result.Regions) > 0 {
-				regionBounds := make([]diff.Bounds, len(result.Regions))
-				for index := range result.Regions {
-					regionBounds[index] = result.Regions[index].Bounds
-				}
-				result.MovedRegions = decoded.SuggestRegionMovements(regionBounds, movementRadius, ignored)
-			}
-			validation, validationErr := evaluateComparisonValidation(result, maxRMSE, maxChangedRatio, maxPerceptualChangedRatio)
-			outputResult := outputEnvelope{
-				ImageComparison:  result,
-				RegionCount:      regionCount,
-				RegionsTruncated: regionsTruncated,
-				Configuration:    configuration,
-				Validation:       validation,
-			}
-			if validationErr != nil {
-				if err := writeJSON(cmd, outputResult); err != nil {
-					return err
-				}
-				return validationErr
-			}
-			if report != "" {
-				if err := pixelperfectreport.Write(report, pixelperfectreport.Input{
-					ReferencePath:       inputs.referencePath,
-					ActualPath:          inputs.actualPath,
-					MaskPath:            output,
-					OverlayPath:         overlay,
-					Threshold:           threshold,
-					PerceptualThreshold: perceptualThreshold,
-					ComparedRegion:      region,
-					Result:              result,
-				}); err != nil {
-					return err
-				}
-			}
-			if visualContextEnabled {
-				model, _ := cmd.Flags().GetString("visual-context-model")
-				visualContextPrompt, _ := cmd.Flags().GetString("visual-context-prompt")
-				config, configErr := imagecontext.LoadProviderConfig(provider, model)
-				if errors.Is(configErr, imagecontext.ErrNotConfigured) {
-					outputResult.VisualContext = &imagecontext.Result{Provider: provider, Advisory: true, Disclaimer: fmt.Sprintf("Visual context unavailable: configure %s credentials in the Pi Spectacles config or environment.", provider)}
-					return writeJSON(cmd, outputResult)
-				}
-				if configErr != nil {
-					return configErr
-				}
-				regions := make([]imagecontext.Region, len(result.Regions))
-				for index, region := range result.Regions {
-					regions[index] = imagecontext.Region{ID: fmt.Sprintf("r%d", index+1), Bounds: imagecontext.Bounds{X: region.Bounds.X, Y: region.Bounds.Y, Width: region.Bounds.Width, Height: region.Bounds.Height}}
-				}
-				client, clientErr := imagecontext.NewClient(provider, config)
-				if clientErr != nil {
-					return clientErr
-				}
-				input := imagecontext.Input{ReferencePath: inputs.referencePath, ActualPath: inputs.actualPath, Regions: regions, Prompt: visualContextPrompt}
-				visualContext, explainErr := client.Describe(context.Background(), input)
-				if explainErr != nil {
-					return explainErr
-				}
-				outputResult.VisualContext = &visualContext
-			}
-			return writeJSON(cmd, outputResult)
+			return runComparisonCommand(cmd, args, compare)
 		},
 	}
 	command.Flags().String("profile", "", "load comparison options from a versioned JSON profile; explicit flags override profile values")
