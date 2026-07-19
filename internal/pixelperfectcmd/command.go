@@ -165,17 +165,7 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		return err
 	}
 	defer inputs.cleanup()
-	var decoded *diff.DecodedImages
-	var result diff.ImageComparison
-	if compare == nil {
-		decoded, err = diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
-		if err != nil {
-			return err
-		}
-		result, err = decoded.Compare(output, threshold, perceptualThreshold, region, ignored)
-	} else {
-		result, err = compare(inputs.referencePath, inputs.actualPath, output, threshold, perceptualThreshold, region, ignored)
-	}
+	result, decoded, err := comparePreparedImages(compare, inputs, output, threshold, perceptualThreshold, region, ignored)
 	if err != nil {
 		return err
 	}
@@ -289,6 +279,19 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		return err
 	}
 	return writeJSON(cmd, outputResult)
+}
+
+func comparePreparedImages(compare imageComparer, inputs preparedImageInputs, output string, threshold uint8, perceptualThreshold float64, region *diff.Bounds, ignored []diff.Bounds) (diff.ImageComparison, *diff.DecodedImages, error) {
+	if compare != nil {
+		result, err := compare(inputs.referencePath, inputs.actualPath, output, threshold, perceptualThreshold, region, ignored)
+		return result, nil, err
+	}
+	decoded, err := diff.LoadDecodedImages(inputs.referencePath, inputs.actualPath)
+	if err != nil {
+		return diff.ImageComparison{}, nil, err
+	}
+	result, err := decoded.Compare(output, threshold, perceptualThreshold, region, ignored)
+	return result, decoded, err
 }
 
 func prepareComparisonInputs(command *cobra.Command, args []string, ignored []diff.Bounds) (preparedImageInputs, []diff.Bounds, error) {
