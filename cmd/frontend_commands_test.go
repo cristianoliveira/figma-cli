@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -113,13 +114,39 @@ func TestCSSCommandCreatesMissingOutputDirectories(t *testing.T) {
 	assert.FileExists(t, path)
 }
 
-func TestLayoutCommandEmitsScopedDetail(t *testing.T) {
+func TestLayoutCommandEmitsBoundedScopedDetail(t *testing.T) {
 	client := fixtureClient(t, `{"nodes":{"1:1":{"document":{"id":"1:1","name":"Frame","type":"FRAME"}}}}`)
 
 	result := executeCommand(newLayoutCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--id", "1:1")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["1:1"]},"result":{"id":"1:1","name":"Frame","type":"FRAME"}}`, result.Stdout)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["1:1"]},"query":{"maxDepth":4},"traversal":{"returnedNodes":1,"totalNodes":1,"truncated":false,"omittedNodes":0},"result":{"id":"1:1","name":"Frame","type":"FRAME"}}`, result.Stdout)
+}
+
+func TestLayoutCommandRejectsInvalidDepthBeforeLoadingClient(t *testing.T) {
+	loaded := false
+	result := executeCommand(newLayoutCommand(func() (*figma.Client, error) {
+		loaded = true
+		return nil, nil
+	}), "abc", "--id", "1:1", "--depth", "-1")
+
+	require.Error(t, result.Err)
+	assert.ErrorContains(t, result.Err, "--depth must be zero or greater")
+	assert.Equal(t, 2, cli.ExitCode(result.Err))
+	assert.False(t, loaded)
+}
+
+func TestLayoutCommandRejectsFullWithExplicitDepthBeforeLoadingClient(t *testing.T) {
+	loaded := false
+	result := executeCommand(newLayoutCommand(func() (*figma.Client, error) {
+		loaded = true
+		return nil, nil
+	}), "abc", "--id", "1:1", "--full", "--depth", "2")
+
+	require.Error(t, result.Err)
+	assert.ErrorContains(t, result.Err, "--full cannot be combined with --depth")
+	assert.Equal(t, 2, cli.ExitCode(result.Err))
+	assert.False(t, loaded)
 }
 
 func fixtureClient(t *testing.T, body string) *figma.Client {

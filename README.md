@@ -192,7 +192,7 @@ This makes the CLI a reliable capability layer for coding agents: enough tooling
 | Review collaboration and history | `comments`, `versions`, `diff`, `changes` |
 | Compare responsive frames | `layout compare` |
 
-Run `figma <command> --help` for command-specific examples and flags.
+Run `figma <command> --help` for command-specific examples and flags. See [the command-contract reference](docs/command-contracts.md) for output semantics, limits, and exit behavior.
 
 ### `pixel-perfect`
 

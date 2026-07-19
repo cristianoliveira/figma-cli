@@ -20,6 +20,20 @@ type LayoutOptions struct {
 	MeasureSpacing bool
 }
 
+// LayoutTraversal describes how a depth bound changed a layout tree.
+type LayoutTraversal struct {
+	ReturnedNodes int  `json:"returnedNodes"`
+	TotalNodes    int  `json:"totalNodes"`
+	Truncated     bool `json:"truncated"`
+	OmittedNodes  int  `json:"omittedNodes"`
+}
+
+// LayoutExtraction contains a layout tree and its depth-traversal evidence.
+type LayoutExtraction struct {
+	Result    LayoutNode
+	Traversal LayoutTraversal
+}
+
 // LayoutSpacing compares measured sibling distance with declared auto-layout gap.
 type LayoutSpacing struct {
 	ParentID        string   `json:"parentId,omitempty"`
@@ -49,6 +63,53 @@ func ExtractLayout(value any, options ...LayoutOptions) LayoutNode {
 		option = options[0]
 	}
 	return extractLayoutNode(object, option)
+}
+
+// ExtractLayoutWithDepth converts a layout tree and optionally bounds descendants.
+// A negative maxDepth preserves the complete tree. The selected root is depth zero.
+func ExtractLayoutWithDepth(value any, maxDepth int, options ...LayoutOptions) LayoutExtraction {
+	if _, ok := value.(map[string]any); !ok {
+		return LayoutExtraction{}
+	}
+
+	full := ExtractLayout(value, options...)
+	total := layoutNodeCount(full)
+	result := full
+	if maxDepth >= 0 {
+		result = layoutTreeAtDepth(full, maxDepth)
+	}
+	returned := layoutNodeCount(result)
+	return LayoutExtraction{
+		Result: result,
+		Traversal: LayoutTraversal{
+			ReturnedNodes: returned,
+			TotalNodes:    total,
+			Truncated:     returned < total,
+			OmittedNodes:  total - returned,
+		},
+	}
+}
+
+func layoutTreeAtDepth(node LayoutNode, maxDepth int) LayoutNode {
+	if maxDepth == 0 {
+		node.Children = nil
+		return node
+	}
+
+	children := make([]LayoutNode, len(node.Children))
+	for index, child := range node.Children {
+		children[index] = layoutTreeAtDepth(child, maxDepth-1)
+	}
+	node.Children = children
+	return node
+}
+
+func layoutNodeCount(node LayoutNode) int {
+	count := 1
+	for _, child := range node.Children {
+		count += layoutNodeCount(child)
+	}
+	return count
 }
 
 func extractLayoutNode(object map[string]any, option LayoutOptions) LayoutNode {

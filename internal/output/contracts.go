@@ -40,7 +40,10 @@ func NewFilteredQuery[T any](scope Scope, query map[string]any, results []T) Que
 // NewLimitedQuery reports the pre-limit total and whether results were truncated.
 func NewLimitedQuery[T any](scope Scope, query map[string]any, total int, results []T) Query[T] {
 	contract := NewFilteredQuery(scope, query, results)
+	if total < len(contract.Results) {
+		total = len(contract.Results)
+	}
 	contract.Total = total
-	contract.Truncated = len(results) < total
+	contract.Truncated = len(contract.Results) < total
 	return contract
 }

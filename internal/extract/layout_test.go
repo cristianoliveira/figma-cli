@@ -77,6 +77,44 @@ func TestExtractLayoutReturnsEmptyForInvalidDocument(t *testing.T) {
 	assert.Equal(t, LayoutNode{}, ExtractLayout(nil))
 }
 
+func TestExtractLayoutWithDepthBoundsTreeAndReportsTraversal(t *testing.T) {
+	document := map[string]any{
+		"id": "1:1", "name": "Root", "type": "FRAME", "layoutMode": "VERTICAL",
+		"children": []any{map[string]any{
+			"id": "1:2", "name": "Child", "type": "FRAME", "layoutMode": "VERTICAL",
+			"children": []any{map[string]any{
+				"id": "1:3", "name": "Leaf", "type": "TEXT", "characters": "Visible only in full output",
+			}},
+		}},
+	}
+
+	bounded := ExtractLayoutWithDepth(document, 1)
+	full := ExtractLayoutWithDepth(document, -1)
+
+	assert.Equal(t, 2, bounded.Traversal.ReturnedNodes)
+	assert.Equal(t, 3, bounded.Traversal.TotalNodes)
+	assert.Equal(t, 1, bounded.Traversal.OmittedNodes)
+	assert.True(t, bounded.Traversal.Truncated)
+	assert.Empty(t, bounded.Result.Children[0].Children)
+	assert.Equal(t, 3, full.Traversal.ReturnedNodes)
+	assert.Equal(t, 3, full.Traversal.TotalNodes)
+	assert.False(t, full.Traversal.Truncated)
+	assert.Equal(t, ExtractLayout(document), full.Result)
+}
+
+func TestExtractLayoutWithDepthIncludesNodeAtBoundary(t *testing.T) {
+	document := map[string]any{
+		"id": "1:1", "name": "Root", "type": "FRAME", "layoutMode": "VERTICAL",
+		"children": []any{map[string]any{"id": "1:2", "name": "Leaf", "type": "TEXT", "characters": "Copy"}},
+	}
+
+	bounded := ExtractLayoutWithDepth(document, 1)
+
+	assert.Equal(t, "1:2", bounded.Result.Children[0].ID)
+	assert.Equal(t, "Copy", bounded.Result.Children[0].Text)
+	assert.False(t, bounded.Traversal.Truncated)
+}
+
 func numberPointer(value float64) *float64 {
 	return &value
 }
