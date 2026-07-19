@@ -129,20 +129,11 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 	report, _ := cmd.Flags().GetString("report")
 	visualContextEnabled, _ := cmd.Flags().GetBool("visual-context")
 	provider, _ := cmd.Flags().GetString("visual-context-provider")
-	if visualContextEnabled && provider != "openrouter" && provider != "openai" {
-		return cli.NewUsageError(fmt.Errorf("unsupported visual context provider %q", provider))
+	if err := validateVisualContextProvider(visualContextEnabled, provider); err != nil {
+		return cli.NewUsageError(err)
 	}
-	if output != "" && (samePath(output, args[0]) || samePath(output, args[1])) {
-		return cli.NewUsageError(fmt.Errorf("--output must not overwrite an input image"))
-	}
-	if overlay != "" && (samePath(overlay, args[0]) || samePath(overlay, args[1])) {
-		return cli.NewUsageError(fmt.Errorf("--overlay must not overwrite an input image"))
-	}
-	if overlay != "" && output != "" && samePath(overlay, output) {
-		return cli.NewUsageError(fmt.Errorf("--overlay must differ from --output"))
-	}
-	if report != "" && (samePath(report, args[0]) || samePath(report, args[1]) || (output != "" && samePath(report, output)) || samePath(report, overlay)) {
-		return cli.NewUsageError(fmt.Errorf("--report must not overwrite an input, mask, or overlay"))
+	if err := validateComparisonArtifactPaths(args[0], args[1], output, overlay, report); err != nil {
+		return cli.NewUsageError(err)
 	}
 	offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
 	if offsetRadius < 0 {
@@ -350,6 +341,29 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		return err
 	}
 	return writeJSON(cmd, outputResult)
+}
+
+func validateVisualContextProvider(enabled bool, provider string) error {
+	if !enabled || provider == "openrouter" || provider == "openai" {
+		return nil
+	}
+	return fmt.Errorf("unsupported visual context provider %q", provider)
+}
+
+func validateComparisonArtifactPaths(referencePath, actualPath, outputPath, overlayPath, reportPath string) error {
+	if outputPath != "" && (samePath(outputPath, referencePath) || samePath(outputPath, actualPath)) {
+		return fmt.Errorf("--output must not overwrite an input image")
+	}
+	if overlayPath != "" && (samePath(overlayPath, referencePath) || samePath(overlayPath, actualPath)) {
+		return fmt.Errorf("--overlay must not overwrite an input image")
+	}
+	if overlayPath != "" && outputPath != "" && samePath(overlayPath, outputPath) {
+		return fmt.Errorf("--overlay must differ from --output")
+	}
+	if reportPath != "" && (samePath(reportPath, referencePath) || samePath(reportPath, actualPath) || (outputPath != "" && samePath(reportPath, outputPath)) || samePath(reportPath, overlayPath)) {
+		return fmt.Errorf("--report must not overwrite an input, mask, or overlay")
+	}
+	return nil
 }
 
 func writeComparisonReport(report string, inputs preparedImageInputs, maskPath, overlayPath string, threshold uint8, perceptualThreshold float64, region *diff.Bounds, result diff.ImageComparison) error {

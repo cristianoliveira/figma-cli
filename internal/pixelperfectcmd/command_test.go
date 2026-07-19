@@ -18,6 +18,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestComparisonRequestValidationRejectsUnsafeArtifactPathsAndUnknownProvider(t *testing.T) {
+	assert.EqualError(t, validateComparisonArtifactPaths("reference.png", "actual.png", "reference.png", "", ""), "--output must not overwrite an input image")
+	assert.EqualError(t, validateComparisonArtifactPaths("reference.png", "actual.png", "mask.png", "mask.png", ""), "--overlay must differ from --output")
+	assert.EqualError(t, validateComparisonArtifactPaths("reference.png", "actual.png", "mask.png", "overlay.png", "mask.png"), "--report must not overwrite an input, mask, or overlay")
+	assert.EqualError(t, validateVisualContextProvider(true, "unknown"), `unsupported visual context provider "unknown"`)
+	assert.NoError(t, validateComparisonArtifactPaths("reference.png", "actual.png", "mask.png", "overlay.png", "report.html"))
+	assert.NoError(t, validateVisualContextProvider(true, "openrouter"))
+}
+
 func TestCommandNoArgsShowsCompactNextSteps(t *testing.T) {
 	result := executeCommand(NewCommand())
 
