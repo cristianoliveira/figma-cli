@@ -19,6 +19,7 @@ type projectsOutput struct {
 	Team      string          `json:"team"`
 	Total     int             `json:"total"`
 	Truncated bool            `json:"truncated,omitempty"`
+	Hint      string          `json:"hint,omitempty"`
 	Projects  []projectOutput `json:"projects"`
 }
 
@@ -73,6 +74,9 @@ environment default. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
 		result := newProjectsOutput(response)
 		result.Projects, result.Total = limitResults(resultLimit, result.Projects)
 		result.Truncated = len(result.Projects) < result.Total
+		if result.Truncated {
+			result.Hint = cli.FullHint(cmd, args)
+		}
 		return cli.NewPrinter(cmd).Structured(result)
 	},
 }

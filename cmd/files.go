@@ -20,6 +20,7 @@ type filesOutput struct {
 	Project   string       `json:"project"`
 	Total     int          `json:"total"`
 	Truncated bool         `json:"truncated,omitempty"`
+	Hint      string       `json:"hint,omitempty"`
 	Files     []fileOutput `json:"files"`
 }
 
@@ -69,6 +70,9 @@ branch data from Figma. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
 		result := newFilesOutput(response)
 		result.Files, result.Total = limitResults(resultLimit, result.Files)
 		result.Truncated = len(result.Files) < result.Total
+		if result.Truncated {
+			result.Hint = cli.FullHint(cmd, args)
+		}
 		return cli.NewPrinter(cmd).Structured(result)
 	},
 }

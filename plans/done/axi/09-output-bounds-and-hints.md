@@ -47,3 +47,13 @@ Make every potentially large output bounded or explicitly selected. Return total
 ## Implementation freedom
 
 Choose pagination, `--limit`, or compact summaries after measuring output and common agent decisions. Do not silently sample data.
+
+
+## Completion evidence
+
+- `pixel-perfect probe` defaults to 25 points; `scan` defaults to 25 runs per image. On a deterministic 120×120 alternating-color fixture, bounded JSON was 10,989 bytes for 441 probe points and 8,267 bytes for 240 scan runs.
+- `--limit` and `--full` validate before image decoding and cannot be combined.
+- Structured output reports `total`, `returned`, `truncated`, and conditional `hint`; truncated CSV appends one metadata line.
+- Recovery commands preserve positional paths, repeated flags, crop/axis/selection scope, output format, and shell quoting.
+- Comparison region output reports returned count and same conditional full hint.
+- Bounded Figma collection envelopes and legacy project/file/text collections include scope-preserving hints only when truncated.

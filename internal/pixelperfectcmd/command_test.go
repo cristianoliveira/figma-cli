@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -162,6 +163,45 @@ func TestProbeCommandExpandsAndDeduplicatesRadius(t *testing.T) {
 	assert.Len(t, output.Points, 15)
 }
 
+func TestProbeCommandBoundsOutputAndProvidesScopePreservingHint(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference image.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 11, 11)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 11, 11)))
+
+	result := executeCommand(NewCommand(), "probe", reference, actual, "--at", "5,5", "--radius", "5", "--format", "json")
+
+	require.NoError(t, result.Err)
+	var output probeOutput
+	require.NoError(t, json.Unmarshal([]byte(result.Stdout), &output))
+	assert.Equal(t, 121, output.Total)
+	assert.Equal(t, 25, output.Returned)
+	assert.True(t, output.Truncated)
+	assert.Len(t, output.Points, 25)
+	assert.Contains(t, output.Hint, "pixel-perfect probe")
+	assert.Contains(t, output.Hint, "'"+reference+"'")
+	assert.Contains(t, output.Hint, "--at 5,5")
+	assert.Contains(t, output.Hint, "--radius 5")
+	assert.Contains(t, output.Hint, "--format json")
+	assert.Contains(t, output.Hint, "--full")
+
+	csv := executeCommand(NewCommand(), "probe", reference, actual, "--at", "5,5", "--radius", "5")
+	require.NoError(t, csv.Err)
+	assert.Len(t, strings.Split(strings.TrimSpace(csv.Stdout), "\n"), 27)
+	assert.Contains(t, csv.Stdout, "# total=121 returned=25 truncated=true")
+	assert.Contains(t, csv.Stdout, "--full")
+
+	full := executeCommand(NewCommand(), "probe", reference, actual, "--at", "5,5", "--radius", "5", "--format", "json", "--full")
+	require.NoError(t, full.Err)
+	output = probeOutput{}
+	require.NoError(t, json.Unmarshal([]byte(full.Stdout), &output))
+	assert.Equal(t, 121, output.Total)
+	assert.Equal(t, 121, output.Returned)
+	assert.False(t, output.Truncated)
+	assert.Empty(t, output.Hint)
+}
+
 func TestProbeCommandRejectsIncompleteLineAndInvalidOptions(t *testing.T) {
 	tests := []struct {
 		name, expected string
@@ -171,6 +211,8 @@ func TestProbeCommandRejectsIncompleteLineAndInvalidOptions(t *testing.T) {
 		{name: "invalid step", args: []string{"--from", "0,0", "--to", "1,1", "--step", "0"}, expected: "--step must be positive"},
 		{name: "invalid radius", args: []string{"--at", "0,0", "--radius", "-1"}, expected: "--radius must be non-negative"},
 		{name: "invalid format", args: []string{"--at", "0,0", "--format", "yaml"}, expected: `invalid --format "yaml": expected csv or json`},
+		{name: "invalid limit", args: []string{"--at", "0,0", "--limit", "0"}, expected: "--limit must be greater than zero"},
+		{name: "full and limit", args: []string{"--at", "0,0", "--full", "--limit", "5"}, expected: "--full cannot be combined with --limit"},
 	}
 
 	for _, test := range tests {
@@ -200,7 +242,7 @@ func TestProbeCommandWritesJSONFormat(t *testing.T) {
 	result := executeCommand(NewCommand(), "probe", reference, actual, "--at", "1,0", "--format", "json")
 
 	require.NoError(t, result.Err)
-	assert.JSONEq(t, `{"points":[{"point":{"x":1,"y":0},"reference":{"rgba":[255,255,255,255],"hex":"#FFFFFF"},"actual":{"rgba":[244,244,244,255],"hex":"#F4F4F4"},"delta":{"r":11,"g":11,"b":11,"a":0}}]}`, result.Stdout)
+	assert.JSONEq(t, `{"total":1,"returned":1,"truncated":false,"points":[{"point":{"x":1,"y":0},"reference":{"rgba":[255,255,255,255],"hex":"#FFFFFF"},"actual":{"rgba":[244,244,244,255],"hex":"#F4F4F4"},"delta":{"r":11,"g":11,"b":11,"a":0}}]}`, result.Stdout)
 }
 
 func TestProbeCommandAppliesInputCrops(t *testing.T) {
@@ -256,6 +298,43 @@ func TestScanCommandReportsRowColorRuns(t *testing.T) {
 	assert.Equal(t, "image,axis,index,start,end,length,hex,input_axis,input_index\nref,x,0,0,1,2,#FFFFFF,,\nref,x,0,2,3,2,#DEDFE0,,\nact,x,0,0,1,2,#FFFFFF,,\nact,x,0,2,3,2,#E9EBEC,,\n", result.Stdout)
 }
 
+func TestScanCommandBoundsRunsAndProvidesScopePreservingHint(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	referenceImage := image.NewRGBA(image.Rect(0, 0, 4, 1))
+	actualImage := image.NewRGBA(image.Rect(0, 0, 4, 1))
+	for x := 0; x < 4; x++ {
+		referenceImage.SetRGBA(x, 0, color.RGBA{R: uint8(x * 20), A: 255})
+		actualImage.SetRGBA(x, 0, color.RGBA{G: uint8(x * 20), A: 255})
+	}
+	writeTestPNG(t, reference, referenceImage)
+	writeTestPNG(t, actual, actualImage)
+
+	result := executeCommand(NewCommand(), "scan", reference, actual, "--row", "0", "--limit", "2", "--format", "json")
+
+	require.NoError(t, result.Err)
+	var output scanOutput
+	require.NoError(t, json.Unmarshal([]byte(result.Stdout), &output))
+	assert.Equal(t, 8, output.Total)
+	assert.Equal(t, 4, output.Returned)
+	assert.True(t, output.Truncated)
+	assert.Len(t, output.Reference, 2)
+	assert.Len(t, output.Actual, 2)
+	assert.Contains(t, output.Hint, "--row 0")
+	assert.Contains(t, output.Hint, "--format json")
+	assert.Contains(t, output.Hint, "--full")
+
+	exact := executeCommand(NewCommand(), "scan", reference, actual, "--row", "0", "--limit", "4", "--format", "json")
+	require.NoError(t, exact.Err)
+	output = scanOutput{}
+	require.NoError(t, json.Unmarshal([]byte(exact.Stdout), &output))
+	assert.Equal(t, 8, output.Total)
+	assert.Equal(t, 8, output.Returned)
+	assert.False(t, output.Truncated)
+	assert.Empty(t, output.Hint)
+}
+
 func TestScanCommandAppliesInputCrops(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")
@@ -284,6 +363,8 @@ func TestScanCommandValidatesOptionsBeforeReadingImages(t *testing.T) {
 		{name: "multiple axes", args: []string{"--x", "0", "--y", "0"}, expected: "provide exactly one of --x/--column or --y/--row"},
 		{name: "negative axis", args: []string{"--x", "-1"}, expected: "--x must be non-negative"},
 		{name: "invalid format", args: []string{"--x", "0", "--format", "yaml"}, expected: `invalid --format "yaml": expected csv or json`},
+		{name: "invalid limit", args: []string{"--x", "0", "--limit", "0"}, expected: "--limit must be greater than zero"},
+		{name: "full and limit", args: []string{"--x", "0", "--full", "--limit", "5"}, expected: "--full cannot be combined with --limit"},
 	}
 
 	for _, test := range tests {

@@ -111,7 +111,7 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 					results = extract.FilterByName(results, nameFilter).([]map[string]any)
 				}
 				results, total := limitResults(resultLimit, results)
-				return cli.NewPrinter(cmd).Structured(output.NewLimitedQuery(scope, query, total, results))
+				return cli.NewPrinter(cmd).Structured(newLimitedQuery(cmd, scope, query, total, results))
 			}
 
 			results := extract.ExtractComponentsFromDocuments(documents)
@@ -122,10 +122,10 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 			if usage {
 				usageResults := extract.AggregateComponentUsage(results)
 				usageResults, total := limitResults(resultLimit, usageResults)
-				return cli.NewPrinter(cmd).Structured(output.NewLimitedQuery(scope, query, total, usageResults))
+				return cli.NewPrinter(cmd).Structured(newLimitedQuery(cmd, scope, query, total, usageResults))
 			}
 			results, total := limitResults(resultLimit, results)
-			return cli.NewPrinter(cmd).Structured(output.NewLimitedQuery(scope, query, total, results))
+			return cli.NewPrinter(cmd).Structured(newLimitedQuery(cmd, scope, query, total, results))
 		},
 	}
 	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")

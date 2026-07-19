@@ -15,6 +15,7 @@ type textQuery struct {
 	Query     map[string]any `json:"query"`
 	Total     int            `json:"total"`
 	Truncated bool           `json:"truncated,omitempty"`
+	Hint      string         `json:"hint,omitempty"`
 	Results   any            `json:"results"`
 }
 
@@ -80,7 +81,11 @@ func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			results, total := limitTextResults(resultLimit, results)
 			scope := output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}
 			query := map[string]any{"layer": layerName, "recursive": recursive}
-			return cli.NewPrinter(cmd).Structured(textQuery{Scope: scope, Query: query, Total: total, Truncated: textResultCount(results) < total, Results: results})
+			contract := textQuery{Scope: scope, Query: query, Total: total, Truncated: textResultCount(results) < total, Results: results}
+			if contract.Truncated {
+				contract.Hint = cli.FullHint(cmd, args)
+			}
+			return cli.NewPrinter(cmd).Structured(contract)
 		},
 	}
 	command.Flags().String("layer", "", "layer name to extract text from")

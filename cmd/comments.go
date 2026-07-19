@@ -92,7 +92,7 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 				"includeAncestors": includeAncestors,
 				"commentId":        input.CommentID,
 			}
-			result := output.NewLimitedQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, query, total, threads)
+			result := newLimitedQuery(cmd, output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, query, total, threads)
 			if err := cli.NewPrinter(cmd).Structured(result); err != nil {
 				return err
 			}

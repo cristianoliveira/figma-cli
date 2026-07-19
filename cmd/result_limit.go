@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -37,4 +38,12 @@ func limitResults[T any](options resultLimit, results []T) ([]T, int) {
 		return results, total
 	}
 	return results[:options.maximum], total
+}
+
+func newLimitedQuery[T any](command *cobra.Command, scope output.Scope, query map[string]any, total int, results []T) output.Query[T] {
+	contract := output.NewLimitedQuery(scope, query, total, results)
+	if contract.Truncated {
+		contract.Hint = cli.FullHint(command, command.Flags().Args())
+	}
+	return contract
 }

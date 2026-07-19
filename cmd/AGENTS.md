@@ -16,6 +16,7 @@
 - Use `figma.FetchNodeDocuments` when traversal must be restricted to requested subtrees; do not fetch whole file and manually guess selected node.
 - State whether command accepts one or many node IDs. Reject unsupported multiple IDs instead of using first silently.
 - Render structured values through `cli.NewPrinter(cmd).Structured(...)`; global `--json` selects compatibility output. Keep intentional text/file artifacts on `Text`/`File`.
+- Bounded collection output reports pre-limit totals and adds `cli.FullHint` only when truncated; never hand-build shell recovery strings.
 
 ## Testing
 

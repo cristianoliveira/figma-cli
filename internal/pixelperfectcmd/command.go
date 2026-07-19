@@ -56,6 +56,10 @@ type scanOutput struct {
 	Axis      string            `json:"axis"`
 	Index     int               `json:"index"`
 	Length    int               `json:"length"`
+	Total     int               `json:"total"`
+	Returned  int               `json:"returned"`
+	Truncated bool              `json:"truncated"`
+	Hint      string            `json:"hint,omitempty"`
 	Reference []scanRun         `json:"reference"`
 	Actual    []scanRun         `json:"actual"`
 	Inputs    *diff.ImageInputs `json:"inputs,omitempty"`
@@ -81,8 +85,12 @@ type scanRun struct {
 }
 
 type probeOutput struct {
-	Points []probePointOutput `json:"points"`
-	Inputs *diff.ImageInputs  `json:"inputs,omitempty"`
+	Total     int                `json:"total"`
+	Returned  int                `json:"returned"`
+	Truncated bool               `json:"truncated"`
+	Hint      string             `json:"hint,omitempty"`
+	Points    []probePointOutput `json:"points"`
+	Inputs    *diff.ImageInputs  `json:"inputs,omitempty"`
 }
 
 type probePointOutput struct {
@@ -260,9 +268,13 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 	outputResult := outputEnvelope{
 		ImageComparison:  result,
 		RegionCount:      regionCount,
+		RegionsReturned:  len(result.Regions),
 		RegionsTruncated: regionsTruncated,
 		Configuration:    configuration,
 		Validation:       validation,
+	}
+	if regionsTruncated {
+		outputResult.Hint = cli.FullHint(cmd, args)
 	}
 	if validationErr != nil {
 		if err := writeStructured(cmd, outputResult); err != nil {
@@ -494,6 +506,10 @@ func newProbeCommand() *cobra.Command {
   pixel-perfect probe reference.png actual.png --from 0,20 --to 100,20
   pixel-perfect probe reference.png actual.png --at 12,24 --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			limit, err := inspectionResultLimit(cmd)
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
 			points, err := probePointsFromFlags(cmd)
 			if err != nil {
 				return cli.NewUsageError(err)
@@ -512,6 +528,13 @@ func newProbeCommand() *cobra.Command {
 				return err
 			}
 			output.Inputs = inputs.metadata
+			output.Total = len(output.Points)
+			if !limit.full && len(output.Points) > limit.maximum {
+				output.Points = output.Points[:limit.maximum]
+				output.Truncated = true
+				output.Hint = cli.FullHint(cmd, args)
+			}
+			output.Returned = len(output.Points)
 			for index := range output.Points {
 				output.Points[index].InputPoint = inputPoint(output.Points[index].Point, inputs.metadata)
 			}
@@ -526,6 +549,7 @@ func newProbeCommand() *cobra.Command {
 	command.Flags().String("to", "", "inclusive line end: x,y in comparison/cropped coordinates")
 	command.Flags().Int("step", 1, "sample every Nth point along --from/--to line")
 	command.Flags().Int("radius", 0, "include square pixel neighborhood around every selected point")
+	addInspectionLimitFlags(command, "points")
 	addTabularFormatFlag(command)
 	addInputPreparationFlags(command)
 	return command
@@ -539,6 +563,10 @@ func newScanCommand() *cobra.Command {
 		Example: `  pixel-perfect scan reference.png actual.png --row 24
   pixel-perfect scan reference.png actual.png --column 12 --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			limit, err := inspectionResultLimit(cmd)
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
 			xChanged := cmd.Flags().Changed("x") || cmd.Flags().Changed("column")
 			yChanged := cmd.Flags().Changed("y") || cmd.Flags().Changed("row")
 			if xChanged == yChanged {
@@ -574,6 +602,20 @@ func newScanCommand() *cobra.Command {
 			}
 			output.Inputs = inputs.metadata
 			output.InputLine = inputLine(axis, index, inputs.metadata)
+			output.Total = len(output.Reference) + len(output.Actual)
+			if !limit.full {
+				if len(output.Reference) > limit.maximum {
+					output.Reference = output.Reference[:limit.maximum]
+				}
+				if len(output.Actual) > limit.maximum {
+					output.Actual = output.Actual[:limit.maximum]
+				}
+			}
+			output.Returned = len(output.Reference) + len(output.Actual)
+			output.Truncated = output.Returned < output.Total
+			if output.Truncated {
+				output.Hint = cli.FullHint(cmd, args)
+			}
 			if format == outputpkg.FormatJSON {
 				return writeJSON(cmd, output)
 			}
@@ -584,6 +626,7 @@ func newScanCommand() *cobra.Command {
 	command.Flags().Int("y", 0, "scan horizontal row at y in comparison/cropped coordinates")
 	command.Flags().Int("column", 0, "alias for --x")
 	command.Flags().Int("row", 0, "alias for --y")
+	addInspectionLimitFlags(command, "runs per image")
 	addTabularFormatFlag(command)
 	addInputPreparationFlags(command)
 	return command
@@ -596,6 +639,30 @@ func addTabularFormatFlag(command *cobra.Command) {
 func tabularFormat(command *cobra.Command) (outputpkg.Format, error) {
 	value, _ := command.Flags().GetString("format")
 	return outputpkg.ParseFormat(value, outputpkg.FormatCSV, outputpkg.FormatJSON)
+}
+
+const defaultInspectionLimit = 25
+
+type inspectionLimit struct {
+	maximum int
+	full    bool
+}
+
+func addInspectionLimitFlags(command *cobra.Command, noun string) {
+	command.Flags().Int("limit", defaultInspectionLimit, "maximum "+noun+" to emit")
+	command.Flags().Bool("full", false, "emit all "+noun)
+}
+
+func inspectionResultLimit(command *cobra.Command) (inspectionLimit, error) {
+	maximum, _ := command.Flags().GetInt("limit")
+	full, _ := command.Flags().GetBool("full")
+	if maximum <= 0 {
+		return inspectionLimit{}, fmt.Errorf("--limit must be greater than zero")
+	}
+	if full && command.Flags().Changed("limit") {
+		return inspectionLimit{}, fmt.Errorf("--full cannot be combined with --limit")
+	}
+	return inspectionLimit{maximum: maximum, full: full}, nil
 }
 
 func inputPoint(point probePoint, inputs *diff.ImageInputs) *probeInputPoint {
@@ -1151,7 +1218,9 @@ type comparisonValidation struct {
 type outputEnvelope struct {
 	diff.ImageComparison
 	RegionCount      int                      `json:"regionCount,omitempty"`
+	RegionsReturned  int                      `json:"regionsReturned,omitempty"`
 	RegionsTruncated bool                     `json:"regionsTruncated,omitempty"`
+	Hint             string                   `json:"hint,omitempty"`
 	VisualContext    *imagecontext.Result     `json:"visualContext,omitempty"`
 	Configuration    *comparisonConfiguration `json:"configuration,omitempty"`
 	Validation       *comparisonValidation    `json:"validation,omitempty"`
@@ -1203,7 +1272,7 @@ func writeProbeCSV(command *cobra.Command, output probeOutput) error {
 			return err
 		}
 	}
-	return nil
+	return writeTruncationCSV(writer, output.Total, output.Returned, output.Truncated, output.Hint)
 }
 
 func writeScanCSV(command *cobra.Command, output scanOutput) error {
@@ -1214,7 +1283,18 @@ func writeScanCSV(command *cobra.Command, output scanOutput) error {
 	if err := writeScanRunsCSV(writer, "ref", output.Axis, output.Index, output.Reference, output.InputLine, true); err != nil {
 		return err
 	}
-	return writeScanRunsCSV(writer, "act", output.Axis, output.Index, output.Actual, output.InputLine, false)
+	if err := writeScanRunsCSV(writer, "act", output.Axis, output.Index, output.Actual, output.InputLine, false); err != nil {
+		return err
+	}
+	return writeTruncationCSV(writer, output.Total, output.Returned, output.Truncated, output.Hint)
+}
+
+func writeTruncationCSV(writer io.Writer, total, returned int, truncated bool, hint string) error {
+	if !truncated {
+		return nil
+	}
+	_, err := fmt.Fprintf(writer, "# total=%d returned=%d truncated=true hint=%q\n", total, returned, hint)
+	return err
 }
 
 func writeScanRunsCSV(writer io.Writer, imageName string, axis string, index int, runs []scanRun, inputLine *scanInputLine, reference bool) error {

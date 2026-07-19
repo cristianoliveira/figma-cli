@@ -96,7 +96,7 @@ effective `query`; it is a successful result, not an absent response.
 | `css`, `tokens` | deterministic text or generated file; global `--json` envelope available | format-specific controls |
 | `changes`, `diff text` | structured change analysis | explicit `--from` and `--to` versions |
 | `pixel-perfect <reference> <actual>` | structured comparison and optional image/report artifacts | explicit crops, masks, profiles, and optional validation gates |
-| `pixel-perfect probe`, `pixel-perfect scan` | CSV by default or JSON with `--format json` | explicit points, rows, columns, and sampling controls |
+| `pixel-perfect probe`, `pixel-perfect scan` | bounded CSV by default or JSON with `--format json` | `--limit` defaults to 25 points or runs per image; `--full` disables local bound |
 
 For `layout`, the selected root is depth `0`; nodes at `--depth` are included.
 `traversal.totalNodes` counts eligible layout nodes before the local depth bound,
@@ -106,9 +106,10 @@ while `returnedNodes`, `omittedNodes`, and `truncated` make omissions explicit.
 ## Migration: bounded collection results
 
 Collection commands listed above now emit at most 100 local results by default.
-Use `total` to learn how many matched, `truncated: true` to identify a partial
-response, and `--full` when a caller intentionally needs every locally matched
-value.
+Use `total` and `returned` where available to distinguish matches from emitted
+items. `truncated: true` identifies a partial response; truncated output alone
+includes a scope-preserving `hint` command ending in `--full`. Normal output
+omits hints.
 
 Before, consumers commonly assumed every match was returned:
 
@@ -128,7 +129,9 @@ figma find --full --name Button <figma-url>
 
 Do not combine `--full` with `--limit`; this is a usage error. `--full` does
 not retrieve API pages that the underlying endpoint has not supplied, and it
-does not override `--depth` or other command-specific bounds.
+does not override `--depth` or other command-specific bounds. Probe limits
+points; scan limits color runs independently for reference and actual images.
+Truncated CSV appends one `# total=... returned=... hint=...` metadata line.
 
 ## Pixel validation gates
 

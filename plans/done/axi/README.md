@@ -24,6 +24,7 @@ Core AXI contracts now exist, but five risks remain:
 6. [Choose strict-alignment compatibility profile](06-strict-alignment-contract-profile.md)
 7. [Add TOON output boundary](07-toon-output-migration.md)
 8. [Add structured, redacted errors](08-structured-errors.md)
+9. [Bound output and add truncation recovery](09-output-bounds-and-hints.md)
 
 ```text
 contract guardrails ──> layout contract ──> skill sync

@@ -47,7 +47,7 @@ func newFramesCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			}
 			frames := extract.DiscoverFrames(document)
 			frames, total := limitResults(resultLimit, frames)
-			result := output.NewLimitedQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, nil, total, frames)
+			result := newLimitedQuery(cmd, output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, nil, total, frames)
 			return cli.NewPrinter(cmd).Structured(result)
 		},
 	}

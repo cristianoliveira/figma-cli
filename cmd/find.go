@@ -51,7 +51,7 @@ func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			matches := extract.Search(doc, extract.SearchCriteria{Name: layerName, Type: nodeType})
 			matches, total := limitResults(resultLimit, matches)
 			query := map[string]any{"name": layerName, "type": nodeType}
-			result := output.NewLimitedQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, query, total, matches)
+			result := newLimitedQuery(cmd, output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, query, total, matches)
 			if err := cli.NewPrinter(cmd).Structured(result); err != nil {
 				return err
 			}

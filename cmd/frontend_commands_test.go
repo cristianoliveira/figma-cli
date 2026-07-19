@@ -64,25 +64,29 @@ func TestFindCommandReportsTruncationAndSupportsFullOutput(t *testing.T) {
 
 	require.NoError(t, limited.Err)
 	var limitedOutput struct {
-		Total     int   `json:"total"`
-		Truncated bool  `json:"truncated"`
-		Results   []any `json:"results"`
+		Total     int    `json:"total"`
+		Truncated bool   `json:"truncated"`
+		Hint      string `json:"hint"`
+		Results   []any  `json:"results"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(limited.Stdout), &limitedOutput))
 	assert.Equal(t, 2, limitedOutput.Total)
 	assert.True(t, limitedOutput.Truncated)
 	assert.Len(t, limitedOutput.Results, 1)
+	assert.Equal(t, "figma find abc --json --name button --full", limitedOutput.Hint)
 
 	require.NoError(t, full.Err)
 	var fullOutput struct {
-		Total     int   `json:"total"`
-		Truncated bool  `json:"truncated"`
-		Results   []any `json:"results"`
+		Total     int    `json:"total"`
+		Truncated bool   `json:"truncated"`
+		Hint      string `json:"hint"`
+		Results   []any  `json:"results"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(full.Stdout), &fullOutput))
 	assert.Equal(t, 2, fullOutput.Total)
 	assert.False(t, fullOutput.Truncated)
 	assert.Len(t, fullOutput.Results, 2)
+	assert.Empty(t, fullOutput.Hint)
 }
 
 func TestColorsCommandEmitsScopedResults(t *testing.T) {

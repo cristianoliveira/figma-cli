@@ -138,7 +138,7 @@ func newInspectCommandWithVariables(
 					}
 					return cli.NewPrinter(cmd).Text("inspect", text)
 				}
-				return cli.NewPrinter(cmd).Structured(output.NewLimitedQuery(scope, nil, total, nodes))
+				return cli.NewPrinter(cmd).Structured(newLimitedQuery(cmd, scope, nil, total, nodes))
 			}
 			if handoff {
 				result := extract.ExtractHandoff(document, extract.HandoffOptions{MaxDepth: depth, IncludeHidden: includeHidden})

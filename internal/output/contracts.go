@@ -18,6 +18,7 @@ type Query[T any] struct {
 	Query     map[string]any `json:"query,omitempty"`
 	Total     int            `json:"total"`
 	Truncated bool           `json:"truncated,omitempty"`
+	Hint      string         `json:"hint,omitempty"`
 	Results   []T            `json:"results"`
 }
 

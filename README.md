@@ -122,6 +122,8 @@ pixel-perfect probe reference.png implementation.png --at 316,300
 pixel-perfect scan reference.png implementation.png --y 300
 ```
 
+Probe points and scan runs are bounded to 25 by default. Truncated output reports exact totals and a copyable `--full` recovery command; use explicit `--limit` for a smaller budget.
+
 ## Compact implementation outlines
 
 Recursive inspection can render only properties needed for current task, avoiding ad hoc Python filters and large JSON payloads:
