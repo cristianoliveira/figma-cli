@@ -18,6 +18,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestComparisonRegionControlValidationRejectsInvalidValues(t *testing.T) {
+	assert.EqualError(t, validateRegionControls(-1, 0, 0, 1, 1), "--suggest-offset must be non-negative")
+	assert.EqualError(t, validateRegionControls(0, -1, 0, 1, 1), "--suggest-movement must be non-negative")
+	assert.EqualError(t, validateRegionControls(0, 0, -1, 1, 1), "--region-gap must be non-negative")
+	assert.EqualError(t, validateRegionControls(0, 0, 0, 0, 1), "--min-region-pixels must be positive")
+	assert.EqualError(t, validateRegionControls(0, 0, 0, 1, 0), "--max-regions must be positive")
+	assert.NoError(t, validateRegionControls(1, 1, 0, 1, 20))
+}
+
 func TestComparisonThresholdValidationRejectsInvalidValues(t *testing.T) {
 	assert.EqualError(t, validateComparisonThresholds(-1, -1, -1, -1), "--perceptual-threshold must be a finite non-negative number")
 	assert.EqualError(t, validateComparisonThresholds(1, -2, -1, -1), "--max-rmse must be -1 or a finite non-negative number")

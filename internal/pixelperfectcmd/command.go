@@ -136,24 +136,12 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		return cli.NewUsageError(err)
 	}
 	offsetRadius, _ := cmd.Flags().GetInt("suggest-offset")
-	if offsetRadius < 0 {
-		return cli.NewUsageError(fmt.Errorf("--suggest-offset must be non-negative"))
-	}
 	movementRadius, _ := cmd.Flags().GetInt("suggest-movement")
-	if movementRadius < 0 {
-		return cli.NewUsageError(fmt.Errorf("--suggest-movement must be non-negative"))
-	}
 	regionGap, _ := cmd.Flags().GetInt("region-gap")
-	if regionGap < 0 {
-		return cli.NewUsageError(fmt.Errorf("--region-gap must be non-negative"))
-	}
 	minRegionPixels, _ := cmd.Flags().GetInt("min-region-pixels")
-	if minRegionPixels < 1 {
-		return cli.NewUsageError(fmt.Errorf("--min-region-pixels must be positive"))
-	}
 	maxRegions, _ := cmd.Flags().GetInt("max-regions")
-	if maxRegions < 1 {
-		return cli.NewUsageError(fmt.Errorf("--max-regions must be positive"))
+	if err := validateRegionControls(offsetRadius, movementRadius, regionGap, minRegionPixels, maxRegions); err != nil {
+		return cli.NewUsageError(err)
 	}
 	full, _ := cmd.Flags().GetBool("full")
 	perceptualThreshold, _ := cmd.Flags().GetFloat64("perceptual-threshold")
@@ -332,6 +320,25 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		return err
 	}
 	return writeJSON(cmd, outputResult)
+}
+
+func validateRegionControls(offsetRadius, movementRadius, regionGap, minRegionPixels, maxRegions int) error {
+	if offsetRadius < 0 {
+		return fmt.Errorf("--suggest-offset must be non-negative")
+	}
+	if movementRadius < 0 {
+		return fmt.Errorf("--suggest-movement must be non-negative")
+	}
+	if regionGap < 0 {
+		return fmt.Errorf("--region-gap must be non-negative")
+	}
+	if minRegionPixels < 1 {
+		return fmt.Errorf("--min-region-pixels must be positive")
+	}
+	if maxRegions < 1 {
+		return fmt.Errorf("--max-regions must be positive")
+	}
+	return nil
 }
 
 func validateComparisonThresholds(perceptualThreshold, maxRMSE, maxChangedRatio, maxPerceptualChangedRatio float64) error {
