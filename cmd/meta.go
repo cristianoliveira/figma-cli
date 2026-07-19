@@ -12,15 +12,9 @@ func newMetaCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	return &cobra.Command{
 		Use:   "meta [file-id-or-url]",
 		Short: "Fetch metadata for a Figma file",
-		Long: `Fetch metadata for a Figma file via the Figma API.
-
-Requires FIGMA_ACCESS_TOKEN environment variable set with a personal access token.
-Examples:
-  export FIGMA_ACCESS_TOKEN=your_token
-  # Using file ID:
-  figma meta ABCDEFGHIJKLMNOPQRSTUVWXYZ
-  # Using Figma URL:
-  figma meta https://www.figma.com/design/exampleFileKey123/Example-Design?node-id=339-27545`,
+		Long:  "Fetch file metadata using FIGMA_ACCESS_TOKEN.",
+		Example: `  figma meta <file-key>
+  figma meta https://www.figma.com/design/<file-key>/<name>`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			input, err := figma.ParseInput(args[0])

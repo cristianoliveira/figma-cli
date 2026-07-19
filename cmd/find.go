@@ -16,7 +16,10 @@ func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "find [figma-url-or-file-id]",
 		Short: "Find Figma layers by name and/or type",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma find --name "Button" <url>
+  figma find --type COMPONENT --id 42:1 <file-key>
+  figma find --name "Card" --type INSTANCE <url>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			layerName, _ := cmd.Flags().GetString("name")
 			nodeType, _ := cmd.Flags().GetString("type")

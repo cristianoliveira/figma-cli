@@ -23,6 +23,23 @@ func TestRootHelpIsCompactAndPointsToDecisionRelevantCommands(t *testing.T) {
 	assert.NotContains(t, result.Stdout, "What is this file about?")
 }
 
+func TestPrimaryExplorationCommandsProvideLocalExamples(t *testing.T) {
+	commands := []*cobra.Command{
+		newMetaCommand(nil),
+		newInspectCommand(nil),
+		newFindCommand(nil),
+		newLayoutCommand(nil),
+		newExportCommand(nil, nil),
+	}
+
+	for _, command := range commands {
+		t.Run(command.Name(), func(t *testing.T) {
+			assert.NotEmpty(t, command.Example)
+			assert.Contains(t, command.Example, "figma "+command.Name())
+		})
+	}
+}
+
 func TestUnknownFlagErrorIncludesAvailableOptions(t *testing.T) {
 	command := newInspectCommand(func() (*figma.Client, error) { return nil, nil })
 	result := executeCommand(command, "abc", "--bogus")

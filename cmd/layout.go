@@ -14,7 +14,10 @@ func newLayoutCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "layout [figma-url-or-file-id]",
 		Short: "Show an ordered frame tree with layout and copy",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma layout "<url>?node-id=42-1"
+  figma layout --id 42:1 <file-key>
+  figma layout --measure-spacing "<url>?node-id=42-1"`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {

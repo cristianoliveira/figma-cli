@@ -30,7 +30,10 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 	command := &cobra.Command{
 		Use:   "export [figma-url-with-node-id]",
 		Short: "Export a Figma node asset",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma export "<url>?node-id=42-1"
+  figma export --id 42:1 --format svg <file-key>
+  figma export --id 42:1 --width 1200 --output screen.png <file-key>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			format, _ := cmd.Flags().GetString("format")
 			if err := figma.ValidateExportFormat(format); err != nil {

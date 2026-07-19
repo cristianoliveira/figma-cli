@@ -31,7 +31,10 @@ func newInspectCommandWithVariables(
 		Use:   "inspect [figma-url-or-file-id]",
 		Short: "Show a curated summary of a specific Figma node",
 		Long:  "Show a curated summary of a specific Figma node. With --recursive, bounds stay absolute, relativeBounds are measured from the requested scope node, and spacingFromPrevious reports computed auto-layout sibling gaps. Use --format text with --fields to render a compact, selected implementation outline.",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma inspect "<url>?node-id=42-1"
+  figma inspect --id 42:1 <file-key>
+  figma inspect --recursive --format text --fields id,name,type <url>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			explicitNodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
