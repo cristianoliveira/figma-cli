@@ -21,7 +21,10 @@ func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "texts [file-id-or-url]",
 		Short: "Extract ordered text and Figma-provided list semantics",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma texts "<url>?node-id=42-1"
+  figma texts --id 42:1 <file-key>
+  figma texts --layer "Screen Name" --recursive <url>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			layerName, _ := cmd.Flags().GetString("layer")
 			recursive, _ := cmd.Flags().GetBool("recursive")

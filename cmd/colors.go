@@ -14,7 +14,9 @@ func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "colors [figma-url-or-file-id]",
 		Short: "Extract the color palette from a Figma node",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma colors "<url>?node-id=42-1"
+  figma colors --id 42:1 <file-key>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {

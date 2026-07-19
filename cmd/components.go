@@ -24,7 +24,10 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 	command := &cobra.Command{
 		Use:   "components [figma-url-or-file-id]",
 		Short: "List components, component sets, and instances as JSON",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma components "<url>?node-id=42-1"
+  figma components --id 42:1 --kind instance <file-key>
+  figma components --id 42:1 --usage <file-key>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {

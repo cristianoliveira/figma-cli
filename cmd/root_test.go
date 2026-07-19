@@ -30,6 +30,10 @@ func TestPrimaryExplorationCommandsProvideLocalExamples(t *testing.T) {
 		newFindCommand(nil),
 		newLayoutCommand(nil),
 		newExportCommand(nil, nil),
+		newFramesCommand(nil),
+		newComponentsCommand(nil),
+		newTextsCommand(nil),
+		newColorsCommand(nil),
 	}
 
 	for _, command := range commands {

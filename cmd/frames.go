@@ -16,7 +16,9 @@ func newFramesCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "frames [figma-url-or-file-id]",
 		Short: "List screen-level frames in a page or section",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma frames "<url>?node-id=1-2"
+  figma frames --id 1:2 <file-key>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {
