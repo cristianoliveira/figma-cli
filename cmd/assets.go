@@ -30,7 +30,10 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 	command := &cobra.Command{
 		Use:   "assets [figma-url-or-file-id]",
 		Short: "Download image, instance, and vector assets from a Figma node tree",
-		Args:  cobra.ExactArgs(1),
+		Example: `  figma assets "<url>?node-id=42-1"
+  figma assets --id 42:1 --kind icon --format svg <file-key>
+  figma assets --id 42:1 --output public/assets --json <file-key>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := explicitNodeIDFlag(cmd)
 			if err != nil {

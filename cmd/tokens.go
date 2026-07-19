@@ -28,6 +28,9 @@ func newTokensCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "tokens [figma-url-or-file-id]",
 		Short: "Extract design tokens (colors, type, spacing, shadows) as CSS, Tailwind, or JSON",
+		Example: `  figma tokens <file-key>
+  figma tokens --format json --source styles <url>
+  figma tokens --format css --prefix fig- --output tokens.css <url>`,
 		Long: `Extract design tokens from a Figma file and emit ready-to-use CSS custom
 properties, a Tailwind theme extend, or style-dictionary JSON.
 

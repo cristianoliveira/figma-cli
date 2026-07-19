@@ -14,6 +14,9 @@ func newCSSCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "css [figma-url-or-file-id]",
 		Short: "Generate CSS rules from a Figma element's layout and styles",
+		Example: `  figma css "<url>?node-id=42-1"
+  figma css --id 42:1 --recursive <file-key>
+  figma css --id 42:1 --output component.css <file-key>`,
 		Long: `Generate CSS from a Figma node tree.
 
 Emits CSS for the selected node. With --recursive, walks its subtree and emits

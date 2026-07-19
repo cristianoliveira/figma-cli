@@ -34,6 +34,9 @@ func TestPrimaryExplorationCommandsProvideLocalExamples(t *testing.T) {
 		newComponentsCommand(nil),
 		newTextsCommand(nil),
 		newColorsCommand(nil),
+		newAssetsCommand(nil, nil),
+		newCSSCommand(nil),
+		newTokensCommand(nil),
 	}
 
 	for _, command := range commands {
