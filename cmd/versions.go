@@ -125,6 +125,8 @@ var (
 var versionsCmd = &cobra.Command{
 	Use:   "versions [file-id-or-url]",
 	Short: "Fetch version history for a Figma file",
+	Example: `  figma versions <file-key>
+  figma versions <url>`,
 	Long: `Fetch version history for a Figma file via the Figma API.
 
 Versions are returned newest-first. Auto-save milestones have no label or

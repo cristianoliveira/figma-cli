@@ -42,6 +42,8 @@ func newProjectsOutput(response api.GetTeamProjectsResponse) projectsOutput {
 var projectsCmd = &cobra.Command{
 	Use:   "projects [team-url|team-id]",
 	Short: "List projects in a Figma team",
+	Example: `  figma projects <team-id>
+  figma projects https://www.figma.com/files/team/<team-id>/<name>`,
 	Long: `List all projects in a Figma team.
 
 The team ID cannot be obtained from a Figma token. Pass a numeric team ID or

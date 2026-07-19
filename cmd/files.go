@@ -39,6 +39,8 @@ var branches bool
 var filesCmd = &cobra.Command{
 	Use:   "files <project-url|project-id>",
 	Short: "List files in a Figma project",
+	Example: `  figma files <project-id>
+  figma files https://www.figma.com/files/project/<project-id>/<name>`,
 	Long: `List all files in a Figma project.
 
 Pass a numeric project ID or a Figma project URL. Use --branches to request

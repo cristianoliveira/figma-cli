@@ -47,6 +47,17 @@ func TestPrimaryExplorationCommandsProvideLocalExamples(t *testing.T) {
 	}
 }
 
+func TestWorkspaceDiscoveryCommandsProvideLocalExamples(t *testing.T) {
+	commands := []*cobra.Command{meCmd, projectsCmd, filesCmd, versionsCmd, newCommentsCommand(nil)}
+
+	for _, command := range commands {
+		t.Run(command.Name(), func(t *testing.T) {
+			assert.NotEmpty(t, command.Example)
+			assert.Contains(t, command.Example, "figma "+command.Name())
+		})
+	}
+}
+
 func TestUnknownFlagErrorIncludesAvailableOptions(t *testing.T) {
 	command := newInspectCommand(func() (*figma.Client, error) { return nil, nil })
 	result := executeCommand(command, "abc", "--bogus")

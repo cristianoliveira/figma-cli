@@ -31,6 +31,9 @@ func newCommentsCommand(loadClient func() (*figma.Client, error)) *cobra.Command
 	command := &cobra.Command{
 		Use:   "comments [file-id-or-url]",
 		Short: "Fetch comments for a Figma file",
+		Example: `  figma comments <file-key>
+  figma comments --state open <url>
+  figma comments --mine "<url>?node-id=42-1"`,
 		Long: `Fetch comments for a Figma file via the Figma API.
 
 Requires FIGMA_ACCESS_TOKEN environment variable set with a personal access token.

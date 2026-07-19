@@ -17,8 +17,9 @@ type meOutput struct {
 }
 
 var meCmd = &cobra.Command{
-	Use:   "me",
-	Short: "Show the authenticated user (also validates FIGMA_ACCESS_TOKEN)",
+	Use:     "me",
+	Short:   "Show the authenticated user (also validates FIGMA_ACCESS_TOKEN)",
+	Example: "  figma me",
 	Long: `Call /v1/me to return the currently authenticated user.
 
 Doubles as a token-validity check: a successful response means
