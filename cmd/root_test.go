@@ -13,7 +13,7 @@ import (
 
 func TestRootNoArgsShowsCompactReadinessAndNextSteps(t *testing.T) {
 	t.Setenv("FIGMA_ACCESS_TOKEN", "")
-	root := newRootCommand(&cobra.Command{Use: "inspect"})
+	root := newRootCommandWithExecutable(func() (string, error) { return "~/bin/figma", nil }, &cobra.Command{Use: "inspect"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
 	var stdout strings.Builder
@@ -23,6 +23,7 @@ func TestRootNoArgsShowsCompactReadinessAndNextSteps(t *testing.T) {
 	require.NoError(t, root.Execute())
 	result := stdout.String()
 	assert.Contains(t, result, "figma")
+	assert.Contains(t, result, "Executable: ~/bin/figma")
 	assert.Contains(t, result, "Authentication: missing FIGMA_ACCESS_TOKEN")
 	assert.Contains(t, result, "figma me")
 	assert.Contains(t, result, "figma inspect")

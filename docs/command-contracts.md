@@ -45,6 +45,13 @@ error:
 `category` is `usage` or `operational`. `input` appears only when offending input
 is safely known. `recovery` is omitted when no specific, safe action is known. Global `--json` renders same fields as compatibility JSON.
 
+## Executable discovery
+
+No-argument views report canonical absolute executable path with home directory
+collapsed to `~`. They show only cheap authentication or usage state and perform
+no network requests, image decoding, or provider calls. See
+[`axi-measurements.md`](axi-measurements.md) for reproducible byte and round-trip evidence.
+
 ## TOON migration
 
 Structured domain values pass through one output boundary. TOON is default;

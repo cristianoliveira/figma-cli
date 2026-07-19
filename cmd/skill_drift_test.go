@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -33,6 +34,16 @@ func TestFigmaSkillExactAXIFactsMatchCobra(t *testing.T) {
 	assert.Contains(t, reference, "figma layout --depth 4", "skill drift: update skills/figma-cli/references/commands.md")
 	assert.Contains(t, reference, "--full", "skill drift: update skills/figma-cli/references/commands.md")
 	assert.Contains(t, reference, "--limit", "skill drift: update skills/figma-cli/references/commands.md")
+
+	root := newRootCommandWithExecutable(func() (string, error) { return "~/bin/figma", nil })
+	var home strings.Builder
+	root.SetOut(&home)
+	root.SetArgs(nil)
+	require.NoError(t, root.Execute())
+	for _, example := range []string{"figma me", "figma inspect"} {
+		assert.Containsf(t, home.String(), example, "home view missing %q", example)
+		assert.Containsf(t, skill, example, "skill drift: home example %q is missing", example)
+	}
 }
 
 func findCommand(t *testing.T, root *cobra.Command, name string) *cobra.Command {

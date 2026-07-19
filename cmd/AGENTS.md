@@ -17,6 +17,7 @@
 - State whether command accepts one or many node IDs. Reject unsupported multiple IDs instead of using first silently.
 - Render structured values through `cli.NewPrinter(cmd).Structured(...)`; global `--json` selects compatibility output. Keep intentional text/file artifacts on `Text`/`File`.
 - Bounded collection output reports pre-limit totals and adds `cli.FullHint` only when truncated; never hand-build shell recovery strings.
+- No-argument views use `cli.CurrentExecutablePath`, show only cheap state, and never load clients or perform network work.
 
 ## Testing
 

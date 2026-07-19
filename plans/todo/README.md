@@ -6,11 +6,7 @@ Completed coordinate and workflow foundations live in [`../done/`](../done/), in
 
 ## Recommended remaining order
 
-### AXI strict alignment
-
-1. [Add the TOON output boundary and complete strict alignment](axi/README.md)
-
-The [TOON-first compatibility profile](../done/axi/06-strict-alignment-contract-profile.md) is complete.
+The [AXI strict-alignment initiative](../done/axi/strict-alignment-initiative.md) is complete.
 
 ### Pixel-perfect evidence
 
@@ -18,7 +14,7 @@ The [TOON-first compatibility profile](../done/axi/06-strict-alignment-contract-
 2. [Pixel-perfect actionable issue ranking](pixel-perfect-actionable-issue-ranking.md)
 3. [Transparent-crop suggestions](pixel-perfect-transparent-crop-suggestions.md)
 
-The previous AXI follow-up initiative lives in [`../done/axi/`](../done/axi/README.md).
+All completed AXI work lives in [`../done/axi/`](../done/axi/README.md).
 
 ## Task-plan pattern
 

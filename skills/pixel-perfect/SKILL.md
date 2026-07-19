@@ -14,9 +14,9 @@ Measure and localize screenshot differences without silently resizing or alignin
 
 ## Workflow
 
-1. Establish baseline metrics first. The CLI writes a default diff mask beside the actual image as `<actual>.diff.png` and reports that path in JSON `mask`:
+1. Establish baseline metrics first. The CLI writes a default diff mask beside actual image as `<actual>.diff.png` and reports path in structured `mask` output (TOON by default, JSON with `--json`):
    ```bash
-   pixel-perfect reference.png implementation.png --threshold 8
+   pixel-perfect reference.png actual.png --threshold 8
    ```
    For named review artifacts, override the mask path and add overlay/report:
    ```bash
@@ -45,13 +45,13 @@ Measure and localize screenshot differences without silently resizing or alignin
      --overlay region-overlay.png \
      --report region-report.html
    ```
-6. Re-run after one bounded change; retain JSON and PNG artifacts.
+6. Re-run after one bounded change; retain structured evidence and PNG artifacts.
 7. Probe exact colors instead of using external image tools:
    ```bash
    pixel-perfect probe reference.png implementation.png --at <x>,<y> --at <x2>,<y2>
    pixel-perfect probe reference.png implementation.png --from <x1>,<y1> --to <x2>,<y2> --step 4 --radius 1
    ```
-   Use repeatable `--at` for known sparse points. Use inclusive `--from`/`--to` for diagonal or arbitrary straight boundaries; `--step` reduces samples and `--radius` catches thin/antialiased neighbors. Probe returns token-efficient CSV by default; use `--format json` when scripting needs structured `points[]`, RGBA, per-channel delta, and `inputPoint`. Reuse `--reference-crop`, `--actual-crop`, or `--reference-metadata` when the diff used cropped inputs; probe coordinates are comparison/cropped coordinates.
+   Use repeatable `--at` for known sparse points. Use inclusive `--from`/`--to` for diagonal or arbitrary straight boundaries; `--step` reduces samples and `--radius` catches thin/antialiased neighbors. Probe returns token-efficient CSV by default; use `--format json` when scripting needs structured `points[]`, RGBA, per-channel delta, and `inputPoint`. Output defaults to 25 points; when `truncated: true`, run emitted `hint` only if all points are needed, or set `--limit` explicitly. Reuse `--reference-crop`, `--actual-crop`, or `--reference-metadata` when diff used cropped inputs; probe coordinates are comparison/cropped coordinates.
 8. Use scan for edge transitions instead of N probe calls:
    ```bash
    pixel-perfect scan reference.png implementation.png --row <row>
@@ -64,7 +64,7 @@ Measure and localize screenshot differences without silently resizing or alignin
    # Vertical line: heights, top/bottom edges, and vertical gaps.
    pixel-perfect scan reference.png implementation.png --column <x>
    ```
-   Choose `<x>,<y>` so both lines cross suspected region while avoiding text or antialiased artwork when possible. Each command scans both reference and actual; a cross requires two commands, not four. Compare run start/end positions and lengths to distinguish shifted edges from wrong spacing. It returns compact CSV color runs by default; use `--format json` when scripting needs RGBA and `inputLine`. Reuse identical crop/metadata flags for both scans when original diff used cropped inputs; scan indexes are comparison/cropped coordinates.
+   Choose `<x>,<y>` so both lines cross suspected region while avoiding text or antialiased artwork when possible. Each command scans both reference and actual; a cross requires two commands, not four. Compare run start/end positions and lengths to distinguish shifted edges from wrong spacing. It returns compact CSV color runs by default; use `--format json` when scripting needs RGBA and `inputLine`. Output defaults to 25 runs per image; follow emitted `hint` only when truncation hides needed transitions. Reuse identical crop/metadata flags for both scans when original diff used cropped inputs; scan indexes are comparison/cropped coordinates.
 
 ## Diagnosis
 

@@ -88,10 +88,11 @@ func TestComparisonDefaultsToTOON(t *testing.T) {
 }
 
 func TestCommandNoArgsShowsCompactNextSteps(t *testing.T) {
-	result := executeCommand(NewCommand())
+	result := executeCommand(newCommandWithExecutable(func() (string, error) { return "~/bin/pixel-perfect", nil }))
 
 	require.NoError(t, result.Err)
 	assert.Contains(t, result.Stdout, "pixel-perfect compares PNG screenshots")
+	assert.Contains(t, result.Stdout, "Executable: ~/bin/pixel-perfect")
 	assert.Contains(t, result.Stdout, "pixel-perfect reference.png actual.png")
 	assert.Contains(t, result.Stdout, "pixel-perfect probe --help")
 	assert.Contains(t, result.Stdout, "pixel-perfect scan --help")

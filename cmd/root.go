@@ -15,22 +15,31 @@ import (
 var rootCmd = newRootCommand()
 
 func newRootCommand(children ...*cobra.Command) *cobra.Command {
+	return newRootCommandWithExecutable(cli.CurrentExecutablePath, children...)
+}
+
+func newRootCommandWithExecutable(resolveExecutable func() (string, error), children ...*cobra.Command) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "figma",
 		Short: "Explore and inspect Figma designs from the command line",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			executable, err := resolveExecutable()
+			if err != nil {
+				return err
+			}
 			authentication := "configured"
 			if os.Getenv("FIGMA_ACCESS_TOKEN") == "" {
 				authentication = "missing FIGMA_ACCESS_TOKEN"
 			}
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), `figma — agent-facing Figma inspection CLI
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), `figma — agent-facing Figma inspection CLI
+Executable: %s
 Authentication: %s
 Next:
   figma me
   figma inspect "<figma-url>?node-id=<node-id>"
   figma --help
-`, authentication)
+`, executable, authentication)
 			return err
 		},
 		Long: `Query Figma files using a file key or full Figma URL.

@@ -1,4 +1,4 @@
-# AXI strict-alignment initiative
+# AXI strict-alignment initiative — complete
 
 Baseline: the completed [AXI follow-up](../../done/axi/README.md) established compact home views, stable JSON contracts, bounded Figma output, validation ordering, exit codes, and drift checks.
 
@@ -17,11 +17,9 @@ This initiative addresses remaining differences between current CLI behavior and
 
 The [compatibility profile](../../done/axi/06-strict-alignment-contract-profile.md) is decided: v2 makes TOON the default for structured stdout and errors; JSON is explicit compatibility output, while intentional CSV and artifact output remain unchanged.
 
-## Recommended remaining order
+## Completion
 
-The compatibility decision, TOON migration, structured errors, and output bounds are complete.
-
-1. Complete executable discovery and measure agent efficiency.
+All strict-alignment tasks are complete: compatibility decision, TOON migration, structured errors, bounded output with recovery hints, executable discovery, and repeatable measurements.
 
 ```text
 contract decision ──> TOON migration (complete)

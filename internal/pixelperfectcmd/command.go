@@ -1340,6 +1340,10 @@ func writeJSON(command *cobra.Command, value any) error {
 
 // NewCommand creates the standalone image comparison command.
 func NewCommand() *cobra.Command {
+	return newCommandWithExecutable(cli.CurrentExecutablePath)
+}
+
+func newCommandWithExecutable(resolveExecutable func() (string, error)) *cobra.Command {
 	command := newCommand(nil)
 	command.Use = "pixel-perfect <reference.png> <actual.png>"
 	command.Example = `  pixel-perfect reference.png actual.png
@@ -1357,13 +1361,18 @@ func NewCommand() *cobra.Command {
 		if len(args) > 0 {
 			return run(cmd, args)
 		}
-		_, err := fmt.Fprint(cmd.OutOrStdout(), `pixel-perfect compares PNG screenshots.
+		executable, err := resolveExecutable()
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), `pixel-perfect compares PNG screenshots.
+Executable: %s
 Usage: pixel-perfect <reference.png> <actual.png>
 Next:
   pixel-perfect reference.png actual.png
   pixel-perfect probe --help
   pixel-perfect scan --help
-`)
+`, executable)
 		return err
 	}
 	command.SetFlagErrorFunc(cli.NewFlagUsageError)

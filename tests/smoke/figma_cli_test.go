@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -20,6 +21,9 @@ func TestFigmaCLINoArgsShowsReadinessWithoutToken(t *testing.T) {
 	output, err := command.CombinedOutput()
 
 	require.NoError(t, err, string(output))
+	resolvedBinary, resolveErr := filepath.EvalSymlinks(binary)
+	require.NoError(t, resolveErr)
+	assert.Contains(t, string(output), "Executable: "+resolvedBinary)
 	assert.Contains(t, string(output), "Authentication: missing FIGMA_ACCESS_TOKEN")
 	assert.Contains(t, string(output), "figma inspect")
 	assert.NotContains(t, string(output), "Available Commands:")

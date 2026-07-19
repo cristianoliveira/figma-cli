@@ -167,6 +167,8 @@ Now a mismatch is not merely “some pixels changed.” It can be localized to a
 
 ## Built for agent self-validation
 
+Running either executable without arguments shows its resolved executable path, cheap readiness or usage state, and compact next commands without network or image work.
+
 - Uses semantic API data and deterministic image metrics before optional vision.
 - Supports progressive disclosure from file metadata to nodes, regions, rows, and individual pixels.
 - Produces compact, machine-readable evidence agents can use in an iterative correction loop.

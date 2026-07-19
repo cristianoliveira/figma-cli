@@ -63,7 +63,7 @@ pixel-perfect reference.png implementation.png \
   --report visual-diff.html
 ```
 
-The command prints structured JSON metrics, writes a transparent difference mask beside the actual image, creates a red/green directional overlay, and produces a report you can inspect or share.
+The command prints structured TOON metrics by default (`--json` selects compatibility JSON), writes a transparent difference mask beside actual image, creates a red/green directional overlay, and produces a report you can inspect or share.
 
 Add objective release criteria when the comparison belongs in CI:
 
@@ -169,7 +169,7 @@ pixel-perfect probe reference.png implementation.png --at 316,300 --at 320,300
 pixel-perfect probe reference.png implementation.png --from 91,144 --to 243,296 --step 4 --radius 1
 ```
 
-`probe` inspects one or more pixels in both equal-sized PNGs and prints CSV by default: `x,y,ref,act,delta,input_ref,input_act`. Use repeatable `--at` for known sparse points or inclusive `--from x,y --to x,y` for an arbitrary straight line. `--step N` samples every Nth rasterized line point while preserving the endpoint; `--radius N` expands each selected point into a deduplicated square neighborhood. Use `--format json` for stable `points[]` JSON with RGBA and per-channel delta values. Use probe when debugging exact colors, edge transitions, or when an agent would otherwise reach for ImageMagick pixel sampling. Each point must be in bounds. It accepts the same input-preparation flags as diff: `--reference-crop`, `--actual-crop`, and `--reference-metadata`; coordinates are in comparison/cropped space. When crops are used, `input_ref` / `input_act` or JSON `inputPoint` maps each probed point back to original reference/actual coordinates.
+`probe` inspects pixels in both equal-sized PNGs and prints CSV by default: `x,y,ref,act,delta,input_ref,input_act`. Use repeatable `--at` for sparse points or inclusive `--from x,y --to x,y` for a line. `--step N` samples every Nth point; `--radius N` expands each selection into a deduplicated square. Output defaults to 25 points with exact `total`, `returned`, and truncation metadata; truncated output includes a copyable `--full` hint. Use `--format json` for `points[]`, RGBA, per-channel delta, and `inputPoint`. Each point must be in bounds. Probe accepts `--reference-crop`, `--actual-crop`, and `--reference-metadata`; coordinates are in comparison/cropped space.
 
 For repeated boundary checks, scan one row or column into compact color runs:
 
@@ -178,7 +178,7 @@ pixel-perfect scan reference.png implementation.png --y 300  # horizontal row
 pixel-perfect scan reference.png implementation.png --x 316  # vertical column
 ```
 
-`scan` prints CSV by default: `image,axis,index,start,end,length,hex,input_axis,input_index`, making edge transitions visible without N separate probe calls or repeated JSON keys. Use `--format json` for full RGBA run data. It accepts `--reference-crop`, `--actual-crop`, and `--reference-metadata`; row/column indexes are in comparison/cropped space. When crops are used, `input_axis` / `input_index` or JSON `inputLine` maps the scanned row/column back to original reference/actual coordinates.
+`scan` prints CSV by default: `image,axis,index,start,end,length,hex,input_axis,input_index`, making edge transitions visible without N probe calls. Output defaults to 25 runs per image with exact totals and a conditional `--full` hint. Use `--format json` for full RGBA run data. Scan accepts `--reference-crop`, `--actual-crop`, and `--reference-metadata`; row/column indexes are in comparison/cropped space.
 
 ## Optional visual context
 
@@ -251,7 +251,9 @@ pixel-perfect reference.png implementation.png \
 
 `--ignore-region` is repeatable. A comparison mask must match full reference dimensions: visible non-black pixels are included; black or transparent pixels are ignored.
 
-## JSON result
+## Structured result
+
+Default output is TOON. The compatibility shape below is produced with `--json`:
 
 ```json
 {

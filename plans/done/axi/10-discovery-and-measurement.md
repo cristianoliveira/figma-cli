@@ -45,3 +45,13 @@ Make no-argument views identify the executable using a resolved absolute path wi
 ## Implementation freedom
 
 Choose measurement script location and budget after observing current outputs. Prefer a small deterministic test harness over a benchmark framework.
+
+
+## Completion evidence
+
+- Both no-argument views show canonical executable path with home collapsed to `~`.
+- Resolver tests cover PATH-resolved absolute paths, direct absolute invocation, symlinks, and home boundary handling.
+- No-argument unit and built-binary tests enforce cheap state, zero stderr, and compact byte budgets.
+- `scripts/measure-axi.sh` reproducibly measures stdout/stderr bytes, exit status, commands, and recovery round trips without network calls.
+- `docs/axi-measurements.md` records actual TOON/JSON/CSV shapes and decisions without fixed savings claims.
+- Figma and pixel-perfect skill drift tests protect home examples and bounded-output facts.
