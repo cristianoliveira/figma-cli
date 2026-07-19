@@ -160,6 +160,11 @@ func newCommand(compare imageComparer) *cobra.Command {
 			if minRegionPixels < 1 {
 				return fmt.Errorf("--min-region-pixels must be positive")
 			}
+			maxRegions, _ := cmd.Flags().GetInt("max-regions")
+			if maxRegions < 1 {
+				return fmt.Errorf("--max-regions must be positive")
+			}
+			full, _ := cmd.Flags().GetBool("full")
 			perceptualThreshold, _ := cmd.Flags().GetFloat64("perceptual-threshold")
 			if perceptualThreshold < 0 || math.IsNaN(perceptualThreshold) || math.IsInf(perceptualThreshold, 0) {
 				return fmt.Errorf("--perceptual-threshold must be a finite non-negative number")
@@ -277,9 +282,9 @@ func newCommand(compare imageComparer) *cobra.Command {
 			}
 			result.Regions = groupImageRegions(result.Regions, regionGap)
 			result.Regions = filterImageRegions(result.Regions, minRegionPixels)
-			if len(result.Regions) > 20 {
-				result.Regions = result.Regions[:20]
-			}
+			var regionCount int
+			var regionsTruncated bool
+			result.Regions, regionCount, regionsTruncated = limitImageRegions(result.Regions, maxRegions, full)
 			regionMetrics := make([]diff.RegionMetrics, len(result.Regions))
 			if len(result.Regions) > 0 {
 				regionBounds := make([]diff.Bounds, len(result.Regions))
@@ -345,7 +350,12 @@ func newCommand(compare imageComparer) *cobra.Command {
 					return err
 				}
 			}
-			outputResult := outputEnvelope{ImageComparison: result, Configuration: configuration}
+			outputResult := outputEnvelope{
+				ImageComparison:  result,
+				RegionCount:      regionCount,
+				RegionsTruncated: regionsTruncated,
+				Configuration:    configuration,
+			}
 			visualContextEnabled, _ := cmd.Flags().GetBool("visual-context")
 			if visualContextEnabled {
 				provider, _ := cmd.Flags().GetString("visual-context-provider")
@@ -394,6 +404,8 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command.Flags().Int("suggest-movement", 0, "report advisory per-region translations within this pixel radius without applying them")
 	command.Flags().Int("region-gap", 0, "group mismatch regions separated by at most this many pixels")
 	command.Flags().Int("min-region-pixels", 1, "omit disconnected regions smaller than this many changed pixels")
+	command.Flags().Int("max-regions", 20, "maximum mismatch regions included in output")
+	command.Flags().Bool("full", false, "include every mismatch region")
 	command.Flags().Float64("max-rmse", -1, "fail when normalized RMSE exceeds this value")
 	command.Flags().Float64("max-changed-ratio", -1, "fail when changed-pixel ratio exceeds this value")
 	command.Flags().Float64("max-perceptual-changed-ratio", -1, "fail when perceptual changed-pixel ratio exceeds this value")
@@ -1022,6 +1034,14 @@ func filterImageRegions(regions []diff.Region, minimumPixels int) []diff.Region 
 	return filtered
 }
 
+func limitImageRegions(regions []diff.Region, maximum int, full bool) ([]diff.Region, int, bool) {
+	count := len(regions)
+	if full || count <= maximum {
+		return regions, count, false
+	}
+	return regions[:maximum], count, true
+}
+
 func parseImageRegion(value string) (*diff.Bounds, error) {
 	if value == "" {
 		return nil, nil
@@ -1052,8 +1072,10 @@ func samePath(first, second string) bool {
 
 type outputEnvelope struct {
 	diff.ImageComparison
-	VisualContext *imagecontext.Result     `json:"visualContext,omitempty"`
-	Configuration *comparisonConfiguration `json:"configuration,omitempty"`
+	RegionCount      int                      `json:"regionCount,omitempty"`
+	RegionsTruncated bool                     `json:"regionsTruncated,omitempty"`
+	VisualContext    *imagecontext.Result     `json:"visualContext,omitempty"`
+	Configuration    *comparisonConfiguration `json:"configuration,omitempty"`
 }
 
 func writeProbeCSV(command *cobra.Command, output probeOutput) error {
