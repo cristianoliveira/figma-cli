@@ -42,7 +42,7 @@ commands that access Figma. Run figma <command> --help for local options.`,
   figma export --id <node-id> --format png <url>`,
 	}
 	command.PersistentFlags().Bool("json", false,
-		"emit every result as JSON (wraps text/file results in a JSON envelope)")
+		"emit compatibility JSON instead of default TOON (wraps text/file results)")
 	command.SetFlagErrorFunc(cli.NewFlagUsageError)
 	command.AddCommand(children...)
 	return command

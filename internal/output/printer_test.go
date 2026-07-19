@@ -7,80 +7,62 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	toon "github.com/toon-format/toon-go"
 )
 
-func TestJSON_AlwaysMarshalsWithTrailingNewline(t *testing.T) {
-	var buf bytes.Buffer
-	require.NoError(t, New(&buf, false).JSON(map[string]int{"a": 1}))
+func TestStructuredDefaultsToDeterministicTOONAndRoundTrips(t *testing.T) {
+	value := map[string]any{
+		"count":   2,
+		"empty":   []string{},
+		"nested":  map[string]any{"message": "line one\nline two"},
+		"results": []map[string]any{{"id": 1, "name": "Ada"}, {"id": 2, "name": "Linus"}},
+	}
+	var first bytes.Buffer
+	var second bytes.Buffer
+	require.NoError(t, New(&first, FormatTOON).Structured(value))
+	require.NoError(t, New(&second, FormatTOON).Structured(value))
+	assert.Equal(t, first.String(), second.String())
+	assert.Contains(t, first.String(), "results[2]{id,name}:")
+	assert.Contains(t, first.String(), "empty[0]:")
+	assert.True(t, bytes.HasSuffix(first.Bytes(), []byte("\n")))
 
-	var got map[string]int
-	require.NoError(t, json.Unmarshal(buf.Bytes(), &got), "not valid JSON: %s", buf.String())
-	assert.Equal(t, 1, got["a"])
-	assert.True(t, bytes.HasSuffix(buf.Bytes(), []byte("\n")), "missing trailing newline: %q", buf.String())
+	var decoded any
+	require.NoError(t, toon.Unmarshal(first.Bytes(), &decoded))
+	var original any
+	encoded, err := json.Marshal(value)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(encoded, &original))
+	assert.Equal(t, original, decoded)
 }
 
-func TestJSON_UnaffectedByJSONFlag(t *testing.T) {
-	t.Parallel()
+func TestStructuredJSONPreservesCompatibilityBytes(t *testing.T) {
 	var buf bytes.Buffer
-	// asJSON=true must not wrap a JSON result.
-	require.NoError(t, New(&buf, true).JSON(map[string]int{"a": 1}))
-
-	var got map[string]int
-	require.NoError(t, json.Unmarshal(buf.Bytes(), &got), "asJSON wrapped a JSON result: %s", buf.String())
+	require.NoError(t, New(&buf, FormatJSON).Structured(map[string]int{"a": 1}))
+	assert.Equal(t, "{\n  \"a\": 1\n}\n", buf.String())
 }
 
-func TestText_RawByDefault(t *testing.T) {
-	var buf bytes.Buffer
-	require.NoError(t, New(&buf, false).Text("css", ".a { color: red; }"))
-	assert.Equal(t, ".a { color: red; }", buf.String())
+func TestTextRawByDefaultAndWrappedUnderJSON(t *testing.T) {
+	var toonOutput bytes.Buffer
+	require.NoError(t, New(&toonOutput, FormatTOON).Text("css", ".a { color: red; }"))
+	assert.Equal(t, ".a { color: red; }", toonOutput.String())
+
+	var jsonOutput bytes.Buffer
+	require.NoError(t, New(&jsonOutput, FormatJSON).Text("css", ".a { color: red; }"))
+	assert.JSONEq(t, `{"css":".a { color: red; }"}`, jsonOutput.String())
 }
 
-func TestText_WrappedUnderJSON(t *testing.T) {
-	var buf bytes.Buffer
-	require.NoError(t, New(&buf, true).Text("css", ".a { color: red; }"))
+func TestFileRawByDefaultAndWrappedUnderJSON(t *testing.T) {
+	var toonOutput bytes.Buffer
+	require.NoError(t, New(&toonOutput, FormatTOON).File("/tmp/a.svg", nil))
+	assert.Equal(t, "/tmp/a.svg\n", toonOutput.String())
 
-	var got map[string]string
-	require.NoError(t, json.Unmarshal(buf.Bytes(), &got), "not wrapped JSON: %s", buf.String())
-	assert.Equal(t, ".a { color: red; }", got["css"])
+	var jsonOutput bytes.Buffer
+	require.NoError(t, New(&jsonOutput, FormatJSON).File("/tmp/a.svg", map[string]any{"format": "svg"}))
+	assert.JSONEq(t, `{"path":"/tmp/a.svg","format":"svg"}`, jsonOutput.String())
 }
 
-func TestFile_RawPrintsPathLine(t *testing.T) {
+func TestRenderUsesSelectedStructuredFormat(t *testing.T) {
 	var buf bytes.Buffer
-	require.NoError(t, New(&buf, false).File("/tmp/a.svg", nil))
-	assert.Equal(t, "/tmp/a.svg\n", buf.String())
-}
-
-func TestFile_JSONMergesExtra(t *testing.T) {
-	var buf bytes.Buffer
-	extra := map[string]any{"format": "svg", "node": "1:2"}
-	require.NoError(t, New(&buf, true).File("/tmp/a.svg", extra))
-
-	var got map[string]any
-	require.NoError(t, json.Unmarshal(buf.Bytes(), &got), "not JSON: %s", buf.String())
-	assert.Equal(t, "/tmp/a.svg", got["path"])
-	assert.Equal(t, "svg", got["format"])
-	assert.Equal(t, "1:2", got["node"])
-}
-
-func TestRender_TextByDefault(t *testing.T) {
-	var buf bytes.Buffer
-	require.NoError(t, New(&buf, false).Render(map[string]int{"a": 1}, "hello"))
-
-	assert.Equal(t, "hello\n", buf.String(), "text form emitted verbatim with trailing newline")
-}
-
-func TestRender_JSONUnderJSONFlag(t *testing.T) {
-	var buf bytes.Buffer
-	require.NoError(t, New(&buf, true).Render(map[string]int{"a": 1}, "hello"))
-
-	var got map[string]int
-	require.NoError(t, json.Unmarshal(buf.Bytes(), &got), "asJSON did not emit v as JSON: %s", buf.String())
-	assert.Equal(t, 1, got["a"])
-}
-
-func TestRender_PreservesExistingTrailingNewline(t *testing.T) {
-	var buf bytes.Buffer
-	require.NoError(t, New(&buf, false).Render(nil, "hello\n"))
-
-	assert.Equal(t, "hello\n", buf.String(), "no double newline")
+	require.NoError(t, New(&buf, FormatTOON).Render(map[string]int{"a": 1}, "ignored human view"))
+	assert.Equal(t, "a: 1\n", buf.String())
 }

@@ -36,7 +36,7 @@ func newMetaCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 				return err
 			}
 
-			if err := cli.NewPrinter(cmd).JSON(result); err != nil {
+			if err := cli.NewPrinter(cmd).Structured(result); err != nil {
 				return err
 			}
 			return nil

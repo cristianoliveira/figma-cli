@@ -133,7 +133,7 @@ figma inspect --recursive --depth 3 \
   <figma-node-url>
 ```
 
-`--fields` accepts comma-separated inspect JSON properties and nested paths. Child hierarchy remains implicit and is represented by indentation. Unknown fields fail explicitly. JSON remains default output for backward compatibility.
+`--fields` accepts comma-separated inspect properties and nested paths. Child hierarchy remains implicit and is represented by indentation. Unknown fields fail explicitly. Structured commands emit TOON by default; pass global `--json` for compatibility JSON.
 
 ## The design-to-code loop
 
@@ -171,8 +171,8 @@ Now a mismatch is not merely “some pixels changed.” It can be localized to a
 - Accepts full Figma URLs or bare file keys.
 - Infers node scope from `node-id` in URLs.
 - Normalizes user-facing and API-facing node ID formats.
-- Emits structured, stable JSON for query commands, including exact query context and result counts.
-- Supports global `--json` envelopes for text and file-producing commands.
+- Emits compact TOON for structured query commands by default, including exact query context and result counts.
+- Retains global `--json` compatibility output and envelopes for text and file-producing commands.
 - Uses deterministic formatting for generated CSS and tokens.
 - Fails explicitly on invalid input and unsupported ambiguity.
 - Keeps network access separate from pure extraction and image analysis.

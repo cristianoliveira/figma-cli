@@ -78,7 +78,7 @@ func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 				Truncated: truncated,
 				Changes:   prepared,
 			}
-			return cli.NewPrinter(cmd).JSON(result)
+			return cli.NewPrinter(cmd).Structured(result)
 		},
 	}
 	addNodeIDFlag(command, "node ID to compare; defaults to URL node-id")

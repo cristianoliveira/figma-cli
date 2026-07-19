@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"image/png"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -33,7 +32,7 @@ func TestPixelPerfectHandlesThousandsOfDisconnectedChanges(t *testing.T) {
 	writeSmokePNG(t, reference, base)
 	writeSmokePNG(t, actual, changed)
 
-	output, err := exec.Command(binary, reference, actual, "--output", mask).CombinedOutput()
+	output, err := pixelPerfectCommand(binary, reference, actual, "--output", mask).CombinedOutput()
 
 	require.NoError(t, err, string(output))
 	var comparison diff.ImageComparison
@@ -69,7 +68,7 @@ func TestPixelPerfectReportsMixedForCompetingMismatchSignals(t *testing.T) {
 	writeSmokePNG(t, reference, base)
 	writeSmokePNG(t, actual, changed)
 
-	output, err := exec.Command(binary, reference, actual, "--output", mask).CombinedOutput()
+	output, err := pixelPerfectCommand(binary, reference, actual, "--output", mask).CombinedOutput()
 
 	require.NoError(t, err, string(output))
 	var comparison diff.ImageComparison
@@ -105,7 +104,7 @@ func TestPixelPerfectGroupingCanTurnClearSignalsIntoMixedDiagnosis(t *testing.T)
 		t.Helper()
 		args := []string{reference, actual, "--output", filepath.Join(t.TempDir(), "mask.png")}
 		args = append(args, flags...)
-		output, err := exec.Command(binary, args...).CombinedOutput()
+		output, err := pixelPerfectCommand(binary, args...).CombinedOutput()
 		require.NoError(t, err, string(output))
 		var comparison diff.ImageComparison
 		require.NoError(t, json.Unmarshal(output, &comparison))
@@ -151,7 +150,7 @@ func TestPixelPerfectExposesClassificationBoundarySensitivity(t *testing.T) {
 			writeSmokePNG(t, reference, base)
 			writeSmokePNG(t, actual, changed)
 
-			output, err := exec.Command(binary, reference, actual, "--output", mask).CombinedOutput()
+			output, err := pixelPerfectCommand(binary, reference, actual, "--output", mask).CombinedOutput()
 			require.NoError(t, err, string(output))
 			var comparison diff.ImageComparison
 			require.NoError(t, json.Unmarshal(output, &comparison))
@@ -181,7 +180,7 @@ func TestPixelPerfectHandlesDenseAlphaGradient(t *testing.T) {
 	writeSmokePNG(t, reference, base)
 	writeSmokePNG(t, actual, changed)
 
-	output, err := exec.Command(binary, reference, actual, "--output", mask, "--overlay", overlay, "--threshold", "1").CombinedOutput()
+	output, err := pixelPerfectCommand(binary, reference, actual, "--output", mask, "--overlay", overlay, "--threshold", "1").CombinedOutput()
 
 	require.NoError(t, err, string(output))
 	var comparison diff.ImageComparison

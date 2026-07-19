@@ -69,7 +69,7 @@ branch data from Figma. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
 		result := newFilesOutput(response)
 		result.Files, result.Total = limitResults(resultLimit, result.Files)
 		result.Truncated = len(result.Files) < result.Total
-		return cli.NewPrinter(cmd).JSON(result)
+		return cli.NewPrinter(cmd).Structured(result)
 	},
 }
 

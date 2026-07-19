@@ -31,6 +31,28 @@ func TestRootNoArgsShowsCompactReadinessAndNextSteps(t *testing.T) {
 	assert.Less(t, len(result), 400)
 }
 
+func TestStructuredOutputDefaultsToTOONAndRetainsJSONCompatibility(t *testing.T) {
+	newStructuredCommand := func() *cobra.Command {
+		return &cobra.Command{
+			Use: "show",
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return cli.NewPrinter(cmd).Structured(map[string]any{"results": []map[string]any{{"id": 1, "name": "Ada"}}})
+			},
+		}
+	}
+
+	toonRoot := newRootCommand(newStructuredCommand())
+	var toonOutput strings.Builder
+	toonRoot.SetOut(&toonOutput)
+	toonRoot.SetArgs([]string{"show"})
+	require.NoError(t, toonRoot.Execute())
+	assert.Equal(t, "results[1]{id,name}:\n  1,Ada\n", toonOutput.String())
+
+	jsonResult := executeCommand(newStructuredCommand())
+	require.NoError(t, jsonResult.Err)
+	assert.JSONEq(t, `{"results":[{"id":1,"name":"Ada"}]}`, jsonResult.Stdout)
+}
+
 func TestRootHelpIsCompactAndPointsToDecisionRelevantCommands(t *testing.T) {
 	result := executeCommand(newRootCommand(
 		&cobra.Command{Use: "inspect"},

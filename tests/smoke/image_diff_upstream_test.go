@@ -2,7 +2,6 @@ package smoke
 
 import (
 	"encoding/json"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -76,7 +75,7 @@ func TestPixelPerfectAgainstUpstreamComparisonCorpus(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mask := filepath.Join(t.TempDir(), "mask.png")
-			output, err := exec.Command(binary,
+			output, err := pixelPerfectCommand(binary,
 				filepath.Join(fixtures, test.project, test.reference),
 				filepath.Join(fixtures, test.project, test.actual),
 				"--output", mask,

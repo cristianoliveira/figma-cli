@@ -1,90 +1,91 @@
-// Package output encapsulates command result rendering and filesystem artifact writes.
-//
-// Every command produces one of three kinds of result:
-//
-//   - JSON:  an already-structured value (inspect, colors, find, ...). It is
-//     always rendered as JSON regardless of the --json flag, since the
-//     value itself is JSON-shaped.
-//   - Text:  raw text such as generated CSS or a tokens file. By default it is
-//     printed verbatim; under --json it is wrapped as {"<key>": "..."}.
-//   - File:  a path to an asset written to disk (export, or css/tokens --output).
-//     By default the path is printed on its own line; under --json it is
-//     emitted as {"path": "...", <extra...>}.
-//
-// Centralising this keeps the --json behaviour in exactly one place and lets
-// cmd/ commands stay thin: build a value, hand it to a Printer.
+// Package output owns structured result rendering and filesystem artifact output.
 package output
 
 import (
 	"encoding/json"
 	"io"
-	"strings"
+
+	toon "github.com/toon-format/toon-go"
 )
 
-// Printer renders command results to a writer. The asJSON flag (the global
-// --json flag) decides how Text and File results are serialised; JSON results
-// are unaffected because they are already structured.
+// Printer renders structured values in one selected format. Text and file
+// artifacts remain raw by default and retain existing JSON compatibility envelopes.
 type Printer struct {
 	w      io.Writer
-	asJSON bool
+	format Format
 }
 
-// New builds a Printer bound to w. Pass the resolved --json flag as asJSON.
-func New(w io.Writer, asJSON bool) *Printer {
-	return &Printer{w: w, asJSON: asJSON}
+func New(w io.Writer, format Format) *Printer {
+	return &Printer{w: w, format: format}
 }
 
-// JSON emits an already-structured value, always as indented JSON with a
-// trailing newline. The --json flag is intentionally ignored: a JSON result is
-// JSON either way.
-func (p *Printer) JSON(v any) error {
-	b, err := json.MarshalIndent(v, "", "  ")
+// Structured emits a JSON-shaped domain value as TOON by default or JSON when
+// explicitly selected. JSON normalization preserves existing json tags and
+// omitempty behavior before TOON encoding.
+func (p *Printer) Structured(value any) error {
+	if p.format == FormatJSON {
+		return p.JSON(value)
+	}
+
+	normalized, err := normalizeJSON(value)
 	if err != nil {
 		return err
 	}
-	b = append(b, '\n')
-	_, err = p.w.Write(b)
+	encoded, err := toon.Marshal(normalized)
+	if err != nil {
+		return err
+	}
+	encoded = append(encoded, '\n')
+	_, err = p.w.Write(encoded)
 	return err
 }
 
-// Text emits raw text verbatim by default. Under --json it wraps the value as
-// {"<key>": value}, so text results stay consumable by JSON pipelines.
+// JSON emits compatibility JSON with the established indentation and newline.
+func (p *Printer) JSON(value any) error {
+	encoded, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return err
+	}
+	encoded = append(encoded, '\n')
+	_, err = p.w.Write(encoded)
+	return err
+}
+
+func normalizeJSON(value any) (any, error) {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	var normalized any
+	if err := json.Unmarshal(encoded, &normalized); err != nil {
+		return nil, err
+	}
+	return normalized, nil
+}
+
 func (p *Printer) Text(key, value string) error {
-	if p.asJSON {
+	if p.format == FormatJSON {
 		return p.JSON(map[string]string{key: value})
 	}
 	_, err := io.WriteString(p.w, value)
 	return err
 }
 
-// File reports a path written to disk. By default it prints the path followed
-// by a newline (matching export). Under --json it emits {"path": ..., <extra...>}
-// so callers can carry format/node metadata alongside the path.
 func (p *Printer) File(path string, extra map[string]any) error {
-	if p.asJSON {
-		obj := make(map[string]any, len(extra)+1)
-		obj["path"] = path
-		for k, v := range extra {
-			obj[k] = v
+	if p.format == FormatJSON {
+		value := make(map[string]any, len(extra)+1)
+		value["path"] = path
+		for key, item := range extra {
+			value[key] = item
 		}
-		return p.JSON(obj)
+		return p.JSON(value)
 	}
 	_, err := io.WriteString(p.w, path+"\n")
 	return err
 }
 
-// Render emits a result that has both a machine-readable JSON form (v) and a
-// human-readable text form (text). Under --json it emits v as indented JSON;
-// otherwise it emits text verbatim (ensuring a single trailing newline). Use
-// for structured results that can render a human view, so the --json switch
-// stays in the printer instead of each command.
-func (p *Printer) Render(v any, text string) error {
-	if p.asJSON {
-		return p.JSON(v)
-	}
-	if !strings.HasSuffix(text, "\n") {
-		text += "\n"
-	}
-	_, err := io.WriteString(p.w, text)
-	return err
+// Render now uses the structured value for AXI output. The retained text
+// argument keeps command construction independent from output migration.
+func (p *Printer) Render(value any, _ string) error {
+	return p.Structured(value)
 }

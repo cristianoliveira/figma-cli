@@ -138,17 +138,17 @@ func newInspectCommandWithVariables(
 					}
 					return cli.NewPrinter(cmd).Text("inspect", text)
 				}
-				return cli.NewPrinter(cmd).JSON(output.NewLimitedQuery(scope, nil, total, nodes))
+				return cli.NewPrinter(cmd).Structured(output.NewLimitedQuery(scope, nil, total, nodes))
 			}
 			if handoff {
 				result := extract.ExtractHandoff(document, extract.HandoffOptions{MaxDepth: depth, IncludeHidden: includeHidden})
 				enrichInspectNodes(result.Nodes, details.Styles, client, input.FileID, fetchVariables)
-				return cli.NewPrinter(cmd).JSON(output.Detail[extract.HandoffOutput]{Scope: scope, Result: result})
+				return cli.NewPrinter(cmd).Structured(output.Detail[extract.HandoffOutput]{Scope: scope, Result: result})
 			}
 			node := extract.NodeToInspectOutput(document)
 			node = enrichInspectNode(node, details.Styles, client, input.FileID, fetchVariables)
 			result := output.Detail[extract.InspectOutput]{Scope: scope, Result: node}
-			if err := cli.NewPrinter(cmd).JSON(result); err != nil {
+			if err := cli.NewPrinter(cmd).Structured(result); err != nil {
 				return err
 			}
 			return nil

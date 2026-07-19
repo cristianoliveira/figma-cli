@@ -96,7 +96,7 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 					published = append(published, components.FigmaComponent{Name: component.Name, NodeID: component.NodeID})
 				}
 				comparison := components.Compare(published, codeComponents)
-				return cli.NewPrinter(cmd).JSON(componentsDiffOutput{FileKey: input.FileID, FigmaCount: len(published), CodeCount: len(codeComponents), Comparison: comparison})
+				return cli.NewPrinter(cmd).Structured(componentsDiffOutput{FileKey: input.FileID, FigmaCount: len(published), CodeCount: len(codeComponents), Comparison: comparison})
 			}
 			documents, err := figma.FetchNodeDocuments(client, input.FileID, nodeIDs)
 			if err != nil {
@@ -111,7 +111,7 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 					results = extract.FilterByName(results, nameFilter).([]map[string]any)
 				}
 				results, total := limitResults(resultLimit, results)
-				return cli.NewPrinter(cmd).JSON(output.NewLimitedQuery(scope, query, total, results))
+				return cli.NewPrinter(cmd).Structured(output.NewLimitedQuery(scope, query, total, results))
 			}
 
 			results := extract.ExtractComponentsFromDocuments(documents)
@@ -122,10 +122,10 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 			if usage {
 				usageResults := extract.AggregateComponentUsage(results)
 				usageResults, total := limitResults(resultLimit, usageResults)
-				return cli.NewPrinter(cmd).JSON(output.NewLimitedQuery(scope, query, total, usageResults))
+				return cli.NewPrinter(cmd).Structured(output.NewLimitedQuery(scope, query, total, usageResults))
 			}
 			results, total := limitResults(resultLimit, results)
-			return cli.NewPrinter(cmd).JSON(output.NewLimitedQuery(scope, query, total, results))
+			return cli.NewPrinter(cmd).Structured(output.NewLimitedQuery(scope, query, total, results))
 		},
 	}
 	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")

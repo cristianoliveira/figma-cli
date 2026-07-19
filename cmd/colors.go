@@ -46,7 +46,7 @@ func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			palette := extract.CollectColors(doc)
 			palette, total := limitResults(resultLimit, palette)
 			result := output.NewLimitedQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, nil, total, palette)
-			if err := cli.NewPrinter(cmd).JSON(result); err != nil {
+			if err := cli.NewPrinter(cmd).Structured(result); err != nil {
 				return err
 			}
 			return nil

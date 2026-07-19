@@ -85,7 +85,7 @@ func newLayoutCompareCommand(loadClient func() (*figma.Client, error)) *cobra.Co
 				Scope:            output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs},
 				LayoutComparison: extract.CompareLayouts(documents),
 			}
-			return cli.NewPrinter(cmd).JSON(result)
+			return cli.NewPrinter(cmd).Structured(result)
 		},
 	}
 	addNodeIDsFlag(command, "frame ID to compare; repeat in responsive order")

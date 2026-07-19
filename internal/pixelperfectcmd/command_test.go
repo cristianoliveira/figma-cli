@@ -70,6 +70,22 @@ func TestComparisonRequestValidationRejectsUnsafeArtifactPathsAndUnknownProvider
 	assert.NoError(t, validateVisualContextProvider(true, "openrouter"))
 }
 
+func TestComparisonDefaultsToTOON(t *testing.T) {
+	dir := t.TempDir()
+	reference := filepath.Join(dir, "reference.png")
+	actual := filepath.Join(dir, "actual.png")
+	writeTestPNG(t, reference, image.NewRGBA(image.Rect(0, 0, 1, 1)))
+	writeTestPNG(t, actual, image.NewRGBA(image.Rect(0, 0, 1, 1)))
+	command := NewCommand()
+	var stdout bytes.Buffer
+	command.SetOut(&stdout)
+	command.SetArgs([]string{reference, actual, "--output", filepath.Join(t.TempDir(), "diff.png")})
+
+	require.NoError(t, command.Execute())
+	assert.Contains(t, stdout.String(), "changedPixels:")
+	assert.NotContains(t, stdout.String(), `"changedPixels"`)
+}
+
 func TestCommandNoArgsShowsCompactNextSteps(t *testing.T) {
 	result := executeCommand(NewCommand())
 
@@ -775,6 +791,9 @@ func executeCommand(command *cobra.Command, args ...string) commandResult {
 	command.SilenceUsage = true
 	command.SetOut(&stdout)
 	command.SetErr(&stderr)
+	if len(args) > 0 {
+		args = append([]string{"--json"}, args...)
+	}
 	command.SetArgs(args)
 	err := command.Execute()
 	return commandResult{Stdout: stdout.String(), Stderr: stderr.String(), Err: err}

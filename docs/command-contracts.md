@@ -6,6 +6,8 @@ states the stable semantics consumers may rely on.
 
 ## Compatibility policy
 
+- Structured results emit TOON by default. Global `--json` selects the established indented JSON contract without changing domain fields.
+- Intentional text, CSV, and file artifact outputs remain unchanged unless `--json` explicitly requests an existing compatibility envelope.
 - Adding an optional field is backward compatible.
 - Removing, renaming, changing a field type, or reusing a field with a new
   meaning requires an explicit versioned migration.
@@ -22,24 +24,36 @@ states the stable semantics consumers may rely on.
 | Success, including empty query | command result | diagnostics only | 0 |
 | Invalid arguments or flags | no result data | concise correction | 2 |
 | Dependency or operational failure | no result data, unless a result was deliberately rendered first | actionable diagnosis | 1 |
-| Pixel validation gate failed | comparison JSON | failed-metric diagnosis | 1 |
+| Pixel validation gate failed | structured comparison result | failed-metric diagnosis | 1 |
 
 Result data belongs on stdout. Diagnostics, including Cobra errors, belong on
 stderr. Commands do not print raw dependency errors, credentials, or progress
 in structured result output.
 
+## TOON migration
+
+Structured domain values pass through one output boundary. TOON is default;
+global `--json` retains prior JSON bytes, field names, omission rules, and text/file
+envelopes. Command-local `--format` flags still select intentional artifacts or
+views such as CSV, CSS, image formats, and recursive inspect text.
+
+Measured on a deterministic 2×2 pixel comparison with one changed pixel, default
+TOON was 927 bytes and compatibility JSON was 1,254 bytes (26% fewer bytes for
+this shape). Savings depend on data shape; no fixed reduction is guaranteed.
+
 ## Collection envelope
 
-Commands using the generic query envelope return:
+Commands using the generic query envelope return this domain shape (shown in default TOON):
 
-```json
-{
-  "scope": {"fileKey": "abc", "nodeIds": ["1:2"]},
-  "query": {"name": "Button"},
-  "total": 125,
-  "truncated": true,
-  "results": []
-}
+```toon
+scope:
+  fileKey: abc
+  nodeIds[1]: "1:2"
+query:
+  name: Button
+total: 125
+truncated: true
+results[0]:
 ```
 
 | Field | Meaning |
@@ -58,15 +72,15 @@ effective `query`; it is a successful result, not an absent response.
 
 | Commands | Output family | Local limit / relevant controls |
 | --- | --- | --- |
-| `me`, `meta`, `inspect`, `layout compare`, `diff blame` | detail JSON | command-specific node, version, or frame scope |
-| `layout` | bounded tree JSON (`scope`, effective `query`, `traversal`, `result`) | `--depth` defaults to 4; `--full` disables only the local tree-depth bound |
-| `find`, `colors`, `components`, `comments`, `frames`, `inspect`, `texts` | query JSON | `--limit` defaults to 100; `--full` disables only that local limit |
-| `projects`, `files` | legacy collection JSON (`projects`/`files`, `total`, optional `truncated`) | `--limit` defaults to 100; `--full` disables only that local limit |
-| `versions` | paginated JSON | `count` is page count; cursor/page navigation is distinct from local query totals |
+| `me`, `meta`, `inspect`, `layout compare`, `diff blame` | structured detail | command-specific node, version, or frame scope |
+| `layout` | bounded structured tree (`scope`, effective `query`, `traversal`, `result`) | `--depth` defaults to 4; `--full` disables only the local tree-depth bound |
+| `find`, `colors`, `components`, `comments`, `frames`, `inspect`, `texts` | structured query | `--limit` defaults to 100; `--full` disables only that local limit |
+| `projects`, `files` | legacy structured collection (`projects`/`files`, `total`, optional `truncated`) | `--limit` defaults to 100; `--full` disables only that local limit |
+| `versions` | structured pagination | `count` is page count; cursor/page navigation is distinct from local query totals |
 | `assets`, `export` | files plus metadata JSON where requested | explicit output path and node scope |
 | `css`, `tokens` | deterministic text or generated file; global `--json` envelope available | format-specific controls |
-| `changes`, `diff text` | change-analysis JSON | explicit `--from` and `--to` versions |
-| `pixel-perfect <reference> <actual>` | comparison JSON and optional image/report artifacts | explicit crops, masks, profiles, and optional validation gates |
+| `changes`, `diff text` | structured change analysis | explicit `--from` and `--to` versions |
+| `pixel-perfect <reference> <actual>` | structured comparison and optional image/report artifacts | explicit crops, masks, profiles, and optional validation gates |
 | `pixel-perfect probe`, `pixel-perfect scan` | CSV by default or JSON with `--format json` | explicit points, rows, columns, and sampling controls |
 
 For `layout`, the selected root is depth `0`; nodes at `--depth` are included.
@@ -106,4 +120,4 @@ does not override `--depth` or other command-specific bounds.
 When one or more maximum metric flags are configured, comparison output adds a
 `validation` object. It is emitted both when gates pass and when they fail.
 On failure, `validation.failed` contains every failed metric, stdout remains
-valid JSON, stderr gives a concise diagnosis, and the command exits `1`.
+valid TOON (or JSON under `--json`), stderr gives a concise diagnosis, and the command exits `1`.

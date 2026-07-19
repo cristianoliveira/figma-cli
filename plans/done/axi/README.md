@@ -21,6 +21,8 @@ Core AXI contracts now exist, but five risks remain:
 3. [Refactor pixel-perfect orchestration](03-pixel-perfect-command-refactor.md)
 4. [Synchronize skill guidance and add drift checks](04-skill-sync-and-drift-checks.md)
 5. [Add opt-in live Figma smoke tests](05-live-figma-smoke-tests.md)
+6. [Choose strict-alignment compatibility profile](06-strict-alignment-contract-profile.md)
+7. [Add TOON output boundary](07-toon-output-migration.md)
 
 ```text
 contract guardrails ──> layout contract ──> skill sync

@@ -37,7 +37,7 @@ Requires FIGMA_ACCESS_TOKEN environment variable.`,
 		if err != nil {
 			return err
 		}
-		return cli.NewPrinter(cmd).JSON(meOutput{
+		return cli.NewPrinter(cmd).Structured(meOutput{
 			ID:       me.Id,
 			Handle:   me.Handle,
 			Email:    me.Email,

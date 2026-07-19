@@ -91,7 +91,7 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 
 			asJSON, _ := cmd.Flags().GetBool("json")
 			if asJSON {
-				if err := cli.NewPrinter(cmd).JSON(manifest); err != nil {
+				if err := cli.NewPrinter(cmd).Structured(manifest); err != nil {
 					return err
 				}
 			} else {

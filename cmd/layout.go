@@ -79,7 +79,7 @@ func newLayoutCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 				Traversal: layout.Traversal,
 				Result:    layout.Result,
 			}
-			return cli.NewPrinter(cmd).JSON(result)
+			return cli.NewPrinter(cmd).Structured(result)
 		},
 	}
 	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")

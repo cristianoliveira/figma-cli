@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"io"
 	"net/http"
 	"strings"
@@ -17,18 +16,16 @@ func TestComponentsCommandEmitsStableScopedResults(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Screen","type":"FRAME","children":[{"id":"42:2","name":"Button","type":"INSTANCE","componentId":"1:1"}]}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	command := newComponentsCommand(func() (*figma.Client, error) { return client, nil })
-	var stdout bytes.Buffer
-	command.SetOut(&stdout)
-	command.SetArgs([]string{"https://www.figma.com/design/abc/Name?node-id=42-1", "--name", "button", "--kind", "instance"})
+	result := executeCommand(newComponentsCommand(func() (*figma.Client, error) { return client, nil }),
+		"https://www.figma.com/design/abc/Name?node-id=42-1", "--name", "button", "--kind", "instance")
 
-	require.NoError(t, command.Execute())
+	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{
 		"scope":{"fileKey":"abc","nodeIds":["42:1"]},
 		"query":{"name":"button","kind":"instance","raw":false,"usage":false},
 		"total":1,
 		"results":[{"id":"42:2","name":"Button","type":"INSTANCE","componentId":"1:1","path":["Screen","Button"],"paints":{},"bounds":{},"layout":{},"typography":{}}]
-	}`, stdout.String())
+	}`, result.Stdout)
 }
 
 func TestComponentsCommandGroupsUsageByExactComponentID(t *testing.T) {

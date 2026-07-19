@@ -265,7 +265,7 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		Validation:       validation,
 	}
 	if validationErr != nil {
-		if err := writeJSON(cmd, outputResult); err != nil {
+		if err := writeStructured(cmd, outputResult); err != nil {
 			return err
 		}
 		return validationErr
@@ -278,7 +278,7 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 	if err := addVisualContext(visualContextEnabled, provider, model, visualContextPrompt, inputs, result, &outputResult); err != nil {
 		return err
 	}
-	return writeJSON(cmd, outputResult)
+	return writeStructured(cmd, outputResult)
 }
 
 func comparePreparedImages(compare imageComparer, inputs preparedImageInputs, output string, threshold uint8, perceptualThreshold float64, region *diff.Bounds, ignored []diff.Bounds) (diff.ImageComparison, *diff.DecodedImages, error) {
@@ -453,6 +453,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 			return runComparisonCommand(cmd, args, compare)
 		},
 	}
+	command.PersistentFlags().Bool("json", false, "emit structured results as compatibility JSON")
 	command.Flags().String("profile", "", "load comparison options from a versioned JSON profile; explicit flags override profile values")
 	command.Flags().String("annotations", "", "enrich mismatch regions from a generic coordinate annotation JSON file")
 	command.Flags().StringP("output", "o", "", "path for transparent PNG difference mask; defaults to <actual>.diff.png")
@@ -1249,10 +1250,12 @@ func absInt(value int) int {
 	return value
 }
 
+func writeStructured(command *cobra.Command, value any) error {
+	return cli.NewPrinter(command).Structured(value)
+}
+
 func writeJSON(command *cobra.Command, value any) error {
-	encoder := json.NewEncoder(command.OutOrStdout())
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(value)
+	return outputpkg.New(command.OutOrStdout(), outputpkg.FormatJSON).JSON(value)
 }
 
 // NewCommand creates the standalone image comparison command.

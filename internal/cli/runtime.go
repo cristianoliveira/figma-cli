@@ -13,12 +13,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewPrinter builds an output.Printer bound to stdout, reading the global
-// --json flag from cmd. Centralising this keeps the flag lookup in one place
-// and stops every command from re-reading the same persistent flag.
+// NewPrinter builds an output.Printer bound to stdout. Structured output is
+// TOON by default; the retained global --json flag selects compatibility JSON.
 func NewPrinter(cmd *cobra.Command) *output.Printer {
-	asJSON, _ := cmd.Flags().GetBool("json")
-	return output.New(cmd.OutOrStdout(), asJSON)
+	format := output.FormatTOON
+	if asJSON, _ := cmd.Flags().GetBool("json"); asJSON {
+		format = output.FormatJSON
+	}
+	return output.New(cmd.OutOrStdout(), format)
 }
 
 // ExitCodeError carries a process exit code without a diagnostic message.

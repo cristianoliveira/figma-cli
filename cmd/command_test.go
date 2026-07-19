@@ -14,6 +14,14 @@ type commandResult struct {
 }
 
 func executeCommand(command *cobra.Command, args ...string) commandResult {
+	return executeCommandWithRootArgs(command, append([]string{command.Name(), "--json"}, args...)...)
+}
+
+func executeDefaultCommand(command *cobra.Command, args ...string) commandResult {
+	return executeCommandWithRootArgs(command, append([]string{command.Name()}, args...)...)
+}
+
+func executeCommandWithRootArgs(command *cobra.Command, args ...string) commandResult {
 	root := newRootCommand(command)
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -21,7 +29,7 @@ func executeCommand(command *cobra.Command, args ...string) commandResult {
 	var stderr bytes.Buffer
 	root.SetOut(&stdout)
 	root.SetErr(&stderr)
-	root.SetArgs(append([]string{command.Name()}, args...))
+	root.SetArgs(args)
 	err := root.Execute()
 	return commandResult{Stdout: stdout.String(), Stderr: stderr.String(), Err: err}
 }

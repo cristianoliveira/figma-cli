@@ -64,7 +64,7 @@ var diffTextCmd = &cobra.Command{
 			}
 			return &cli.ExitCodeError{Code: 1}
 		}
-		if err := cli.NewPrinter(cmd).JSON(textDiff); err != nil {
+		if err := cli.NewPrinter(cmd).Structured(textDiff); err != nil {
 			return err
 		}
 		return nil

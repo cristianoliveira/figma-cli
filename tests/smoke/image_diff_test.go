@@ -19,7 +19,7 @@ func TestPixelPerfectStandaloneCLI(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
-	output, err := exec.Command(binary, filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--output", mask).CombinedOutput()
+	output, err := pixelPerfectCommand(binary, filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--output", mask).CombinedOutput()
 
 	require.NoError(t, err, string(output))
 	var comparison diff.ImageComparison
@@ -35,7 +35,7 @@ func TestPixelPerfectReportsAdvisoryRegionMovement(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "offset-reference.png"),
 		filepath.Join(fixtures, "offset-right-one.png"),
 		"--output", mask,
@@ -59,7 +59,7 @@ func TestPixelPerfectCreatesMissingArtifactDirectories(t *testing.T) {
 	overlay := filepath.Join(dir, "missing", "overlays", "diff.png")
 	report := filepath.Join(dir, "missing", "reports", "diff.html")
 
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "reference.png"),
 		filepath.Join(fixtures, "two-regions.png"),
 		"--output", mask,
@@ -76,7 +76,7 @@ func TestPixelPerfectCreatesMissingArtifactDirectories(t *testing.T) {
 func TestPixelPerfectProbeCLI(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
-	output, err := exec.Command(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--at", "0,0").CombinedOutput()
+	output, err := pixelPerfectCommand(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--at", "0,0").CombinedOutput()
 
 	require.NoError(t, err, string(output))
 	assert.Equal(t, "x,y,ref,act,delta,input_ref,input_act\n0,0,#FFFFFF,#000000,255,,\n", string(output))
@@ -85,7 +85,7 @@ func TestPixelPerfectProbeCLI(t *testing.T) {
 func TestPixelPerfectProbeLineCLI(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
-	output, err := exec.Command(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--from", "0,0", "--to", "3,2", "--step", "2").CombinedOutput()
+	output, err := pixelPerfectCommand(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--from", "0,0", "--to", "3,2", "--step", "2").CombinedOutput()
 
 	require.NoError(t, err, string(output))
 	assert.Contains(t, string(output), "0,0,#FFFFFF,#000000,255,,")
@@ -95,7 +95,7 @@ func TestPixelPerfectProbeLineCLI(t *testing.T) {
 func TestPixelPerfectScanCLI(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
-	output, err := exec.Command(binary, "scan", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--y", "0").CombinedOutput()
+	output, err := pixelPerfectCommand(binary, "scan", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--y", "0").CombinedOutput()
 
 	require.NoError(t, err, string(output))
 	assert.Contains(t, string(output), "image,axis,index,start,end,length,hex,input_axis,input_index")
@@ -106,7 +106,7 @@ func TestPixelPerfectScanCLI(t *testing.T) {
 func TestPixelPerfectScanCLIErrorContracts(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
-	output, err := exec.Command(binary, "scan", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--x", "0", "--y", "0").CombinedOutput()
+	output, err := pixelPerfectCommand(binary, "scan", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"), "--x", "0", "--y", "0").CombinedOutput()
 
 	require.Error(t, err)
 	assert.Contains(t, string(output), "provide exactly one of --x/--column or --y/--row")
@@ -115,7 +115,7 @@ func TestPixelPerfectScanCLIErrorContracts(t *testing.T) {
 func TestPixelPerfectProbeCLIErrorContracts(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
-	output, err := exec.Command(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "unequal-dimensions.png"), "--at", "0,0").CombinedOutput()
+	output, err := pixelPerfectCommand(binary, "probe", filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "unequal-dimensions.png"), "--at", "0,0").CombinedOutput()
 
 	require.Error(t, err)
 	assert.Contains(t, string(output), "image dimensions differ")
@@ -129,7 +129,7 @@ func TestPixelPerfectStandaloneCLIDefaultMask(t *testing.T) {
 	actual := filepath.Join(workDir, "actual.png")
 	require.NoError(t, copyFile(filepath.Join(fixtures, "reference.png"), reference))
 	require.NoError(t, copyFile(filepath.Join(fixtures, "two-regions.png"), actual))
-	output, err := exec.Command(binary, reference, actual, "--threshold", "8").CombinedOutput()
+	output, err := pixelPerfectCommand(binary, reference, actual, "--threshold", "8").CombinedOutput()
 
 	require.NoError(t, err, string(output))
 	var comparison diff.ImageComparison
@@ -172,7 +172,7 @@ func TestImageDiffScenarios(t *testing.T) {
 			overlay := filepath.Join(outputDir, "overlay.png")
 			args := []string{filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, test.actual), "--output", mask, "--overlay", overlay}
 			args = append(args, test.flags...)
-			output, err := exec.Command(binary, args...).CombinedOutput()
+			output, err := pixelPerfectCommand(binary, args...).CombinedOutput()
 
 			require.NoError(t, err, string(output))
 			var comparison diff.ImageComparison
@@ -233,7 +233,7 @@ func TestPixelPerfectBoundaryAndCompositingScenarios(t *testing.T) {
 			mask := filepath.Join(t.TempDir(), "mask.png")
 			args := []string{filepath.Join(fixtures, test.reference), filepath.Join(fixtures, test.actual), "--output", mask}
 			args = append(args, test.flags...)
-			output, err := exec.Command(binary, args...).CombinedOutput()
+			output, err := pixelPerfectCommand(binary, args...).CombinedOutput()
 			require.NoError(t, err, string(output))
 			var comparison diff.ImageComparison
 			require.NoError(t, json.Unmarshal(output, &comparison))
@@ -255,7 +255,7 @@ func TestPixelPerfectAnnotationsEnrichRegionsWithoutChangingMetrics(t *testing.T
 	require.NoError(t, os.WriteFile(annotations, []byte(`{"version":1,"coordinateSpace":{"width":4,"height":3},"annotations":[{"id":"changed-area","label":"Changed area","bounds":{"x":0,"y":0,"width":4,"height":3}}]}`), 0o600))
 
 	run := func(name string, args ...string) diff.ImageComparison {
-		output, err := exec.Command(binary, append([]string{
+		output, err := pixelPerfectCommand(binary, append([]string{
 			filepath.Join(fixtures, "reference.png"),
 			filepath.Join(fixtures, "two-regions.png"),
 			"--output", filepath.Join(dir, name+".png"),
@@ -286,7 +286,7 @@ func TestPixelPerfectComparisonProfileAndExplicitOverride(t *testing.T) {
 	require.NoError(t, os.WriteFile(profile, []byte(`{"version":1,"suggestOffset":2,"regionGap":3,"minRegionPixels":2}`), 0o600))
 	mask := filepath.Join(dir, "mask.png")
 
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "offset-reference.png"),
 		filepath.Join(fixtures, "offset-right-one.png"),
 		"--profile", profile,
@@ -333,7 +333,7 @@ func TestPixelPerfectOffsetInterpretationRejectsUpstreamNegativeControls(t *test
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mask := filepath.Join(t.TempDir(), "mask.png")
-			output, err := exec.Command(binary,
+			output, err := pixelPerfectCommand(binary,
 				filepath.Join(fixtures, test.reference),
 				filepath.Join(fixtures, test.actual),
 				"--suggest-offset", "3",
@@ -354,7 +354,7 @@ func TestPixelPerfectAppliesExplicitCropFixtures(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "crop-reference.png"), filepath.Join(fixtures, "crop-actual.png"),
 		"--reference-crop", "1,0,2,2",
 		"--actual-crop", "0,0,2,2",
@@ -378,7 +378,7 @@ func TestPixelPerfectExplicitCropReportsOriginalInputBounds(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "crop-reference.png"), filepath.Join(fixtures, "crop-actual-changed.png"),
 		"--reference-crop", "1,0,2,2",
 		"--actual-crop", "0,0,2,2",
@@ -412,7 +412,7 @@ func TestPixelPerfectExplicitCropFixtureErrors(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			args := []string{reference, actual, "--output", filepath.Join(t.TempDir(), "mask.png")}
 			args = append(args, test.flags...)
-			output, err := exec.Command(binary, args...).CombinedOutput()
+			output, err := pixelPerfectCommand(binary, args...).CombinedOutput()
 
 			require.Error(t, err)
 			assert.Contains(t, string(output), test.expected)
@@ -424,7 +424,7 @@ func TestPixelPerfectOmitsOffsetWhenMaskExcludesAllPixels(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"),
 		"--output", mask,
 		"--mask", filepath.Join(fixtures, "all-excluded-mask.png"),
@@ -442,7 +442,7 @@ func TestPixelPerfectRejectsWrongSizeComparisonMask(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"),
 		"--output", mask, "--mask", filepath.Join(fixtures, "wrong-size-mask.png"),
 	).CombinedOutput()
@@ -486,7 +486,7 @@ func TestPixelPerfectCLIErrorContracts(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			output, err := exec.Command(binary, test.args(t)...).CombinedOutput()
+			output, err := pixelPerfectCommand(binary, test.args(t)...).CombinedOutput()
 			require.Error(t, err)
 			assert.Contains(t, string(output), test.expected)
 		})
@@ -495,7 +495,7 @@ func TestPixelPerfectCLIErrorContracts(t *testing.T) {
 
 func TestPixelPerfectHelpDocumentsStandaloneContract(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
-	output, err := exec.Command(binary, "--help").CombinedOutput()
+	output, err := pixelPerfectCommand(binary, "--help").CombinedOutput()
 
 	require.NoError(t, err, string(output))
 	help := string(output)
@@ -513,7 +513,7 @@ func TestPixelPerfectRejectsRegionsOutsideImage(t *testing.T) {
 	for _, region := range []string{"0,0,0,0", "-1,0,2,2", "100,100,2,2", "3,2,5,5"} {
 		t.Run(region, func(t *testing.T) {
 			mask := filepath.Join(t.TempDir(), "mask.png")
-			output, err := exec.Command(binary, reference, actual, "--output", mask, "--region", region).CombinedOutput()
+			output, err := pixelPerfectCommand(binary, reference, actual, "--output", mask, "--region", region).CombinedOutput()
 
 			require.Error(t, err)
 			assert.Contains(t, string(output), "is outside image bounds 4x3")
@@ -544,7 +544,7 @@ func TestPixelPerfectRejectsArtifactPathCollisions(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			output, err := exec.Command(binary, test.args(t)...).CombinedOutput()
+			output, err := pixelPerfectCommand(binary, test.args(t)...).CombinedOutput()
 			require.Error(t, err)
 			assert.Contains(t, string(output), test.expected)
 		})
@@ -582,7 +582,7 @@ func TestPixelPerfectRejectsInvalidFlagValues(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			args := []string{reference, actual, "--output", filepath.Join(t.TempDir(), "mask.png")}
 			args = append(args, test.flags...)
-			output, err := exec.Command(binary, args...).CombinedOutput()
+			output, err := pixelPerfectCommand(binary, args...).CombinedOutput()
 			require.Error(t, err)
 			assert.Contains(t, string(output), test.expected)
 		})
@@ -593,7 +593,7 @@ func TestPixelPerfectCombinesRegionAndRepeatedIgnores(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"),
 		"--output", mask,
 		"--region", "0,0,4,2",
@@ -620,11 +620,11 @@ func TestPixelPerfectOutputIsDeterministic(t *testing.T) {
 		"--output", mask, "--region-gap", "8", "--min-region-pixels", "12",
 	}
 
-	first, err := exec.Command(binary, args...).CombinedOutput()
+	first, err := pixelPerfectCommand(binary, args...).CombinedOutput()
 	require.NoError(t, err, string(first))
 	firstMask, err := os.ReadFile(mask)
 	require.NoError(t, err)
-	second, err := exec.Command(binary, args...).CombinedOutput()
+	second, err := pixelPerfectCommand(binary, args...).CombinedOutput()
 	require.NoError(t, err, string(second))
 	secondMask, err := os.ReadFile(mask)
 	require.NoError(t, err)
@@ -638,7 +638,7 @@ func TestPixelPerfectRealUIScreenshot(t *testing.T) {
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
 	overlay := filepath.Join(t.TempDir(), "overlay.png")
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "real-ui-reference.png"),
 		filepath.Join(fixtures, "real-ui-implementation.png"),
 		"--output", mask,
@@ -666,7 +666,7 @@ func TestPixelPerfectAcceptsPerceptualThresholdAboveBlackWhiteDistance(t *testin
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "reference.png"), filepath.Join(fixtures, "two-regions.png"),
 		"--output", mask, "--perceptual-threshold", "1.1",
 	).CombinedOutput()
@@ -685,7 +685,7 @@ func TestPixelPerfectValidationGateBoundaries(t *testing.T) {
 	reference := filepath.Join(fixtures, "reference.png")
 	actual := filepath.Join(fixtures, "two-regions.png")
 	baselineMask := filepath.Join(t.TempDir(), "baseline.png")
-	baselineOutput, err := exec.Command(binary, reference, actual, "--output", baselineMask).CombinedOutput()
+	baselineOutput, err := pixelPerfectCommand(binary, reference, actual, "--output", baselineMask).CombinedOutput()
 	require.NoError(t, err, string(baselineOutput))
 	var baseline diff.ImageComparison
 	require.NoError(t, json.Unmarshal(baselineOutput, &baseline))
@@ -706,7 +706,7 @@ func TestPixelPerfectValidationGateBoundaries(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mask := filepath.Join(t.TempDir(), "mask.png")
-			command := exec.Command(binary, reference, actual, "--output", mask, test.flag, fmt.Sprintf("%.17g", test.limit))
+			command := pixelPerfectCommand(binary, reference, actual, "--output", mask, test.flag, fmt.Sprintf("%.17g", test.limit))
 			var stdout, stderr bytes.Buffer
 			command.Stdout = &stdout
 			command.Stderr = &stderr
@@ -738,7 +738,7 @@ func TestPixelPerfectRealUIValidationGate(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "real-ui-reference.png"),
 		filepath.Join(fixtures, "real-ui-implementation.png"),
 		"--output", mask,
@@ -754,7 +754,7 @@ func TestPixelPerfectRejectsRealUIWithUnequalDimensions(t *testing.T) {
 	binary := buildCommand(t, "pixel-perfect")
 	fixtures := filepath.Join("fixtures", "image-diff")
 	mask := filepath.Join(t.TempDir(), "mask.png")
-	output, err := exec.Command(binary,
+	output, err := pixelPerfectCommand(binary,
 		filepath.Join(fixtures, "real-ui-reference.png"),
 		filepath.Join(fixtures, "unequal-dimensions.png"),
 		"--output", mask,
@@ -783,6 +783,10 @@ func assertPNGDimensions(t *testing.T, path string, width, height int) {
 	require.NoError(t, err)
 	assert.Equal(t, width, config.Width)
 	assert.Equal(t, height, config.Height)
+}
+
+func pixelPerfectCommand(binary string, args ...string) *exec.Cmd {
+	return exec.Command(binary, append([]string{"--json"}, args...)...)
 }
 
 func buildCommand(t *testing.T, name string) string {

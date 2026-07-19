@@ -73,7 +73,7 @@ environment default. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
 		result := newProjectsOutput(response)
 		result.Projects, result.Total = limitResults(resultLimit, result.Projects)
 		result.Truncated = len(result.Projects) < result.Total
-		return cli.NewPrinter(cmd).JSON(result)
+		return cli.NewPrinter(cmd).Structured(result)
 	},
 }
 

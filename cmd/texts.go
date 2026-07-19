@@ -80,7 +80,7 @@ func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			results, total := limitTextResults(resultLimit, results)
 			scope := output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}
 			query := map[string]any{"layer": layerName, "recursive": recursive}
-			return cli.NewPrinter(cmd).JSON(textQuery{Scope: scope, Query: query, Total: total, Truncated: textResultCount(results) < total, Results: results})
+			return cli.NewPrinter(cmd).Structured(textQuery{Scope: scope, Query: query, Total: total, Truncated: textResultCount(results) < total, Results: results})
 		},
 	}
 	command.Flags().String("layer", "", "layer name to extract text from")

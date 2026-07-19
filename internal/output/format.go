@@ -7,6 +7,7 @@ type Format string
 const (
 	FormatCSV  Format = "csv"
 	FormatJSON Format = "json"
+	FormatTOON Format = "toon"
 )
 
 func ParseFormat(value string, allowed ...Format) (Format, error) {

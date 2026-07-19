@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"net/http"
@@ -21,13 +20,11 @@ func TestInspectCommandEmitsStableScopedContract(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","styles":{"fill":"S:fill"}},"styles":{"S:fill":{"key":"key","name":"Brand/Primary","styleType":"FILL","remote":false,"description":""}}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	command := newInspectCommand(func() (*figma.Client, error) { return client, nil })
-	var stdout bytes.Buffer
-	command.SetOut(&stdout)
-	command.SetArgs([]string{"https://www.figma.com/design/abc/Name?node-id=42-1"})
+	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }),
+		"https://www.figma.com/design/abc/Name?node-id=42-1")
 
-	require.NoError(t, command.Execute())
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{},"layout":{},"typography":{},"styleBindings":{"fill":"S:fill"},"resolvedStyles":{"fill":{"id":"S:fill","name":"Brand/Primary","type":"FILL"}}}}`, stdout.String())
+	require.NoError(t, result.Err)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{},"layout":{},"typography":{},"styleBindings":{"fill":"S:fill"},"resolvedStyles":{"fill":{"id":"S:fill","name":"Brand/Primary","type":"FILL"}}}}`, result.Stdout)
 }
 
 func TestInspectCommandIncludesVectorPathsOnExplicitRequest(t *testing.T) {
@@ -145,7 +142,7 @@ func TestInspectCommandRendersSelectedTextFields(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }),
+	result := executeDefaultCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }),
 		"https://www.figma.com/design/abc/Name?node-id=42-1",
 		"--recursive", "--format", "text", "--fields", "name,type,relativeBounds,layout.mode,layout.gap,fills",
 	)
@@ -201,12 +198,10 @@ func TestInspectCommandKeepsRawVariablesWhenMetadataIsUnavailable(t *testing.T) 
 		func() (*figma.Client, error) { return client, nil },
 		func(*figma.Client, string) (map[string]any, error) { return nil, errors.New("forbidden") },
 	)
-	var stdout bytes.Buffer
-	command.SetOut(&stdout)
-	command.SetArgs([]string{"https://www.figma.com/design/abc/Name?node-id=42-1"})
+	result := executeCommand(command, "https://www.figma.com/design/abc/Name?node-id=42-1")
 
-	require.NoError(t, command.Execute())
-	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{},"layout":{},"typography":{},"variableBindings":{"fills":["V:brand"]}}}`, stdout.String())
+	require.NoError(t, result.Err)
+	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{},"layout":{},"typography":{},"variableBindings":{"fills":["V:brand"]}}}`, result.Stdout)
 }
 
 func TestInspectCommandRejectsMissingScopeWithoutLoadingClient(t *testing.T) {

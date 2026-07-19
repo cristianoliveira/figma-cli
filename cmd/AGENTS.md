@@ -11,11 +11,11 @@
 - Do not put HTTP or Figma URL construction details here unless command-specific glue is unavoidable; prefer `internal/figma`.
 - Return errors from Cobra `RunE`; root execution owns consistent stderr formatting and exit behavior.
 - Register commands in `init()` with `rootCmd.AddCommand(...)`.
-- Keep command output JSON and stable for scripts/agents.
+- Keep structured domain fields stable. TOON is default; global `--json` preserves compatibility JSON.
 - Parse file URLs once with `figma.ParseInput`; resolve URL node scope and optional `--id` through shared `figma` helpers.
 - Use `figma.FetchNodeDocuments` when traversal must be restricted to requested subtrees; do not fetch whole file and manually guess selected node.
 - State whether command accepts one or many node IDs. Reject unsupported multiple IDs instead of using first silently.
-- Render through `cli.NewPrinter(cmd)` so global `--json` behavior remains consistent.
+- Render structured values through `cli.NewPrinter(cmd).Structured(...)`; global `--json` selects compatibility output. Keep intentional text/file artifacts on `Text`/`File`.
 
 ## Testing
 

@@ -48,7 +48,7 @@ func newFramesCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			frames := extract.DiscoverFrames(document)
 			frames, total := limitResults(resultLimit, frames)
 			result := output.NewLimitedQuery(output.Scope{FileKey: input.FileID, NodeIDs: nodeIDs}, nil, total, frames)
-			return cli.NewPrinter(cmd).JSON(result)
+			return cli.NewPrinter(cmd).Structured(result)
 		},
 	}
 	addNodeIDFlag(command, "page or section node ID; defaults to URL node-id")
