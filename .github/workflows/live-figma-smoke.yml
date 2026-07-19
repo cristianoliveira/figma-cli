@@ -24,5 +24,7 @@ jobs:
           FIGMA_SMOKE_FILE_URL: ${{ vars.FIGMA_SMOKE_FILE_URL }}
           FIGMA_SMOKE_NODE_URL: ${{ vars.FIGMA_SMOKE_NODE_URL }}
           FIGMA_SMOKE_FIND_NAME: ${{ vars.FIGMA_SMOKE_FIND_NAME }}
+          FIGMA_SMOKE_TEAM_ID: ${{ vars.FIGMA_SMOKE_TEAM_ID }}
+          FIGMA_SMOKE_PROJECT_ID: ${{ vars.FIGMA_SMOKE_PROJECT_ID }}
           FIGMA_BIN: ./figma
         run: scripts/live-smoke.sh

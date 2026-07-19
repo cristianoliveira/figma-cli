@@ -62,4 +62,22 @@ jq -e '.query.maxDepth == 1 and (.traversal.returnedNodes | numbers) and (.trave
   printf 'live smoke failed: layout traversal contract mismatch\n' >&2; exit 1;
 }
 
+if [[ -n "${FIGMA_SMOKE_TEAM_ID:-}" ]]; then
+  run_json projects projects "$FIGMA_SMOKE_TEAM_ID"
+  jq -e '(.total | numbers) and (.projects | arrays)' "$workdir/projects.stdout" >/dev/null || {
+    printf 'live smoke failed: projects response misses total or projects\n' >&2; exit 1;
+  }
+else
+  printf 'skip: projects (FIGMA_SMOKE_TEAM_ID is not set)\n'
+fi
+
+if [[ -n "${FIGMA_SMOKE_PROJECT_ID:-}" ]]; then
+  run_json files files "$FIGMA_SMOKE_PROJECT_ID"
+  jq -e '(.total | numbers) and (.files | arrays)' "$workdir/files.stdout" >/dev/null || {
+    printf 'live smoke failed: files response misses total or files\n' >&2; exit 1;
+  }
+else
+  printf 'skip: files (FIGMA_SMOKE_PROJECT_ID is not set)\n'
+fi
+
 printf 'live smoke passed\n'

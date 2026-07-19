@@ -11,7 +11,9 @@ scripts/live-smoke.sh
 ```
 
 It validates `me`, `meta`, scoped `inspect`, bounded and empty `find`, and
-bounded `layout`. It stores command output only in a temporary directory and
+bounded `layout`. When `FIGMA_SMOKE_TEAM_ID` or `FIGMA_SMOKE_PROJECT_ID` is
+set, it also validates read-only project and file discovery; otherwise it prints
+an explicit skip. It stores command output only in a temporary directory and
 never prints the token or headers. It is deliberately excluded from `go test`.
 
 GitHub Actions exposes this only as a manual dispatch in the protected
