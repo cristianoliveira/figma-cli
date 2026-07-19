@@ -157,20 +157,11 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 	}
 	full, _ := cmd.Flags().GetBool("full")
 	perceptualThreshold, _ := cmd.Flags().GetFloat64("perceptual-threshold")
-	if perceptualThreshold < 0 || math.IsNaN(perceptualThreshold) || math.IsInf(perceptualThreshold, 0) {
-		return cli.NewUsageError(fmt.Errorf("--perceptual-threshold must be a finite non-negative number"))
-	}
 	maxRMSE, _ := cmd.Flags().GetFloat64("max-rmse")
-	if maxRMSE != -1 && (maxRMSE < 0 || math.IsNaN(maxRMSE) || math.IsInf(maxRMSE, 0)) {
-		return cli.NewUsageError(fmt.Errorf("--max-rmse must be -1 or a finite non-negative number"))
-	}
 	maxChangedRatio, _ := cmd.Flags().GetFloat64("max-changed-ratio")
-	if maxChangedRatio != -1 && (maxChangedRatio < 0 || maxChangedRatio > 1 || math.IsNaN(maxChangedRatio) || math.IsInf(maxChangedRatio, 0)) {
-		return cli.NewUsageError(fmt.Errorf("--max-changed-ratio must be -1 or between 0 and 1"))
-	}
 	maxPerceptualChangedRatio, _ := cmd.Flags().GetFloat64("max-perceptual-changed-ratio")
-	if maxPerceptualChangedRatio != -1 && (maxPerceptualChangedRatio < 0 || maxPerceptualChangedRatio > 1 || math.IsNaN(maxPerceptualChangedRatio) || math.IsInf(maxPerceptualChangedRatio, 0)) {
-		return cli.NewUsageError(fmt.Errorf("--max-perceptual-changed-ratio must be -1 or between 0 and 1"))
+	if err := validateComparisonThresholds(perceptualThreshold, maxRMSE, maxChangedRatio, maxPerceptualChangedRatio); err != nil {
+		return cli.NewUsageError(err)
 	}
 	region, err := parseImageRegion(cmd.Flags().Lookup("region").Value.String())
 	if err != nil {
@@ -341,6 +332,22 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		return err
 	}
 	return writeJSON(cmd, outputResult)
+}
+
+func validateComparisonThresholds(perceptualThreshold, maxRMSE, maxChangedRatio, maxPerceptualChangedRatio float64) error {
+	if perceptualThreshold < 0 || math.IsNaN(perceptualThreshold) || math.IsInf(perceptualThreshold, 0) {
+		return fmt.Errorf("--perceptual-threshold must be a finite non-negative number")
+	}
+	if maxRMSE != -1 && (maxRMSE < 0 || math.IsNaN(maxRMSE) || math.IsInf(maxRMSE, 0)) {
+		return fmt.Errorf("--max-rmse must be -1 or a finite non-negative number")
+	}
+	if maxChangedRatio != -1 && (maxChangedRatio < 0 || maxChangedRatio > 1 || math.IsNaN(maxChangedRatio) || math.IsInf(maxChangedRatio, 0)) {
+		return fmt.Errorf("--max-changed-ratio must be -1 or between 0 and 1")
+	}
+	if maxPerceptualChangedRatio != -1 && (maxPerceptualChangedRatio < 0 || maxPerceptualChangedRatio > 1 || math.IsNaN(maxPerceptualChangedRatio) || math.IsInf(maxPerceptualChangedRatio, 0)) {
+		return fmt.Errorf("--max-perceptual-changed-ratio must be -1 or between 0 and 1")
+	}
+	return nil
 }
 
 func validateVisualContextProvider(enabled bool, provider string) error {

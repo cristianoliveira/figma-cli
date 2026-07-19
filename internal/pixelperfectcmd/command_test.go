@@ -18,6 +18,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestComparisonThresholdValidationRejectsInvalidValues(t *testing.T) {
+	assert.EqualError(t, validateComparisonThresholds(-1, -1, -1, -1), "--perceptual-threshold must be a finite non-negative number")
+	assert.EqualError(t, validateComparisonThresholds(1, -2, -1, -1), "--max-rmse must be -1 or a finite non-negative number")
+	assert.EqualError(t, validateComparisonThresholds(1, -1, 2, -1), "--max-changed-ratio must be -1 or between 0 and 1")
+	assert.EqualError(t, validateComparisonThresholds(1, -1, -1, 2), "--max-perceptual-changed-ratio must be -1 or between 0 and 1")
+	assert.NoError(t, validateComparisonThresholds(0, -1, 0.5, 1))
+}
+
 func TestComparisonRequestValidationRejectsUnsafeArtifactPathsAndUnknownProvider(t *testing.T) {
 	assert.EqualError(t, validateComparisonArtifactPaths("reference.png", "actual.png", "reference.png", "", ""), "--output must not overwrite an input image")
 	assert.EqualError(t, validateComparisonArtifactPaths("reference.png", "actual.png", "mask.png", "mask.png", ""), "--overlay must differ from --output")
