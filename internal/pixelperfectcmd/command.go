@@ -160,35 +160,11 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 	if err != nil {
 		return cli.NewUsageError(err)
 	}
-	referenceCrop, err := parseOptionalCrop(cmd, "reference-crop")
-	if err != nil {
-		return cli.NewUsageError(err)
-	}
-	actualCrop, err := parseOptionalCrop(cmd, "actual-crop")
-	if err != nil {
-		return cli.NewUsageError(err)
-	}
-	referenceMetadataPath, _ := cmd.Flags().GetString("reference-metadata")
-	if referenceCrop != nil && referenceMetadataPath != "" {
-		return cli.NewUsageError(fmt.Errorf("--reference-crop and --reference-metadata cannot be used together"))
-	}
-	referenceMetadata, err := loadExportMetadata(referenceMetadataPath)
-	if err != nil {
-		return err
-	}
-	inputs, err := prepareImageInputs(args[0], args[1], referenceCrop, actualCrop, referenceMetadata)
+	inputs, ignored, err := prepareComparisonInputs(cmd, args, ignored)
 	if err != nil {
 		return err
 	}
 	defer inputs.cleanup()
-	comparisonMask, _ := cmd.Flags().GetString("mask")
-	if comparisonMask != "" {
-		maskedRegions, maskErr := diff.IgnoredRegionsFromMask(comparisonMask, inputs.referencePath)
-		if maskErr != nil {
-			return maskErr
-		}
-		ignored = append(ignored, maskedRegions...)
-	}
 	var decoded *diff.DecodedImages
 	var result diff.ImageComparison
 	if compare == nil {
@@ -313,6 +289,39 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		return err
 	}
 	return writeJSON(cmd, outputResult)
+}
+
+func prepareComparisonInputs(command *cobra.Command, args []string, ignored []diff.Bounds) (preparedImageInputs, []diff.Bounds, error) {
+	referenceCrop, err := parseOptionalCrop(command, "reference-crop")
+	if err != nil {
+		return preparedImageInputs{}, nil, cli.NewUsageError(err)
+	}
+	actualCrop, err := parseOptionalCrop(command, "actual-crop")
+	if err != nil {
+		return preparedImageInputs{}, nil, cli.NewUsageError(err)
+	}
+	referenceMetadataPath, _ := command.Flags().GetString("reference-metadata")
+	if referenceCrop != nil && referenceMetadataPath != "" {
+		return preparedImageInputs{}, nil, cli.NewUsageError(fmt.Errorf("--reference-crop and --reference-metadata cannot be used together"))
+	}
+	referenceMetadata, err := loadExportMetadata(referenceMetadataPath)
+	if err != nil {
+		return preparedImageInputs{}, nil, err
+	}
+	inputs, err := prepareImageInputs(args[0], args[1], referenceCrop, actualCrop, referenceMetadata)
+	if err != nil {
+		return preparedImageInputs{}, nil, err
+	}
+	comparisonMask, _ := command.Flags().GetString("mask")
+	if comparisonMask == "" {
+		return inputs, ignored, nil
+	}
+	maskedRegions, err := diff.IgnoredRegionsFromMask(comparisonMask, inputs.referencePath)
+	if err != nil {
+		inputs.cleanup()
+		return preparedImageInputs{}, nil, err
+	}
+	return inputs, append(ignored, maskedRegions...), nil
 }
 
 func parseIgnoredRegions(values []string) ([]diff.Bounds, error) {
