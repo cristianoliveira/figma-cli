@@ -6,10 +6,11 @@ Completed coordinate and workflow foundations live in [`../done/`](../done/), in
 
 ## Recommended remaining order
 
-1. [Figma component-role hints](figma-component-role-hints.md)
-2. [Pixel-perfect shape-mismatch evidence](pixel-perfect-shape-mismatch.md)
-3. [Pixel-perfect actionable issue ranking](pixel-perfect-actionable-issue-ranking.md)
-4. [Transparent-crop suggestions](pixel-perfect-transparent-crop-suggestions.md)
+1. [Pixel-perfect shape-mismatch evidence](pixel-perfect-shape-mismatch.md)
+2. [Pixel-perfect actionable issue ranking](pixel-perfect-actionable-issue-ranking.md)
+3. [Transparent-crop suggestions](pixel-perfect-transparent-crop-suggestions.md)
+
+The completed AXI follow-up initiative lives in [`../done/axi/`](../done/axi/README.md).
 
 ## Task-plan pattern
 
