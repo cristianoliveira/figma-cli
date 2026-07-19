@@ -18,6 +18,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestParseIgnoredRegionsRejectsMalformedAndEmptyRegions(t *testing.T) {
+	ignored, err := parseIgnoredRegions([]string{"1,2,3,4", "5,6,7,8"})
+	require.NoError(t, err)
+	assert.Equal(t, []diff.Bounds{{X: 1, Y: 2, Width: 3, Height: 4}, {X: 5, Y: 6, Width: 7, Height: 8}}, ignored)
+	assert.EqualError(t, parseIgnoredRegionsError([]string{"invalid"}), "invalid --ignore-region: --region must be x,y,width,height")
+	assert.EqualError(t, parseIgnoredRegionsError([]string{"1,2,0,4"}), "invalid --ignore-region: width and height must be positive")
+}
+
+func parseIgnoredRegionsError(values []string) error {
+	_, err := parseIgnoredRegions(values)
+	return err
+}
+
 func TestComparisonRegionControlValidationRejectsInvalidValues(t *testing.T) {
 	assert.EqualError(t, validateRegionControls(-1, 0, 0, 1, 1), "--suggest-offset must be non-negative")
 	assert.EqualError(t, validateRegionControls(0, -1, 0, 1, 1), "--suggest-movement must be non-negative")

@@ -156,16 +156,9 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		return cli.NewUsageError(err)
 	}
 	ignoredValues, _ := cmd.Flags().GetStringArray("ignore-region")
-	ignored := make([]diff.Bounds, 0, len(ignoredValues))
-	for _, value := range ignoredValues {
-		ignoredRegion, parseErr := parseImageRegion(value)
-		if parseErr != nil {
-			return cli.NewUsageError(fmt.Errorf("invalid --ignore-region: %w", parseErr))
-		}
-		if ignoredRegion.Width < 1 || ignoredRegion.Height < 1 {
-			return cli.NewUsageError(fmt.Errorf("invalid --ignore-region: width and height must be positive"))
-		}
-		ignored = append(ignored, *ignoredRegion)
+	ignored, err := parseIgnoredRegions(ignoredValues)
+	if err != nil {
+		return cli.NewUsageError(err)
 	}
 	referenceCrop, err := parseOptionalCrop(cmd, "reference-crop")
 	if err != nil {
@@ -320,6 +313,21 @@ func runComparisonCommand(cmd *cobra.Command, args []string, compare imageCompar
 		return err
 	}
 	return writeJSON(cmd, outputResult)
+}
+
+func parseIgnoredRegions(values []string) ([]diff.Bounds, error) {
+	ignored := make([]diff.Bounds, 0, len(values))
+	for _, value := range values {
+		region, err := parseImageRegion(value)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --ignore-region: %w", err)
+		}
+		if region.Width < 1 || region.Height < 1 {
+			return nil, fmt.Errorf("invalid --ignore-region: width and height must be positive")
+		}
+		ignored = append(ignored, *region)
+	}
+	return ignored, nil
 }
 
 func validateRegionControls(offsetRadius, movementRadius, regionGap, minRegionPixels, maxRegions int) error {
