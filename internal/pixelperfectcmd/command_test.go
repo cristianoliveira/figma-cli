@@ -17,6 +17,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCommandUsageErrorsShowCorrectionsAndLocalExamples(t *testing.T) {
+	missing := executeCommand(NewCommand())
+	require.Error(t, missing.Err)
+	assert.ErrorContains(t, missing.Err, "requires <reference.png> and <actual.png>")
+	assert.ErrorContains(t, missing.Err, "pixel-perfect reference.png actual.png")
+
+	unknown := executeCommand(NewCommand(), "reference.png", "actual.png", "--bogus")
+	require.Error(t, unknown.Err)
+	assert.ErrorContains(t, unknown.Err, "unknown flag: --bogus")
+	assert.ErrorContains(t, unknown.Err, "Available flags for \"pixel-perfect\"")
+	assert.ErrorContains(t, unknown.Err, "--threshold uint8")
+	assert.ErrorContains(t, unknown.Err, "Run `pixel-perfect --help` for details.")
+
+	help := executeCommand(NewCommand(), "probe", "--help")
+	require.NoError(t, help.Err)
+	assert.Contains(t, help.Stdout, "Examples:")
+	assert.Contains(t, help.Stdout, "pixel-perfect probe reference.png actual.png --at 12,24")
+}
+
 func TestProbeCommandReportsPointColorsAndDelta(t *testing.T) {
 	dir := t.TempDir()
 	reference := filepath.Join(dir, "reference.png")

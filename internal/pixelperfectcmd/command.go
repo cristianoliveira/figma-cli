@@ -119,7 +119,7 @@ func newCommand(compare imageComparer) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "image <reference.png> <actual.png>",
 		Short: "Compare equal-sized PNGs and write a changed-pixel mask",
-		Args:  cobra.ExactArgs(2),
+		Args:  requireImagePair("compare", "pixel-perfect reference.png actual.png"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			configuration, err := applyComparisonProfile(cmd)
 			if err != nil {
@@ -410,7 +410,10 @@ func newProbeCommand() *cobra.Command {
 	command := &cobra.Command{
 		Use:   "probe <reference.png> <actual.png>",
 		Short: "Inspect colors at one pixel in two equal-sized PNGs",
-		Args:  cobra.ExactArgs(2),
+		Args:  requireImagePair("probe", "pixel-perfect probe reference.png actual.png --at 12,24"),
+		Example: `  pixel-perfect probe reference.png actual.png --at 12,24
+  pixel-perfect probe reference.png actual.png --from 0,20 --to 100,20
+  pixel-perfect probe reference.png actual.png --at 12,24 --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			points, err := probePointsFromFlags(cmd)
 			if err != nil {
@@ -453,7 +456,9 @@ func newScanCommand() *cobra.Command {
 	command := &cobra.Command{
 		Use:   "scan <reference.png> <actual.png>",
 		Short: "Inspect compact color runs along one row or column in two PNGs",
-		Args:  cobra.ExactArgs(2),
+		Args:  requireImagePair("scan", "pixel-perfect scan reference.png actual.png --row 24"),
+		Example: `  pixel-perfect scan reference.png actual.png --row 24
+  pixel-perfect scan reference.png actual.png --column 12 --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			inputs, err := prepareCommandImageInputs(cmd, args[0], args[1])
 			if err != nil {
@@ -1123,9 +1128,34 @@ func writeJSON(command *cobra.Command, value any) error {
 func NewCommand() *cobra.Command {
 	command := newCommand(nil)
 	command.Use = "pixel-perfect <reference.png> <actual.png>"
-	command.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
-		return cli.NewUsageError(err)
+	command.Example = `  pixel-perfect reference.png actual.png
+  pixel-perfect reference.png actual.png --overlay overlay.png
+  pixel-perfect reference.png actual.png --max-changed-ratio 0.01`
+	command.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
+		return cli.NewUsageError(fmt.Errorf("%w\n\n%s", err, availableFlagHelp(cmd)))
 	})
 	cli.MarkUsageErrors(command)
 	return command
+}
+
+func requireImagePair(action, example string) cobra.PositionalArgs {
+	return func(_ *cobra.Command, args []string) error {
+		if len(args) == 2 {
+			return nil
+		}
+		return fmt.Errorf("%s requires <reference.png> and <actual.png>; received %d argument(s)\n\nExample: %s", action, len(args), example)
+	}
+}
+
+func availableFlagHelp(command *cobra.Command) string {
+	var builder strings.Builder
+	fmt.Fprintf(&builder, "Available flags for %q:\n", command.CommandPath())
+	flags := strings.TrimRight(command.LocalFlags().FlagUsages(), "\n")
+	if flags == "" {
+		builder.WriteString("  (none)")
+	} else {
+		builder.WriteString(flags)
+	}
+	fmt.Fprintf(&builder, "\n\nRun `%s --help` for details.", command.CommandPath())
+	return builder.String()
 }
