@@ -21,7 +21,7 @@ Answer one concrete design question with structured, frontend-ready Figma data.
    - token-light selected outline: `figma inspect --recursive --depth <n> --format text --fields name,type,relativeBounds,layout.mode,layout.gap,fills <url>`
    - pixel-diff coordinate context: `figma inspect --recursive --annotations-output <path> <url>`
    - exact vector contour truth: `figma inspect --include-vector-paths <vector-url>`
-   - structure and spacing: `figma layout <url>`
+   - structure and spacing: `figma layout --depth 4 <url>`; use `--full` only after traversal metadata proves omitted detail is needed
    - generated styles: `figma css <url>`
    - copy: `figma texts <url>`
    - layer search: `figma find --name <name> <url>`
@@ -44,7 +44,8 @@ Read [command reference](references/commands.md) only when exact flags, output s
 - Infer one node ID from URL. Use `--id` or `--node` for bare keys or explicit override. `figma export` exports that selected node directly; do not export a parent frame and manually calculate a child crop when child node ID is available.
 - Reject unsupported multiple node IDs; never silently choose one.
 - User-facing node IDs use `1-2`; API-facing IDs use `1:2`.
-- Preserve stable JSON envelopes. CSS, tokens, exports, and downloaded assets may produce deterministic text/files.
+- Preserve stable JSON envelopes. Collection `total` is pre-limit count, distinct from returned result count; use `--full` only when `truncated: true` proves it is needed, otherwise set `--limit` for a token budget. CSS, tokens, exports, and downloaded assets may produce deterministic text/files.
+- Prefer bounded `layout --depth` and `inspect --depth` before full traversal. Empty queries retain scope and effective filters; usage errors exit 2 and dependency failures exit 1.
 - For PNG/JPG exports, use either `--scale` or target `--width`; the latter derives valid Figma scale from node bounds. Do not combine them.
 - Use `inspect --include-vector-paths` when implementation depends on exact vector contour. Preserve returned fill/stroke path commands and winding rules; do not approximate shape from bounds or normalize path data. Recursive vector inspection requires explicit `--depth` because geometry payloads are large.
 - Export metadata uses pixel-aligned `logicalCrop` and `contentInset` relative to the exported image. Prefer these values over Figma canvas coordinates when preparing screenshot comparisons.

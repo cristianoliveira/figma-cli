@@ -132,8 +132,11 @@ Formats: `png`, `jpg`, `svg`, `pdf`. Use `--scale` only for raster exports (`png
 ### `figma layout` — Inspect frame structure
 
 ```bash
-figma layout "https://www.figma.com/design/abc/Name?node-id=42-1"
-# → { "scope": {...}, "result": <ordered tree with id, name, type, layoutMode, gap, padding, text, and children> }
+figma layout --depth 4 "https://www.figma.com/design/abc/Name?node-id=42-1"
+# → { "scope": {...}, "query": {"maxDepth": 4}, "traversal": {"returnedNodes", "totalNodes", "omittedNodes", "truncated"}, "result": <ordered tree> }
+
+# Recover every eligible layout node; cannot be combined with explicit --depth.
+figma layout --full "url?node-id=42-1"
 
 figma layout --measure-spacing "url?node-id=42-1"
 # → additionally reports measured spacing between adjacent layout children
@@ -146,7 +149,7 @@ figma layout compare "section-url?node-id=50-1" --name Desktop --name Tablet --n
 # → { "scope": {...}, "variants": [...], "transitions": [{ "fromId", "toId", "changes" }] }
 ```
 
-Use this for copy/layout alignment when generated CSS is too implementation-oriented. Add `--measure-spacing` only when exact geometric sibling gaps are needed; default output stays compact. Compare never guesses breakpoints: caller order is authoritative, names must match uniquely, and reported frame widths are design evidence rather than declared CSS breakpoints. The URL node is inferred; use `--id` only with a bare file key or to override URL scope.
+Use this for copy/layout alignment when generated CSS is too implementation-oriented. The selected root is depth 0 and `--depth` defaults to 4; traversal metadata makes omitted descendants explicit. Add `--measure-spacing` only when exact geometric sibling gaps are needed. Compare never guesses breakpoints: caller order is authoritative, names must match uniquely, and reported frame widths are design evidence rather than declared CSS breakpoints. The URL node is inferred; use `--id` only with a bare file key or to override URL scope.
 
 ### `figma texts` — Extract text content
 
