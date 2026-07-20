@@ -14,9 +14,10 @@
         mkCLI = pname: subPackage: pkgs.buildGoModule {
           inherit pname;
           version = "0.1.0";
-          src = ./.;
+          src = ./. ;
           vendorHash = "sha256-uSBhU8MQbypPP3+/92jTFKIWlPh4KjHzq+C0XbALSzY=";
           subPackages = [ subPackage ];
+          proxyVendor = true;
         };
         figma = mkCLI "figma" "cmd/figma";
         pixel-perfect = mkCLI "pixel-perfect" "cmd/pixel-perfect";
