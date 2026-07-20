@@ -18,3 +18,5 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 )
+
+replace github.com/toon-format/toon-go => github.com/carbon-ni/toon-go v0.0.0-20260720073316-466d6f2e74e0

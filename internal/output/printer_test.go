@@ -23,7 +23,7 @@ func TestStructuredDefaultsToDeterministicTOONAndRoundTrips(t *testing.T) {
 	require.NoError(t, New(&second, FormatTOON).Structured(value))
 	assert.Equal(t, first.String(), second.String())
 	assert.Contains(t, first.String(), "results[2]{id,name}:")
-	assert.Contains(t, first.String(), "empty[0]:")
+	assert.Contains(t, first.String(), "empty: []")
 	assert.True(t, bytes.HasSuffix(first.Bytes(), []byte("\n")))
 
 	var decoded any
