@@ -15,7 +15,7 @@
           inherit pname;
           version = "0.1.0";
           src = ./.;
-          vendorHash = "sha256-Y+fyGkDugE4WmjvhInJ4tp+7BtBxXZi+Pdhas90NaF0=";
+          vendorHash = "sha256-uSBhU8MQbypPP3+/92jTFKIWlPh4KjHzq+C0XbALSzY=";
           subPackages = [ subPackage ];
         };
         figma = mkCLI "figma" "cmd/figma";
