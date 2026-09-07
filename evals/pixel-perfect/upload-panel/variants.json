@@ -1,0 +1,30 @@
+{
+  "row-spacing": {
+    "defect": "Reduce every row height from 46px to 40px. Content and actions stay unchanged.",
+    "file": "src/UploadStatus.css",
+    "old": "  height: 46px;",
+    "new": "  height: 40px;",
+    "expected": {"content": true, "retry": true, "visual_difference": true}
+  },
+  "missing-row": {
+    "defect": "Omit the final completed video row from initial state. Retry still works.",
+    "file": "src/UploadDemo.tsx",
+    "old": "    fixture.items as UploadItem[],",
+    "new": "    (fixture.items as UploadItem[]).filter((item) => item.id !== \"upload-7\"),",
+    "expected": {"content": false, "retry": true, "visual_difference": true}
+  },
+  "status-colors": {
+    "defect": "Replace green completed-status text with purple. Content and actions stay unchanged.",
+    "file": "src/UploadStatus.css",
+    "old": "  color: #1d7833;",
+    "new": "  color: #bf00ff;",
+    "expected": {"content": true, "retry": true, "visual_difference": true}
+  },
+  "broken-retry": {
+    "defect": "Retry leaves the failed item unchanged. The initial screenshot is identical to accepted.",
+    "file": "src/UploadDemo.tsx",
+    "old": "? { ...item, status: \"uploading\", detail: \"Uploading 1.2MB...\" }",
+    "new": "? item",
+    "expected": {"content": true, "retry": false, "visual_difference": false}
+  }
+}

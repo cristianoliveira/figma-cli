@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "purpose": "Measured sensitivity to deliberate defects; not universal quality gates.",
+  "reference": "accepted/provenance.json",
+  "completed_real_runs": 2,
+  "identical_observations_across_completed_runs": true,
+  "infrastructure_errors": 1,
+  "infrastructure_note": "One intervening run stopped on macOS TIME_WAIT port preflight. Added SO_REUSEADDR plus tests preserving refusal of live listeners, then completed a fresh run. Infrastructure failure was not graded as a successful control.",
+  "checker_sha256": {
+    "controls.py": "cf55419b230478e9c9bae12029f8df114d9ab3f30dea1ac38751502c976daaee",
+    "verify.py": "cc8b8a98ceb9dd069d06d9d76df9aace5f76d8d1e259e3710d7bd0c91ff05e65",
+    "browser_check.js": "a1c65c7a1b1b290655125239fa032c836dd844117279fe81b8d786b71ba899b8",
+    "variants.json": "33395f4f0773ef5c516d02f135969fe094c1a468cde0f8666a566037df870955"
+  },
+  "results": {
+    "accepted": {
+      "observed": {
+        "content": true,
+        "retry": true,
+        "rowCount": 7,
+        "rowText": [
+          "Wire \u2013 New Features\nUploading 1.2MB...",
+          "IMG_20240303_142512.jpg\nUploading 1.2MB...",
+          "Wire \u2013 New Features\nCouldn't upload file",
+          "Design Feedback\nUploaded 1.2MB",
+          "Wire \u2013 Features Slides\nUploaded 1.2MB",
+          "Notes for the pitch\nUploaded 1.2MB",
+          "Wire \u2013 New Features\nUploaded 1.2MB"
+        ],
+        "capture": {
+          "width": 436,
+          "height": 406,
+          "dpr": 1,
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.49 Safari/537.36"
+        },
+        "visual_difference": false
+      },
+      "expected": {
+        "content": true,
+        "retry": true,
+        "visual_difference": false
+      },
+      "detected_as_expected": true,
+      "reference_changed_ratio": 0.13355289917295612,
+      "reference_perceptual_rmse": 0.0742548768970085,
+      "accepted_delta_changed_pixels": 0
+    },
+    "row-spacing": {
+      "observed": {
+        "content": true,
+        "retry": true,
+        "rowCount": 7,
+        "rowText": [
+          "Wire \u2013 New Features\nUploading 1.2MB...",
+          "IMG_20240303_142512.jpg\nUploading 1.2MB...",
+          "Wire \u2013 New Features\nCouldn't upload file",
+          "Design Feedback\nUploaded 1.2MB",
+          "Wire \u2013 Features Slides\nUploaded 1.2MB",
+          "Notes for the pitch\nUploaded 1.2MB",
+          "Wire \u2013 New Features\nUploaded 1.2MB"
+        ],
+        "capture": {
+          "width": 436,
+          "height": 406,
+          "dpr": 1,
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.49 Safari/537.36"
+        },
+        "visual_difference": true
+      },
+      "expected": {
+        "content": true,
+        "retry": true,
+        "visual_difference": true
+      },
+      "detected_as_expected": true,
+      "reference_changed_ratio": 0.280070728069779,
+      "reference_perceptual_rmse": 0.16714678086901305,
+      "accepted_delta_changed_pixels": 38417
+    },
+    "missing-row": {
+      "observed": {
+        "content": false,
+        "retry": true,
+        "rowCount": 6,
+        "rowText": [
+          "Wire \u2013 New Features\nUploading 1.2MB...",
+          "IMG_20240303_142512.jpg\nUploading 1.2MB...",
+          "Wire \u2013 New Features\nCouldn't upload file",
+          "Design Feedback\nUploaded 1.2MB",
+          "Wire \u2013 Features Slides\nUploaded 1.2MB",
+          "Notes for the pitch\nUploaded 1.2MB"
+        ],
+        "capture": {
+          "width": 436,
+          "height": 406,
+          "dpr": 1,
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.49 Safari/537.36"
+        },
+        "visual_difference": true
+      },
+      "expected": {
+        "content": false,
+        "retry": true,
+        "visual_difference": true
+      },
+      "detected_as_expected": true,
+      "reference_changed_ratio": 0.23607470511140236,
+      "reference_perceptual_rmse": 0.08464236315954088,
+      "accepted_delta_changed_pixels": 23206
+    },
+    "status-colors": {
+      "observed": {
+        "content": true,
+        "retry": true,
+        "rowCount": 7,
+        "rowText": [
+          "Wire \u2013 New Features\nUploading 1.2MB...",
+          "IMG_20240303_142512.jpg\nUploading 1.2MB...",
+          "Wire \u2013 New Features\nCouldn't upload file",
+          "Design Feedback\nUploaded 1.2MB",
+          "Wire \u2013 Features Slides\nUploaded 1.2MB",
+          "Notes for the pitch\nUploaded 1.2MB",
+          "Wire \u2013 New Features\nUploaded 1.2MB"
+        ],
+        "capture": {
+          "width": 436,
+          "height": 406,
+          "dpr": 1,
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.49 Safari/537.36"
+        },
+        "visual_difference": true
+      },
+      "expected": {
+        "content": true,
+        "retry": true,
+        "visual_difference": true
+      },
+      "detected_as_expected": true,
+      "reference_changed_ratio": 0.13615153432458083,
+      "reference_perceptual_rmse": 0.082142242333279,
+      "accepted_delta_changed_pixels": 1836
+    },
+    "broken-retry": {
+      "observed": {
+        "content": true,
+        "retry": false,
+        "rowCount": 7,
+        "rowText": [
+          "Wire \u2013 New Features\nUploading 1.2MB...",
+          "IMG_20240303_142512.jpg\nUploading 1.2MB...",
+          "Wire \u2013 New Features\nCouldn't upload file",
+          "Design Feedback\nUploaded 1.2MB",
+          "Wire \u2013 Features Slides\nUploaded 1.2MB",
+          "Notes for the pitch\nUploaded 1.2MB",
+          "Wire \u2013 New Features\nUploaded 1.2MB"
+        ],
+        "capture": {
+          "width": 436,
+          "height": 406,
+          "dpr": 1,
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.49 Safari/537.36"
+        },
+        "visual_difference": false
+      },
+      "expected": {
+        "content": true,
+        "retry": false,
+        "visual_difference": false
+      },
+      "detected_as_expected": true,
+      "reference_changed_ratio": 0.13355289917295612,
+      "reference_perceptual_rmse": 0.0742548768970085,
+      "accepted_delta_changed_pixels": 0
+    }
+  },
+  "focused_retry_regression_test": {
+    "accepted": {
+      "passed": 1,
+      "failed": 0,
+      "exit_code": 0
+    },
+    "broken-retry": {
+      "passed": 0,
+      "failed": 1,
+      "exit_code": 1
+    }
+  },
+  "next_step": "Validate specificity with other acceptable implementations and more small defects before choosing region-specific visual gates. Human visual review remains required."
+}

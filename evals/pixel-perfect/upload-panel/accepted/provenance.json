@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "case": "upload-panel",
+  "decision": "accept",
+  "feedback": "Looks good",
+  "accepted_at": "2026-09-07T21:29:37.617482+00:00",
+  "skill_commit": "30cbddcd40642d5c2b719049828454f0acea7b82",
+  "model": "openai-codex/gpt-6-astra",
+  "thinking": "high",
+  "gates": {
+    "working_implementation": "pass",
+    "visual_quality": "pass",
+    "trustworthy_evidence": "pass"
+  },
+  "capture": {
+    "viewport": {
+      "width": 436,
+      "height": 406
+    },
+    "device_scale_factor": 1,
+    "background": "transparent",
+    "fonts": "system-ui; OS-dependent",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "playwright_cli": "0.1.9"
+  },
+  "comparison": {
+    "threshold": 8,
+    "perceptual_threshold": 0.1,
+    "crop": null,
+    "resize": false
+  },
+  "artifact_sha256": {
+    "actual.png": "95689f83c7e674d148da7b09a898511127e75ef6f330814f50970f97818ea45b",
+    "app.tar.gz": "129531c437a8867fc109da41286d32c65ae76ed882ac4da1824684a396d976d7",
+    "capture.json": "34888c3655d4794f6bb774b16edb043f316e402e773637e62be9a1f5b5133710",
+    "mask.png": "527204cae8db5e77682be0295d38cef4c50a0a9792ccb42c5dcc399da951fb98",
+    "metrics.json": "f1e084f6f54f4f4886b7dbbf8415b97a71a0ef86120478fbb157ef0774e9cb7f",
+    "overlay.png": "3efc89754b480f2bbfd61ef8de2590924a24db234912586a3adb7de507c2721b",
+    "reference.png": "9210ddffe2217b44472dbf14aa0167a4804a99bf10249efe519a0adf15c79911"
+  },
+  "limitations": [
+    "Case-specific human acceptance, not an absolute metric threshold.",
+    "One accepted implementation, no A/B reliability claim.",
+    "Original metric artifact paths are historical; local mask/overlay are stored alongside metrics."
+  ]
+}
