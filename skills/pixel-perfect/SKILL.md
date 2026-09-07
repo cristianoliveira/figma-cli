@@ -1,9 +1,7 @@
 ---
 name: pixel-perfect
 description: >
-  Compare PNG screenshots with deterministic metrics, masks, overlays, regions, and CI gates.
   Use for requests like "compare these screenshots" or "generate a visual diff".
-  Not for browser capture, Figma editing, or iterative UI implementation.
 ---
 
 # pixel-perfect
@@ -79,34 +77,6 @@ Measure and localize screenshot differences without silently resizing or alignin
 
 `--suggest-offset <radius>` reports likely translation but never applies it. Red overlay means stronger/present in reference; green means stronger/present in implementation. Classifications are heuristic; raw evidence is authoritative. With crops, JSON `bounds` are cropped comparison coordinates; `inputBounds` maps regions back to original input screenshots. Use `--visual-context-prompt` only to focus advisory review text, not to create pass/fail evidence.
 
-## Exclusions and CI
-
-```bash
-pixel-perfect reference.png implementation.png \
-  --ignore-region <x>,<y>,<width>,<height> \
-  --mask comparison-mask.png \
-  --max-rmse 0.03 \
-  --max-changed-ratio 0.02 \
-  --max-perceptual-changed-ratio 0.01 \
-  --output diff-mask.png
-```
-
-Repeat `--ignore-region` for known dynamic areas. In comparison masks, visible non-black pixels are included; black or transparent pixels are ignored.
-
-## Routing Checks
-
-Should trigger:
-- “Compare these two PNG screenshots.”
-- “Generate a visual diff mask and overlay.”
-- “Why do these equal-sized screenshots differ?”
-- “Gate this screenshot change in CI.”
-- “Measure similarity for these image files.”
-
-Should not trigger:
-- “Inspect this Figma frame.” → use `figma-cli`.
-- “Change this page until it matches Figma.” → use `figma-pixel-perfect-loop`.
-- “Capture a screenshot of this website.” → use browser tooling.
-
 ## Guardrails
 
 - Never resize inputs before comparison.
@@ -115,5 +85,3 @@ Should not trigger:
 - Keep viewport, device scale, browser, fonts, background, capture method, and shadow padding stable.
 - Use regional metrics for component progress; whole-image RMSE can be dominated by unrelated background or effects.
 - Do not claim exact CSS diagnosis from raster heuristics alone.
-
-Full CLI reference: [`../../cmd/pixel-perfect/README.md`](../../cmd/pixel-perfect/README.md).

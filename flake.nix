@@ -15,7 +15,7 @@
           inherit pname;
           version = "0.1.0";
           src = ./. ;
-          vendorHash = "sha256-uSBhU8MQbypPP3+/92jTFKIWlPh4KjHzq+C0XbALSzY=";
+          vendorHash = "sha256-yN6RmmJD1ir+2LDnjMCySiiO31iE4jg/SuPp6FylrBw=";
           subPackages = [ subPackage ];
           proxyVendor = true;
         };
