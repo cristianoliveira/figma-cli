@@ -40,41 +40,42 @@ Recreate Figma web UI as real, accessible DOM and improve measured similarity on
      ```
      Metadata applies the exported node's logical crop and removes effect overflow from comparison coordinates.
 
-2. **Create stable implementation capture**
-   - Match native frame dimensions with `deviceScaleFactor: 1`.
-   - Wait for `document.fonts.ready`; verify expected fonts loaded.
-   - Disable animations, transitions, carets, and dynamic content.
-   - Keep browser, OS, zoom, background, and capture method fixed.
-   - Include equivalent effect/shadow padding.
+## Isolate stable implementation capture
 
-3. **Calibrate coordinate system first**
-   - Match viewport, canvas, navigation, major sections, grid, card bounds, and gaps.
-   - Compare DOM bounding boxes with Figma `relativeBounds`.
-   - Use `spacingFromPrevious` to verify auto-layout gaps.
+How to achieve this? Create a new temporary page in the App you are working on.
+Make sure to import all styles and components from the page you want to compare, and then export the page as a PNG.
+Render the component/section you want to compare in the same way as the reference page.
 
-4. **Measure one region**
-   - Run `pixel-perfect` baseline with `--annotations output/visual-diff/reference.annotations.json`, then narrow to one direct child region.
-   - Use annotations when raw mismatch coordinates do not reveal which design element owns region. Example: instead of only seeing mismatch at `{x: 24, y: 80, width: 240, height: 48}`, enriched region may identify Figma node `13576:15248`, label `Selected sidebar row`, with 92% region overlap. This tells agent where to inspect Figma tree and which implementation component to search for; it does not prove whether problem is padding, translation, color, typography, or shape.
-   - Treat annotation matches as navigation hints. Start with match having strongest region overlap, inspect its Figma node facts and corresponding DOM/component, then combine that context with offset, edge, color, and bounds evidence before changing code. Parent and child annotations may both match same region; prefer most specific useful node rather than assuming first match is cause.
-   - For component work—especially when shared Figma URL targets specific component or frame rather than whole page—render real production component in isolated page, route, story, or preview. Compare there first, then verify it once in full page for integration regressions.
-   - Prefer exporting exact target node by node-scoped URL/`--id`. Always use `--reference-metadata` with a `figma export` PNG; use explicit crop flags only when metadata is unavailable or verified invalid. Do not export parent frame and manually subtract canvas coordinates when target node can be exported directly.
-   - A reference/actual dimension mismatch is a signal to verify that `figma export --metadata` and `pixel-perfect --reference-metadata` were used before calculating crops manually.
-   - When metadata is unavailable, use `pixel-perfect --reference-crop` / `--actual-crop` for comparison crops. Do not use ImageMagick crop chains: `+repage`/virtual-canvas offsets can silently change later crop geometry. Native CLI crops decode raster pixels directly and preserve `inputs.*.crop` provenance. Annotation coordinate space must match prepared reference dimensions; regenerate annotations for selected scope instead of editing coordinates by hand.
-   - If a `pixel-perfect` skill is available, load it for comparison flags and metric diagnosis. Otherwise, inspect `pixel-perfect --help` and use deterministic metrics, masks, and overlays directly.
-   - For exact color or boundary questions, use pixel-perfect `probe`/`scan`, never media description or visual-context prose. For spacing, run back-to-back `scan --row <y>` and `scan --column <x>` through same suspect coordinate; compare run boundaries and lengths between reference and actual. Multimodal descriptions may orient review but are not pixel, color, or geometry measurement tools.
-   - Keep screenshot, mask, overlay, report, and JSON evidence under `output/visual-diff/`.
+Tips:
+- Match native frame dimensions with `deviceScaleFactor: 1`.
+- Wait for `document.fonts.ready`; verify expected fonts loaded.
+- Disable animations, transitions, carets, and dynamic content.
+- Keep browser, OS, zoom, background, and capture method fixed.
+- Include equivalent effect/shadow padding.
 
-5. **Change one cause**
-   - Form one hypothesis from Figma facts, DOM bounds, overlay, and regional metrics.
-   - Make one bounded CSS, layout, typography, or asset change.
-   - Export real Figma SVG/image assets rather than approximating artwork.
-   - Re-capture and compare same region.
-   - Revert or revise when evidence worsens.
+## Measure one region
+- Run `pixel-perfect` baseline with `--annotations output/visual-diff/reference.annotations.json`, then narrow to one direct child region.
+- Use annotations when raw mismatch coordinates do not reveal which design element owns region. Example: instead of only seeing mismatch at `{x: 24, y: 80, width: 240, height: 48}`, enriched region may identify Figma node `13576:15248`, label `Selected sidebar row`, with 92% region overlap. This tells agent where to inspect Figma tree and which implementation component to search for; it does not prove whether problem is padding, translation, color, typography, or shape.
+- Treat annotation matches as navigation hints. Start with match having strongest region overlap, inspect its Figma node facts and corresponding DOM/component, then combine that context with offset, edge, color, and bounds evidence before changing code. Parent and child annotations may both match same region; prefer most specific useful node rather than assuming first match is cause.
+- For component work—especially when shared Figma URL targets specific component or frame rather than whole page—render real production component in isolated page, route, story, or preview. Compare there first, then verify it once in full page for integration regressions.
+- Prefer exporting exact target node by node-scoped URL/`--id`. Always use `--reference-metadata` with a `figma export` PNG; use explicit crop flags only when metadata is unavailable or verified invalid. Do not export parent frame and manually subtract canvas coordinates when target node can be exported directly.
+- A reference/actual dimension mismatch is a signal to verify that `figma export --metadata` and `pixel-perfect --reference-metadata` were used before calculating crops manually.
+- When metadata is unavailable, use `pixel-perfect --reference-crop` / `--actual-crop` for comparison crops. Do not use ImageMagick crop chains: `+repage`/virtual-canvas offsets can silently change later crop geometry. Native CLI crops decode raster pixels directly and preserve `inputs.*.crop` provenance. Annotation coordinate space must match prepared reference dimensions; regenerate annotations for selected scope instead of editing coordinates by hand.
+- If a `pixel-perfect` skill is available, load it for comparison flags and metric diagnosis. Otherwise, inspect `pixel-perfect --help` and use deterministic metrics, masks, and overlays directly.
+- For exact color or boundary questions, use pixel-perfect `probe`/`scan`, never media description or visual-context prose. For spacing, run back-to-back `scan --row <y>` and `scan --column <x>` through same suspect coordinate; compare run boundaries and lengths between reference and actual. Multimodal descriptions may orient review but are not pixel, color, or geometry measurement tools.
+- Keep screenshot, mask, overlay, report, and JSON evidence under `output/visual-diff/`.
 
-6. **Refine outside-in**
-   - canvas/navigation → sections/grid → cards → typography/controls/icons/shadows.
-   - Re-diff every consumer after changing shared token.
-   - Stop speculative CSS changes when remaining error is verified rasterization noise.
+## Change one cause
+- Form one hypothesis from Figma facts, DOM bounds, overlay, and regional metrics.
+- Make one bounded CSS, layout, typography, or asset change.
+- Export real Figma SVG/image assets rather than approximating artwork.
+- Re-capture and compare same region.
+- Revert or revise when evidence worsens.
+
+## **Refine outside-in**
+- canvas/navigation → sections/grid → cards → typography/controls/icons/shadows.
+- Re-diff every consumer after changing shared token.
+- Stop speculative CSS changes when remaining error is verified rasterization noise.
 
 ## Loop Contract
 
@@ -114,50 +115,3 @@ Stop successfully when either:
 - Figma and DOM geometry, content, typography, colors, and effects match, while remaining difference is evidenced as capture/font/browser rasterization noise.
 
 Never define success as zero changed pixels unless user explicitly requires exact raster equality in fixed environment.
-
-### Blocked and Regression Policy
-
-- Missing Figma permission/data: report missing evidence; do not guess.
-- Missing font or asset: obtain correct source or report blocker; do not tune around fallback.
-- Unstable capture: stop edits and stabilize environment first.
-- Shared change regresses another accepted region: revert or replace with local correction.
-- Two consecutive non-improving iterations on same hypothesis: abandon it and inspect new evidence.
-- Budget exhausted: stop with best verified state, metrics, blockers, and next hypothesis.
-
-## Non-negotiable Guardrails
-
-- Figma exports are evidence and asset sources, never component implementations.
-- Never render reference screenshot, frame export, crop, base64 capture, canvas copy, or screenshot-wrapped SVG as UI.
-- Build selectable, semantic, accessible, interactive DOM components.
-- Images are allowed only for genuine artwork such as photos, illustrations, logos, and icons—never flattened panels, forms, text, controls, navigation, sections, or screens.
-- Never resize comparison images or silently apply suggested alignment.
-- Never eyeball crop coordinates or use ImageMagick as the primary crop pipeline. Use Figma metadata or explicit `pixel-perfect` crop flags; use ImageMagick only as an independent diagnostic cross-check.
-- Whole-frame RMSE is baseline, not proof of regional progress.
-- Annotation matches are optional structural context only. They answer “which known design node overlaps these changed pixels?”—not “what CSS should change?” They identify likely owning Figma nodes but do not explain mismatch or affect acceptance gates. Missing or weak matches must not block comparison; overlapping parent/child matches must not be treated as competing metric evidence.
-- Raster classification, media descriptions, and visual context are advisory. Never use them for pixel dimensions or exact colors; verify with Figma/DOM facts and pixel-perfect probe/scan.
-- Preserve responsive behavior after calibrating reference viewport.
-
-## Routing Checks
-
-Should trigger:
-- “Make this local page match this Figma frame.”
-- “Keep refining CSS until visual diff improves.”
-- “Compare our implementation to Figma and fix largest mismatch.”
-- “Pixel perfect this component from Figma.”
-- “Continue visual convergence loop.”
-
-Should not trigger:
-- “Inspect this Figma and list its components.” → use `figma-cli`.
-- “Compare these two PNG files.” → use `pixel-perfect`.
-- “Create a React page without a Figma reference.”
-- “Edit this Figma design.”
-
-## Completion
-
-- No reference pixels are rendered by implementation.
-- Semantic HTML, keyboard operation, visible focus, and accessible names pass the accessibility gate.
-- Reference and implementation dimensions and capture conditions match.
-- Important regions have recorded metrics, masks, and overlays.
-- Changed CSS values trace to Figma facts or exported assets.
-- DOM content and key bounds are verified after changes.
-- Report commands, before/after regional evidence, artifacts, and remaining differences; never merely claim “matches.”
