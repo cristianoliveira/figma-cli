@@ -1,87 +1,61 @@
 ---
 name: pixel-perfect
 description: >
-  Use for requests like "compare these screenshots" or "generate a visual diff".
+  Implement or refine a UI component from a reference screenshot using the
+  pixel-perfect CLI to measure and reduce visual differences. Use for requests
+  like "build this component from this PNG", "make this component match", or
+  "pixel perfect this UI" when application code changes are expected.
+  Also supports screenshot comparison without code changes when explicitly requested.
+  Not for editing Figma or implementing a UI without a visual reference.
 ---
 
-# pixel-perfect
+# Pixel Perfect
 
-## Objective
+Turn a reference screenshot into a working component in the user's application.
+The deliverable is real code, verified behavior, and measured visual progress—not just a diff report.
 
-Measure and localize screenshot differences without silently resizing or aligning images. Preserve raw metrics as source of truth; treat classifications as diagnostic hints.
+## 1. Set up
 
-## Workflow
+- Locate the app, reference image, and target component. Read local project guidance and reuse existing components, styles, and assets.
+- Check `pixel-perfect --help` and the available browser capture tool. Use the project's browser tooling or `playwright-cli`; check its help rather than guessing commands.
+- Confirm reference dimensions, visible content, expected interactions, and any supplied acceptance gate. Ask only about missing information that blocks implementation. A PNG alone does not require Figma access.
+- If reference or capture tooling is unavailable, report the blocker. Do not invent visual measurements or claim a verified match.
+- Keep artifacts in the project's temporary/output directory, separate from production assets. Never render the reference image as the implementation.
 
-1. Establish baseline metrics first. The CLI writes a default diff mask beside actual image as `<actual>.diff.png` and reports path in structured `mask` output (TOON by default, JSON with `--json`):
-   ```bash
-   pixel-perfect reference.png actual.png --threshold 8
-   ```
-   For named review artifacts, override the mask path and add overlay/report:
-   ```bash
-   pixel-perfect reference.png implementation.png \
-     --output diff-mask.png \
-     --overlay diff-overlay.png \
-     --report diff-report.html
-   ```
-2. Reject unequal dimensions unless you can make the logical regions equal with explicit crops. Prefer `--reference-metadata <figma-export.json>` when comparing a Figma export; otherwise use `--reference-crop` / `--actual-crop`.
-3. Preserve three evidence layers:
-   - raw: `changedPixels`, `changedRatio`, `rmse`, `rgbRmse`, `luminanceRmse`, `alphaRmse`, and `edgeRmse`
-   - perceptual: `perceptualRmse`, `perceptualChangedPixels`, and `perceptualChangedRatio`
-   - rendering: `antialiasedPixels`
-4. Use `bounds` and `changedRows` to localize work, then rank regions. Read the same raw, perceptual, and antialias evidence per region before using classification hints.
-5. Narrow the next comparison:
-   ```bash
-   pixel-perfect reference.png implementation.png \
-     --reference-metadata reference.export.json \
-     --actual-crop <x>,<y>,<width>,<height> \
-     --region <x>,<y>,<width>,<height> \
-     --threshold 8 \
-     --perceptual-threshold 0.1 \
-     --region-gap 8 \
-     --min-region-pixels 12 \
-     --output region-mask.png \
-     --overlay region-overlay.png \
-     --report region-report.html
-   ```
-6. Re-run after one bounded change; retain structured evidence and PNG artifacts.
-7. Probe exact colors instead of using external image tools:
-   ```bash
-   pixel-perfect probe reference.png implementation.png --at <x>,<y> --at <x2>,<y2>
-   pixel-perfect probe reference.png implementation.png --from <x1>,<y1> --to <x2>,<y2> --step 4 --radius 1
-   ```
-   Use repeatable `--at` for known sparse points. Use inclusive `--from`/`--to` for diagonal or arbitrary straight boundaries; `--step` reduces samples and `--radius` catches thin/antialiased neighbors. Probe returns token-efficient CSV by default; use `--format json` when scripting needs structured `points[]`, RGBA, per-channel delta, and `inputPoint`. Output defaults to 25 points; when `truncated: true`, run emitted `hint` only if all points are needed, or set `--limit` explicitly. Reuse `--reference-crop`, `--actual-crop`, or `--reference-metadata` when diff used cropped inputs; probe coordinates are comparison/cropped coordinates.
-8. Use scan for edge transitions instead of N probe calls:
-   ```bash
-   pixel-perfect scan reference.png implementation.png --row <row>
-   pixel-perfect scan reference.png implementation.png --column <column>
-   ```
-   For spacing and bounds diagnosis, run a back-to-back cross through same comparison coordinate:
-   ```bash
-   # Horizontal line: widths, left/right edges, and horizontal gaps.
-   pixel-perfect scan reference.png implementation.png --row <y>
-   # Vertical line: heights, top/bottom edges, and vertical gaps.
-   pixel-perfect scan reference.png implementation.png --column <x>
-   ```
-   Choose `<x>,<y>` so both lines cross suspected region while avoiding text or antialiased artwork when possible. Each command scans both reference and actual; a cross requires two commands, not four. Compare run start/end positions and lengths to distinguish shifted edges from wrong spacing. It returns compact CSV color runs by default; use `--format json` when scripting needs RGBA and `inputLine`. Output defaults to 25 runs per image; follow emitted `hint` only when truncation hides needed transitions. Reuse identical crop/metadata flags for both scans when original diff used cropped inputs; scan indexes are comparison/cropped coordinates.
+## 2. Implement a first version
 
-## Diagnosis
+- Add or update the real component, with explicit props/state and the app's normal styling conventions. Use semantic HTML, accessible controls, and behavior tests that follow local patterns.
+- Render that same component in an isolated temporary page, route, story, or preview. Import its real styles; do not maintain a second screenshot-only implementation.
+- Supply fixed example data. Do not depend on live uploads, clocks, random IDs, or network responses for capture state.
+- Capture at the reference's native scale. Fix viewport, device scale, browser, background, and shadow padding; wait for fonts and images, and disable animation and carets.
+- Save this first render as the baseline before visual tuning.
 
-| Evidence | Next action |
-|---|---|
-| High raw, low perceptual, high antialias share | Verify fonts, browser, device scale, and capture stability; avoid speculative CSS changes. |
-| High `edgeRmse` | Inspect bounds, spacing, border, icon size, or displacement. |
-| High perceptual error with low edge error | Inspect fill, text color, opacity, shadow, or gradient. |
-| High `alphaRmse` | Inspect transparency, shadows, and effect padding. |
-| `solid-fill` plus dominant color pair | Inspect fill/background color. |
-| `mixed`, especially after `--region-gap` | Inspect pixels, Figma/DOM facts, and grouped subregions; do not force one diagnosis. |
+## 3. Measure and refine
 
-`--suggest-offset <radius>` reports likely translation but never applies it. Red overlay means stronger/present in reference; green means stronger/present in implementation. Classifications are heuristic; raw evidence is authoritative. With crops, JSON `bounds` are cropped comparison coordinates; `inputBounds` maps regions back to original input screenshots. Use `--visual-context-prompt` only to focus advisory review text, not to create pass/fail evidence.
+```bash
+pixel-perfect reference.png actual.png \
+  --threshold 8 --json \
+  --output diff-mask.png --overlay diff-overlay.png \
+  --report diff-report.html > metrics.json
+```
 
-## Guardrails
+Use separate filenames per iteration so the baseline survives.
 
-- Never resize inputs before comparison.
-- Prefer CLI crops/metadata over external crop tools so `inputs.*.crop`, `inputBounds`, and reports preserve coordinate provenance.
-- Never silently apply suggested translation.
-- Keep viewport, device scale, browser, fonts, background, capture method, and shadow padding stable.
-- Use regional metrics for component progress; whole-image RMSE can be dominated by unrelated background or effects.
-- Do not claim exact CSS diagnosis from raster heuristics alone.
+1. Compare equivalent regions. Never resize images to force equal dimensions. Use Figma export metadata when supplied, or explicit CLI crops for known capture padding; do not crop away component defects.
+2. Inspect the overlay and largest actionable regions. Fix outer geometry and spacing first, then typography, colors, icons, and effects.
+3. Form one hypothesis from pixels and DOM facts. Make one bounded change, capture again under the same conditions, and repeat the same comparison.
+4. Retain changes that improve the target without breaking behavior or other affected components. Revert or revise regressions.
+
+Use `pixel-perfect scan` for edge/spacing questions and `pixel-perfect probe` for exact colors. Read [measurement details](references/measurement.md) only when you need crop syntax, metric interpretation, or diagnostic commands. Consult command help for other flags; do not explore every CLI feature before implementing.
+
+Default budget: **five measured refinement iterations**, unless the user sets another limit. Stop earlier when the supplied gate passes, or after two consecutive iterations without improvement. Keep the best version; do not loop indefinitely.
+
+## 4. Verify and deliver
+
+- Check the component in its intended app context, not only the isolated preview. If only a reusable component was requested, leave a working preview and explain how to use it.
+- Run relevant tests and build checks. For interactive components, check keyboard access, visible focus, accessible names, and requested actions. Do not invent backend integration from a screenshot; keep demo transitions explicit.
+- Remove temporary scaffolding unless needed to reproduce the result. Preserve the capture instructions and evidence paths.
+- Report changed files, baseline versus final metrics for the same region/settings, checks run, and remaining mismatches or blockers.
+- A lower error is progress, not proof of a match. Claim completion against the user's gate only when it passes. Without a gate, describe measured improvement and remaining differences; never silently invent a tolerance or dismiss residual error as rasterization noise without evidence.
+
+For a comparison-only request, skip implementation and app setup. Compare the supplied images and report measured differences without changing code.
