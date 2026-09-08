@@ -58,4 +58,7 @@ Default budget: **five measured refinement iterations**, unless the user sets an
 - Report changed files, baseline versus final metrics for the same region/settings, checks run, and remaining mismatches or blockers.
 - A lower error is progress, not proof of a match. Claim completion against the user's gate only when it passes. Without a gate, describe measured improvement and remaining differences; never silently invent a tolerance or dismiss residual error as rasterization noise without evidence.
 
-For a comparison-only request, skip implementation and app setup. Compare the supplied images and report measured differences without changing code.
+## 5. Human review (final)
+
+- Produce a HTML report with a diff overlay and metrics.
+- A form for feedback, on submit download a report for you to continue.
