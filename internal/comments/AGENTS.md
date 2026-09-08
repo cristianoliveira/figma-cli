@@ -1,17 +1,26 @@
-# Agent Instructions for `internal/comments/`
+# Purpose
 
-## Purpose
+`internal/comments` retrieves Figma comments, maps API replies into CLI values, and applies node-scoped comment workflows.
 
-Own Figma comment API mapping, retrieval, and document-node scoping.
+# Boundaries
 
-## Rules
+It owns comment-specific API mapping and scope decisions. Generic document traversal belongs in [extraction](internal/extract/AGENTS.md); URL and HTTP details belong in [Figma transport](internal/figma/AGENTS.md).
 
-- Keep generated comment API types and their mapping in this package; pass `extract.CommentOutput` to pure extraction helpers.
-- Build comment web URLs here, where file key, node ID, and comment ID meet.
-- Scope comments from fetched document ancestry/descendency; never infer hierarchy from node ID syntax.
-- Preserve comment order and retain thread replies when their root is in scope.
+# Connections
 
-## Testing
+- [Figma transport](internal/figma/AGENTS.md): provides authenticated comment responses and file scope.
+- [Extraction](internal/extract/AGENTS.md): provides comment output types and document-derived node relationships.
+- [Commands](cmd/AGENTS.md): validates flags and renders comment results.
 
-- Mock Figma HTTP responses; cover anchored and unanchored comments plus scope edge cases.
-- Run `go test ./internal/comments ./cmd` after changes.
+# Landmarks
+
+- `internal/comments/comments.go:Fetch`: retrieves and maps comments for a file.
+- `internal/comments/comments.go:Scope`: applies node, recursive, and ancestor scope.
+
+# Boundary flows
+
+- Information flow: `internal/figma/client.go:Client.FetchJSON` -> `internal/comments/comments.go:Fetch` via `cmd/root.go:Execute`; value: `api.GetCommentsResponse`.
+
+# Placement
+
+Put comment lifecycle and scope policy here. Keep generic node relationships in extraction and transport mechanics in the Figma boundary.

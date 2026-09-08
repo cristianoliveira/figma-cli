@@ -1,23 +1,32 @@
-# Agent Instructions for `internal/figma/`
+# Purpose
 
-## Purpose
+`internal/figma` is the Figma boundary: parse user inputs, normalize node IDs, build API URLs, perform HTTP requests, decode typed responses, and expose document/history helpers to capability packages.
 
-Own the Figma boundary: input parsing, node ID normalization, API URL construction, HTTP client behavior, typed generated responses, and document unmarshalling.
+# Boundaries
 
-## Rules
+Normalize friendly URL and node-ID forms once at this boundary. Keep generated API types behind this package where possible; map document responses before passing them to pure extraction. Commands must not duplicate URL or scope rules.
 
-- Accept user-friendly inputs at the boundary and normalize once.
-- Keep URL builders and node ID helpers centralized; do not duplicate parsing in `cmd`.
-- `FileInput` is source of truth for parsed file key, URL node IDs, and URL comment fragment.
-- Explicit `--id` overrides URL-derived node IDs; normalization belongs here.
-- Use `FetchDocument` for whole-file traversal and `FetchNodeDocuments` for exact requested subtrees. The latter preserves caller order and handles composite instance IDs.
-- Inject configured HTTP clients for tests; do not add package-level mutable HTTP state.
-- Wrap errors with operation context.
-- Keep generated API type usage here when possible so extractors can stay simple.
-- Do not hand-edit `api/api.gen.go`; update `openapi/` and generation scripts/config instead.
+# Connections
 
-## Testing
+- [Generated API](internal/figma/api/AGENTS.md): supplies generated response and model types; never hand-edit generated output.
+- [Extraction](internal/extract/AGENTS.md): consumes normalized generic document trees from this boundary.
+- [History diff](internal/diff/AGENTS.md): receives a Figma-backed `TextHistory` implementation for blame queries.
+- [CLI wiring](internal/cli/AGENTS.md): constructs configured clients but does not own Figma protocol policy.
+- [Commands](cmd/AGENTS.md): callers provide file and node scope and consume boundary results.
 
-- Use table-driven tests for URL parsing/building and node ID normalization.
-- Use `httptest` or injected `http.Client` behavior for client tests.
-- Do not require `FIGMA_ACCESS_TOKEN` or real network access.
+# Landmarks
+
+- `internal/figma/input.go:ParseInput`: parses file, node, and comment scope.
+- `internal/figma/node_id.go:NormalizeNodeID`: normalizes user-facing node IDs.
+- `internal/figma/client.go:Client.FetchJSON`: shared authenticated HTTP boundary.
+- `internal/figma/document.go:FetchDocument`: fetches and maps a document tree.
+- `internal/figma/document.go:FetchNodeDocuments`: fetches exact requested subtrees.
+
+# Boundary flows
+
+- Information flow: `internal/figma/client.go:Client.FetchJSON` -> `internal/figma/document.go:UnmarshalDocument` via `internal/figma/document.go:FetchDocument`; value: `api.GetFileResponse.Document`.
+- Information flow: `internal/figma/document.go:FetchDocument` -> `internal/extract/inspect.go:InspectTree` via `cmd/root.go:Execute`; value: `document (any)`.
+
+# Placement
+
+Put transport, URL, authentication, and Figma-specific mapping here. Put generic traversal in extraction and command-specific flag policy in commands.

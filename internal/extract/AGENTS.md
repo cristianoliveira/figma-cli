@@ -1,23 +1,31 @@
-# Agent Instructions for `internal/extract/`
+# Purpose
 
-## Purpose
+`internal/extract` converts generic Figma document trees into stable, JSON-ready inspection, layout, text, component, CSS, token, asset, and diff values.
 
-Convert parsed Figma document trees into command output structs and JSON-ready values.
+# Boundaries
 
-## Rules
+This package is pure transformation logic. It may consume mapped document values and annotation types, but it does not own Cobra, environment, HTTP, stdout, or Figma URL decisions. Preserve document order and represent ambiguity rather than guessing.
 
-- Keep this package free of CLI and infrastructure concerns.
-- Inputs are usually generic `map[string]any` / `[]any` trees produced from generated Figma API models.
-- Prefer small traversal helpers with early returns over deeply nested walkers.
-- Preserve all matches when names are ambiguous; include node IDs where users need disambiguation.
-- Keep output structs close to extractor behavior and use JSON tags intentionally.
-- Reuse shared value helpers from `values.go` instead of duplicating map conversion logic.
-- Preserve Figma child order for copy/layout output; tree order is user-visible contract.
-- Prefer Figma-provided semantics such as text line types over inference from names or glyphs.
-- For comment scope, derive descendant/ancestor IDs from document traversal; never infer parentage from node ID syntax.
+# Connections
 
-## Testing
+- [Figma boundary](internal/figma/AGENTS.md): maps generated API responses into document trees before extraction; extraction does not call the API.
+- [Internal cross-cutting types](internal/AGENTS.md): annotations and component helpers share bounded data contracts with extraction.
+- [Diff capability](internal/diff/AGENTS.md): consumes extracted text values for history analysis.
+- [Output](internal/output/AGENTS.md): commands pass extracted values to stable rendering; extraction does not render them.
 
-- Test happy and unhappy/empty paths.
-- Use minimal inline Figma-like maps unless a fixture is clearly better.
-- Tests should assert stable output shape, not incidental traversal implementation.
+# Landmarks
+
+- `internal/extract/inspect.go:InspectTree`: bounded node inspection.
+- `internal/extract/text.go:ExtractTextNodes`: ordered text extraction.
+- `internal/extract/css.go:ExtractCSSRules`: CSS-oriented document transformation.
+- `internal/extract/tokens.go:ExtractTokensFromDocument`: design-token transformation.
+- `internal/extract/changes.go:DiffDocuments`: structural document comparison.
+
+# Boundary flows
+
+- Information flow: `internal/figma/document.go:UnmarshalDocument` -> `internal/extract/inspect.go:InspectTree` via `cmd/root.go:Execute`; value: `map[string]any`.
+- Information flow: `internal/extract/text.go:ExtractTextNodes` -> `internal/diff/text_blame.go:FindTextChange` via `cmd/root.go:Execute`; value: `[]extract.TextNode`.
+
+# Placement
+
+Add a function here when it deterministically derives a user-facing value from a document tree. Put network retrieval, command validation, and artifact writing in their owning modules.

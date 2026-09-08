@@ -1,30 +1,38 @@
-# Agent Instructions for `internal/`
+# Purpose
 
-## Purpose
+`internal/` contains the private capabilities behind the CLIs. It keeps composition, external adapters, pure Figma transforms, image analysis, and output contracts separate so each boundary can be tested without a live service.
 
-Private application code for the CLI. Keep boundaries explicit and easy to test.
+# Boundaries
 
-## Package Responsibilities
+- [CLI wiring](internal/cli/AGENTS.md) owns environment-backed dependency construction and error classification.
+- [Figma transport](internal/figma/AGENTS.md) owns user input normalization, URLs, HTTP, and typed responses.
+- [Document extraction](internal/extract/AGENTS.md) owns pure traversal and result shaping.
+- [Asset workflows](internal/assets/AGENTS.md), [comments](internal/comments/AGENTS.md), and [history diff](internal/diff/AGENTS.md) own their capability decisions.
+- [Image comparison](internal/imagediff/AGENTS.md) is generic and must not depend on Figma.
+- [Visual context](internal/imagecontext/AGENTS.md) is advisory and must not alter deterministic metrics.
+- [Pixel-perfect orchestration](internal/pixelperfectcmd/AGENTS.md) composes image workflows; [reports](internal/pixelperfectreport/AGENTS.md) render their artifacts.
+- [Output contracts](internal/output/AGENTS.md) own structured rendering and filesystem artifacts.
+- Annotations and component parity helpers remain bounded cross-cutting packages owned by this guide unless their boundaries grow.
 
-- `cli/`: runtime glue only: configured client/printer construction and exit-code errors.
-- `env/`: environment configuration such as `FIGMA_ACCESS_TOKEN`.
-- `figma/`: Figma domain/API boundary: input parsing, node IDs, URL builders, HTTP client, typed API responses, export/tokens API helpers.
-- `extract/`: pure transforms from Figma document trees to CLI output models.
-- `assets/`: asset discovery, export, and file-download workflows.
-- `comments/`: comment API mapping, retrieval, and node-scoping workflows.
-- `diff/`: Figma design-history diff use cases; adapters supply its history interfaces.
-- `imagediff/`: generic PNG comparison, masks, overlays, metrics, alignment hints, regions, and classification; no Figma dependencies.
-- `pixelperfectcmd/`: standalone Cobra command orchestration for the generic image comparison engine.
+# Connections
 
-## Dependency Rules
+- [Commands](cmd/AGENTS.md): the composition layer calls internal capabilities; internal packages never import commands.
+- [Generated API](internal/figma/api/AGENTS.md): Figma adapters consume generated models and map them before pure extraction.
+- [Output](internal/output/AGENTS.md): capabilities provide stable values and artifact paths to the shared renderer.
 
-- `internal/*` must not import `cmd`.
-- `extract` must remain mostly pure: no env vars, Cobra, stdout/stderr, or network calls.
-- `figma` and capability adapters may depend on generated `internal/figma/api` types; map them before passing data to `extract`.
-- `cli` wires env and Figma clients only; place business workflows in their capability package.
+# Landmarks
 
-## Testing
+- `internal/cli/runtime.go:LoadClient`: composition root for configured Figma transport.
+- `internal/figma/input.go:ParseInput`: normalized Figma input boundary.
+- `internal/extract/inspect.go:InspectTree`: pure document-to-output boundary.
+- `internal/imagediff/image.go:CompareImagesWithThresholds`: deterministic image evidence boundary.
 
-- Add table-driven tests for parsing, traversal, formatting, and error paths.
-- Use deterministic fixtures/maps; avoid live Figma API calls.
-- Run `go test ./internal/...` for focused validation, then `go test ./...` before finalizing.
+# Boundary flows
+
+- Information flow: `internal/cli/runtime.go:LoadClient` -> `internal/figma/client.go:NewClient` via `cmd/root.go:Execute`; value: `FIGMA_ACCESS_TOKEN`.
+- Information flow: `internal/figma/document.go:FetchDocument` -> `internal/extract/inspect.go:InspectTree` via `cmd/root.go:Execute`; value: `document (any)`.
+- Information flow: `internal/imagediff/image.go:CompareImagesWithThresholds` -> `internal/pixelperfectreport/report.go:Render` via `internal/pixelperfectcmd/command.go:NewCommand`; value: `imagediff.ImageComparison`.
+
+# Placement
+
+Keep infrastructure at the edge and domain decisions in the owning capability. Add a package when a responsibility has a distinct input/output boundary and would otherwise create a dependency cycle or force unrelated callers to share policy.

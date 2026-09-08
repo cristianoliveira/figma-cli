@@ -1,26 +1,34 @@
-# Agent Instructions for `cmd/`
+# Purpose
 
-## Purpose
+`cmd/` owns Cobra command definitions and the two executable composition roots. Commands translate flags and arguments into calls to private capability packages, then render results.
 
-`cmd/` contains Cobra command definitions and the CLI entry wiring.
+# Boundaries
 
-## Rules
+Keep command handlers thin: validate command-owned input, resolve Figma scope, load dependencies, invoke an internal capability, and select output. Document traversal, API construction, image metrics, and output shaping belong in internal packages.
 
-- Keep command files thin: flags/args, input parsing, client loading, package calls, JSON printing.
-- Do not put document traversal or extraction logic here; move it to `internal/extract`.
-- Do not put HTTP or Figma URL construction details here unless command-specific glue is unavoidable; prefer `internal/figma`.
-- Return errors from Cobra `RunE`; root execution owns structured stdout error rendering and exit behavior. Stderr is for progress/debug diagnostics and deliberate result-bearing gate diagnoses.
-- Register commands in `init()` with `rootCmd.AddCommand(...)`.
-- Keep structured domain fields stable. TOON is default; global `--json` preserves compatibility JSON.
-- Parse file URLs once with `figma.ParseInput`; resolve URL node scope and optional `--id` through shared `figma` helpers.
-- Use `figma.FetchNodeDocuments` when traversal must be restricted to requested subtrees; do not fetch whole file and manually guess selected node.
-- State whether command accepts one or many node IDs. Reject unsupported multiple IDs instead of using first silently.
-- Render structured values through `cli.NewPrinter(cmd).Structured(...)`; global `--json` selects compatibility output. Keep intentional text/file artifacts on `Text`/`File`.
-- Bounded collection output reports pre-limit totals and adds `cli.FullHint` only when truncated; never hand-build shell recovery strings.
-- No-argument views use `cli.CurrentExecutablePath`, show only cheap state, and never load clients or perform network work.
+# Connections
 
-## Testing
+- [Internal runtime](internal/AGENTS.md): commands consume private capabilities and must not become their implementation layer.
+- [CLI wiring](internal/cli/AGENTS.md): commands use client/printer construction and error classification.
+- [Figma boundary](internal/figma/AGENTS.md): commands pass parsed file and node scope to transport helpers.
+- [Extraction](internal/extract/AGENTS.md): document-oriented commands consume pure extraction results.
+- [Output](internal/output/AGENTS.md): command results cross the output contract through the shared printer.
+- [Assets](internal/assets/AGENTS.md): asset/export commands delegate download workflows.
+- [Comments and history](internal/comments/AGENTS.md): comment commands delegate comment retrieval and scope handling.
+- [Diff](internal/diff/AGENTS.md): history commands delegate text-blame use cases.
 
-- Prefer testing logic in `internal/*` packages instead of Cobra command closures.
-- If adding command-specific behavior, extract it into a small testable function or package helper.
-- Run `go test ./...` after command changes.
+# Landmarks
+
+- `cmd/root.go:Execute`: process-level execution, error rendering, and exit-code handoff.
+- `cmd/figma/main.go:main`: Figma executable composition root.
+- `cmd/pixel-perfect/main.go:main`: standalone comparison executable composition root.
+
+# Boundary flows
+
+- Information flow: `cmd/figma/main.go:main` -> `internal/cli/runtime.go:LoadClient` via `cmd/root.go:Execute`; value: `FIGMA_ACCESS_TOKEN`.
+- Information flow: `internal/figma/document.go:FetchDocument` -> `internal/extract/inspect.go:InspectTree` via `cmd/root.go:Execute`; value: `document (any)`.
+- Information flow: `internal/imagediff/image.go:CompareImagesWithThresholds` -> `internal/output/printer.go:Printer.Structured` via `internal/pixelperfectcmd/command.go:NewCommand`; value: `imagediff.ImageComparison`.
+
+# Placement
+
+Put a new user-facing workflow here only when it is command composition. Put reusable policy and transformations in the owning internal package; keep new executable wiring at the nearest `main` package.

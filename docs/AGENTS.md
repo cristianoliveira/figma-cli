@@ -1,62 +1,16 @@
-# AGENTS.md — qmd (Librarian CLI) Brief
+# Purpose
 
-## Overview
+`docs/` contains user-facing command contracts and workflow explanations for the Figma and pixel-perfect CLIs. Documentation should describe the stable interface exposed by the source and live Cobra help.
 
-This project uses `qmd` for indexing and searching documentation and agent reports.
-Agents should use `qmd` to discover relevant documentation, previous agent work, and research findings.
+# Boundaries
 
-## Available Collections
+Keep architecture and agent navigation in repository and module `AGENTS.md` files. Keep implementation details in source. When prose and command behavior diverge, source, tests, and live help are authoritative.
 
-- **figma-cli** - Project documentation (28 files)
-- **research** - Research documents, agent reports, temporary files (indexes `.tmp/reports/`, `.tmp/researches/`, and `research/`)
+# Connections
 
-## Core Commands
+- [Commands](cmd/AGENTS.md): defines the command surface documented here.
+- [Internal capabilities](internal/AGENTS.md): defines output and behavior that documentation must represent without duplicating implementation.
 
-### Keyword search (BM25)
-```bash
-qmd search "query" -c figma-cli
-```
+# Placement
 
-### Semantic search
-```bash
-qmd vsearch "query" -c figma-cli
-```
-
-### Hybrid search (keyword + semantic + LLM reranking)
-```bash
-qmd query "query" -c figma-cli
-```
-
-### List documents in collection
-```bash
-qmd list -c figma-cli
-```
-
-### Get a document
-```bash
-qmd get <file>[:line] -l N
-```
-
-### List collections
-```bash
-qmd collection list
-```
-
-## Recommended Flow
-
-1. Search (`qmd search` or `qmd query`) for relevant documentation
-2. Select the most relevant result
-3. Read the document using `qmd get` or open the file
-4. Use `qmd list` to browse collection contents
-5. Stop once enough context is found
-
-## Rules
-
-- Use `qmd` to search for documentation instead of scanning filesystem directly
-- Write agent reports to `.tmp/reports/` (indexed in `research` collection)
-- Write research notes to `.tmp/researches/` for future reference
-
-## Summary
-
-Use `qmd` to discover documentation, read focused content, and find previous agent work.
-Search → Read → Stop Early
+Add a document here when it explains a user-visible workflow or contract spanning commands. Put package ownership guidance in the nearest module guide instead.

@@ -1,12 +1,15 @@
-# Agent Instructions for `internal/figma/api/`
+# Purpose
 
-## Generated Code
+`internal/figma/api` contains generated Go models and clients derived from the repository's Figma OpenAPI definition.
 
-`api.gen.go` is generated from `openapi/openapi.yaml` using `openapi/oapi-codegen.yaml`.
+# Boundaries
 
-## Rules
+Treat this package as an API schema boundary, not a place for CLI or domain policy. Consumers should normally enter through [Figma transport](internal/figma/AGENTS.md), which maps generated values before passing them to other modules.
 
-- Do not hand-edit generated Go code.
-- Change the OpenAPI spec/config or generation pipeline instead.
-- Keep generated models isolated behind `internal/figma` where practical.
-- If generated output changes, run tests that cover callers in `internal/figma` and `internal/extract`.
+# Connections
+
+- [Figma transport](internal/figma/AGENTS.md): owns use of generated responses and isolates schema churn from callers.
+
+# Placement
+
+Change the OpenAPI source or generation configuration when the contract changes, then regenerate this package. Do not hand-edit generated Go output or add business workflows here.

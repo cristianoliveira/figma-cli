@@ -1,16 +1,25 @@
-# Agent Instructions for `internal/diff/`
+# Purpose
 
-## Purpose
+`internal/diff` contains pure design-history use cases, including locating the version that introduced a text change.
 
-Own pure design-diff use cases, beginning with text-change blame across version history.
+# Boundaries
 
-## Rules
+The package depends on a `TextHistory` contract and extracted text values. It does not fetch Figma versions, parse Cobra flags, or render output.
 
-- Depend on narrow injected history interfaces, not Figma clients or generated API types.
-- Keep version-search and diff algorithms deterministic and side-effect free.
-- Put Figma-backed history adapters in `internal/figma`; compose them from `cmd`.
+# Connections
 
-## Testing
+- [Extraction](internal/extract/AGENTS.md): supplies text nodes and text-diff values.
+- [Figma transport](internal/figma/AGENTS.md): provides history adapters to callers.
+- [Commands](cmd/AGENTS.md): maps command input to the use case and renders its result.
 
-- Use in-memory histories for introducing-version, bounded-history, and error-path tests.
-- Run `go test ./internal/diff ./cmd` after changes.
+# Landmarks
+
+- `internal/diff/text_blame.go:FindTextChange`: finds the earliest history version containing target text.
+
+# Boundary flows
+
+- Information flow: `internal/figma/blame.go:FetchAllVersions` -> `internal/diff/text_blame.go:FindTextChange` via `cmd/root.go:Execute`; value: `diff.TextHistory`.
+
+# Placement
+
+Keep history reasoning and comparison policy here. Put Figma version retrieval in the adapter and generic text traversal in extraction.
