@@ -10,7 +10,7 @@ Evaluation fixtures are not production code and must not be copied into skills a
 
 - [Pixel-perfect skill](skills/pixel-perfect/AGENTS.md): provides the workflow under evaluation.
 - [Skill evaluation helpers](skills/pixel-perfect/evals/AGENTS.md): validates skill packaging and protocol inputs.
-- [Upload-panel controls](evals/pixel-perfect/upload-panel/AGENTS.md): owns the accepted snapshot and defect controls for one evaluation case.
+- [Upload-panel controls](tests/evals/pixel-perfect/upload-panel/AGENTS.md): owns the accepted snapshot and defect controls for one evaluation case.
 
 # Placement
 
