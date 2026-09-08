@@ -42,6 +42,38 @@ all seven visible names/states, exercises Retry, and captures real DOM. Only the
 runner compares observations to the declared expected outcome. A negative
 control being detected is a **successful evaluator check**, not a good component.
 
+## Implementation alternatives (review pending)
+
+`alternatives.json` adds two candidates without changing the accepted snapshot:
+
+- **Grid rows:** use CSS Grid instead of Flexbox. In the measured capture, it is
+  pixel-identical at threshold 0 despite different source code.
+- **Retry icon:** use a thinner 1.5px stroke. It changes 113 pixels at threshold 8
+  while keeping the control name, hit area, content, and Retry behavior.
+
+Both pass all 22 app tests, coverage gates, build, and the browser content/Retry
+checks. These are small edits to one implementation, not independently built apps.
+Their human visual acceptance is **pending**. Passing technical checks does not
+change `review_status` to accepted.
+
+Run them alongside the original controls:
+
+```sh
+python3 -B evals/pixel-perfect/upload-panel/verify.py \
+  "$PWD/.tmp/pixel-perfect-controls/alternatives-NEW" --include-alternatives
+```
+
+Unlike deliberate defects, alternatives do not prescribe `visual_difference`
+in their expectations. The runner still records that measurement, but does not
+reject a candidate just because some pixels differ. Content and Retry must pass.
+Read the generated `retry-icon/accepted-delta-report.html` to review the icon
+against the accepted render. Both alternatives still require human review.
+
+`alternative-observations.json` stores the measured results and screenshot/checker
+hashes. The older `observations.json` is retained as a historical measurement of
+the original controls; its checker hashes describe the earlier code, not the
+current runner. Neither observation file is an automatically calibrated tolerance.
+
 ## Verify offline integrity
 
 From repository root (Python 3.10+):
@@ -67,11 +99,13 @@ python3 -B evals/pixel-perfect/upload-panel/verify.py \
 
 Use a new workspace each time. The runner:
 
-1. Verifies accepted checksums and safely materializes five source trees.
+1. Verifies accepted checksums and safely materializes five source trees (seven
+   with `--include-alternatives`).
 2. Installs locked dependencies once with lifecycle scripts disabled; variants
    share that install through local symlinks. Only trusted accepted code runs.
-3. Runs accepted app tests/coverage, then builds **every** control so syntax or
-   build failures cannot masquerade as detected defects.
+3. Runs accepted app tests/coverage and, when selected, both alternatives' tests
+   and coverage. Builds **every** control so syntax or build failures cannot
+   masquerade as detected defects.
 4. Uses fresh, short-named browser sessions and loopback-only servers. Captures
    436 × 406 at DPR 1, waits for fonts, and disables animations/carets.
 5. Requires the current accepted render to reproduce the saved screenshot at
@@ -119,6 +153,6 @@ or pixels. These checks establish sensitivity to four known defects; they do not
 establish specificity against other acceptable implementations.
 
 Do not turn 13.36% (the accepted design difference) into a universal cutoff. Next:
-review other acceptable variants and additional small defects, then propose and
-validate region-specific gates. Human review remains the visual acceptance gate
+review the two alternatives, then gather more acceptable implementations and
+small defects before proposing and validating region-specific gates. Human review remains the visual acceptance gate
 until those limits are calibrated. Behavior/content checks remain independent.

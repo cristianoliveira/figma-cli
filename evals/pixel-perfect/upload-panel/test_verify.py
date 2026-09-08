@@ -38,6 +38,7 @@ class VerificationPolicyTests(unittest.TestCase):
         reproduction=0,
         hide_color_difference=False,
         browser_error=False,
+        include_alternatives=False,
     ):
         def prepare(name, app):
             app.mkdir(parents=True)
@@ -57,7 +58,12 @@ class VerificationPolicyTests(unittest.TestCase):
             )
 
         def compare(reference, actual, directory, name, threshold):
-            delta = directory.name in ("row-spacing", "missing-row", "status-colors")
+            delta = directory.name in (
+                "row-spacing",
+                "missing-row",
+                "status-colors",
+                "retry-icon",
+            )
             if hide_color_difference and directory.name == "status-colors":
                 delta = False
             return {
@@ -73,7 +79,9 @@ class VerificationPolicyTests(unittest.TestCase):
             patch.object(verify, "compare", side_effect=compare),
             patch("builtins.print"),
         ):
-            outcome = verify.verify(workspace, 5191)
+            outcome = verify.verify(
+                workspace, 5191, include_alternatives=include_alternatives
+            )
         return outcome, commands
 
     def test_live_listener_is_not_reused_or_stopped(self):
@@ -129,6 +137,24 @@ class VerificationPolicyTests(unittest.TestCase):
         ]
         self.assertEqual(len(npm_installs), 1)
         self.assertIn("--ignore-scripts", npm_installs[0].args[0])
+
+    def test_alternatives_allow_visual_difference_but_do_not_infer_acceptance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "run"
+            passed, commands = self.run_mocked(workspace, include_alternatives=True)
+            results = json.loads((workspace / "results.json").read_text())
+        self.assertTrue(passed)
+        self.assertEqual(len(results), 7)
+        self.assertTrue(results["retry-icon"]["observed"]["visual_difference"])
+        for name in ("grid-rows", "retry-icon"):
+            self.assertTrue(results[name]["detected_as_expected"])
+            self.assertEqual(results[name]["review_status"], "pending_human_review")
+        tests = [
+            call
+            for call in commands.call_args_list
+            if call.args[0] == ["npm", "run", "test:coverage"]
+        ]
+        self.assertEqual(len(tests), 3)
 
     def test_runner_fails_when_visual_check_misses_color_defect(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -1,4 +1,4 @@
-"""Materialize accepted source or one deliberate defect; no model calls."""
+"""Materialize accepted source, a defect, or a review candidate; no model calls."""
 
 import argparse
 import hashlib
@@ -52,6 +52,10 @@ def variants() -> dict:
     return json.loads((ROOT / "variants.json").read_text())
 
 
+def alternatives() -> dict:
+    return json.loads((ROOT / "alternatives.json").read_text())
+
+
 def mutate(source: dict[str, bytes], mutation: dict) -> dict[str, bytes]:
     name = mutation["file"]
     if name not in source:
@@ -63,7 +67,7 @@ def mutate(source: dict[str, bytes], mutation: dict) -> dict[str, bytes]:
 
 
 def prepare(variant: str, destination: Path) -> None:
-    definitions = variants()
+    definitions = {**variants(), **alternatives()}
     if variant != "accepted" and variant not in definitions:
         raise ValueError(f"Unknown variant: {variant}")
     verify_accepted()
@@ -79,7 +83,7 @@ def prepare(variant: str, destination: Path) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("variant", choices=["accepted", *variants()])
+    parser.add_argument("variant", choices=["accepted", *variants(), *alternatives()])
     parser.add_argument("destination", type=Path, help="New disposable app directory")
     args = parser.parse_args()
     try:

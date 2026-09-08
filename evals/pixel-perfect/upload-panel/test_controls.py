@@ -53,6 +53,31 @@ class ControlTests(unittest.TestCase):
                 )
         self.assertEqual(original, controls.load_source(ROOT / "accepted/app.tar.gz"))
 
+    def test_alternatives_keep_source_controls_separate_and_require_human_review(self):
+        original = controls.load_source(ROOT / "accepted/app.tar.gz")
+        alternatives = controls.alternatives()
+        self.assertEqual(set(alternatives), {"grid-rows", "retry-icon"})
+        self.assertFalse(set(alternatives) & set(controls.variants()))
+        for name, specification in alternatives.items():
+            with self.subTest(alternative=name):
+                modified = controls.mutate(original, specification)
+                self.assertEqual(
+                    [path for path in original if original[path] != modified[path]],
+                    [specification["file"]],
+                )
+                self.assertEqual(
+                    specification["expected"], {"content": True, "retry": True}
+                )
+                self.assertEqual(specification["review_status"], "pending_human_review")
+                with tempfile.TemporaryDirectory() as temporary:
+                    destination = Path(temporary) / name
+                    controls.prepare(name, destination)
+                    self.assertEqual(
+                        (destination / specification["file"]).read_bytes(),
+                        modified[specification["file"]],
+                    )
+        self.assertEqual(original, controls.load_source(ROOT / "accepted/app.tar.gz"))
+
     def test_ambiguous_or_missing_mutation_fails(self):
         for source in (b"before before", b"no match"):
             with self.subTest(source=source):

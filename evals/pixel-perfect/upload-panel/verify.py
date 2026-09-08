@@ -1,4 +1,4 @@
-"""Exercise the accepted control and four defects. No model calls or quality cutoff."""
+"""Exercise controls and optional alternatives. No model calls or quality cutoff."""
 
 import argparse
 from contextlib import contextmanager
@@ -13,7 +13,7 @@ import time
 from urllib.error import URLError
 from urllib.request import urlopen
 
-from controls import ROOT, prepare, variants
+from controls import ROOT, alternatives, prepare, variants
 
 
 def command(args, cwd, log, timeout=60):
@@ -108,13 +108,15 @@ def matches_expected(observed, expected):
     return all(observed[key] == value for key, value in expected.items())
 
 
-def verify(workspace, port):
+def verify(workspace, port, *, include_alternatives=False):
     workspace.mkdir(parents=True, exist_ok=False)
+    candidates = alternatives() if include_alternatives else {}
     definitions = {
         "accepted": {
             "expected": {"content": True, "retry": True, "visual_difference": False}
         },
         **variants(),
+        **candidates,
     }
     session = f"ppc{os.getpid()}"
     results = {}
@@ -129,16 +131,17 @@ def verify(workspace, port):
                 directory / "install.log",
                 timeout=120,
             )
+        else:
+            # Every source copy has the same lockfile; share one dependency install.
+            (app / "node_modules").symlink_to(
+                workspace / "accepted/app/node_modules", target_is_directory=True
+            )
+        if name == "accepted" or name in candidates:
             command(
                 ["npm", "run", "test:coverage"],
                 app,
                 directory / "tests.log",
                 timeout=120,
-            )
-        else:
-            # Same lockfile in all controls; do not copy dependencies five times.
-            (app / "node_modules").symlink_to(
-                workspace / "accepted/app/node_modules", target_is_directory=True
             )
         command(["npm", "run", "build"], app, directory / "build.log", timeout=120)
         options = {
@@ -224,6 +227,8 @@ def verify(workspace, port):
             "reference_perceptual_rmse": reference_metrics["perceptualRmse"],
             "accepted_delta_changed_pixels": delta["changedPixels"],
         }
+        if name in candidates:
+            results[name]["review_status"] = definition["review_status"]
         (workspace / "results.json").write_text(json.dumps(results, indent=2) + "\n")
         print(
             name,
@@ -239,15 +244,24 @@ def main():
         "workspace", type=Path, help="New disposable directory outside skill inputs"
     )
     parser.add_argument("--port", type=int, default=5191)
+    parser.add_argument(
+        "--include-alternatives",
+        action="store_true",
+        help="Also test Grid rows and thinner Retry icon; human review remains separate",
+    )
     args = parser.parse_args()
     try:
-        passed = verify(args.workspace.resolve(), args.port)
+        passed = verify(
+            args.workspace.resolve(),
+            args.port,
+            include_alternatives=args.include_alternatives,
+        )
     except (OSError, ValueError, RuntimeError, KeyError, tarfile.TarError) as error:
         parser.exit(2, f"Calibration infrastructure error: {error}\n")
     if not passed:
         parser.exit(1, "A control did not behave as expected; inspect results.json\n")
     print(
-        "All controls detected as expected. This establishes sensitivity, not a universal visual quality threshold."
+        "Checks matched expectations. Alternatives still require human review; no universal visual quality threshold is inferred."
     )
 
 
