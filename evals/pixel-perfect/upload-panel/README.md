@@ -122,9 +122,14 @@ conditions passed independent build, tests, fixed seven-row content, Cancel /
 Cancel all / Retry, keyboard collapse/expand, and raw source-capture
 reproduction. Skill + CLI reduced coordinator-measured changed ratio from
 23.2747% to 17.8888% and perceptual RMSE from 0.14251 to 0.13117, but used
-2.23× wall time and 2.69× reported total tokens. This one pair supports a
-visual-metric signal, not a general conclusion. Human blinded visual review is
-still pending; no automated threshold accepts either result.
+2.23× wall time and 2.69× reported total tokens.
+
+The completed blind review selected **Condition B** as closer; unblinded, B is
+**neither skill nor CLI**. Exact feedback, “This looks closer”, is preserved in
+`mid-bundle-v2-feedback-blind.json`. It does not accept either render. This
+human result conflicts with full-frame metrics, so this pair establishes **no
+visual-quality win** for skill + CLI. Keep human review; diagnose regional and
+alpha/shadow metric weighting before another model pair.
 
 ## Verify offline integrity
 

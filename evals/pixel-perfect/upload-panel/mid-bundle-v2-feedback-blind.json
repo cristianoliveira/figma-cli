@@ -1,0 +1,15 @@
+{
+  "reviews": [
+    {
+      "run_id": "eval-1-upload-panel-condition-A-run-1",
+      "feedback": "",
+      "timestamp": "2026-09-08T08:11:13.715Z"
+    },
+    {
+      "run_id": "eval-1-upload-panel-condition-B-run-1",
+      "feedback": "This looks closer ",
+      "timestamp": "2026-09-08T08:11:13.715Z"
+    }
+  ],
+  "status": "complete"
+}
