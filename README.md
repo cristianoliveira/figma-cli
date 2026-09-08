@@ -1,24 +1,184 @@
 # Figma CLI
 
-Read Figma designs from the terminal. Export layout, text, assets, CSS, and tokens.
-Compare a rendered UI with its reference using deterministic image measurements.
-The commands serve developers, scripts, and coding agents that need focused design
-data and repeatable checks instead of manual inspection.
+**Give coding agents design data and measurable feedback to implement Figma UIs.**
 
-This repository ships two tools:
+Screenshots show appearance, but hide layout rules, component relationships, and
+design tokens. Figma CLI reads those facts from Figma and measures differences
+between a reference image and your rendered UI. A vision model is not required.
 
-- **`figma`** reads design data from the Figma API. It requires a Figma access token.
-- **`pixel-perfect`** compares PNG files. It works offline without Figma credentials
-  or a vision model.
+The workflow has three steps:
 
-Use them together for design handoff and visual checks, or use either on its own.
-Neither tool edits Figma designs or captures browser screenshots.
+1. **[Understand the design](#understand-the-design):** read structure, copy, styles,
+   and history instead of guessing from screenshots.
+2. **[Generate implementation inputs](#generate-implementation-inputs):** export
+   assets, CSS, tokens, and reference images instead of copying values by hand.
+3. **[Check the result](#check-the-result):** measure image differences, locate
+   mismatches, and enforce explicit limits instead of relying only on visual judgment.
+
+Two independent tools support this workflow:
+
+| Tool | Responsibility | Requirements |
+| --- | --- | --- |
+| `figma` | Read design data and export files. | Network access and a Figma access token. |
+| `pixel-perfect` | Compare PNGs and produce metrics and reports. | Local PNG files; no Figma token. |
+
+Use either tool on its own or combine them. Neither edits Figma designs, writes
+your application, or captures browser screenshots.
+
+New here? [Install the tools](#install) and [configure access](#configure-figma-access)
+before running the examples below.
+
+## Understand the design
+
+**Start with the smallest scope that answers your question.** Find the relevant
+frame or node, then request its implementation details.
+
+Replace this URL with your Figma frame URL. Later examples reuse `FIGMA_URL`.
+Quote URLs so shell characters such as `&` are passed unchanged.
+
+```bash
+FIGMA_URL="https://www.figma.com/design/KEY/App?node-id=42-1"
+
+figma find --name Button --limit 10 "$FIGMA_URL"
+figma inspect --handoff "$FIGMA_URL"
+figma layout --depth 2 --measure-spacing "$FIGMA_URL"
+```
+
+| Question | Commands |
+| --- | --- |
+| Which projects and files can I access? | `me`, `projects`, `files` |
+| What is in this file or page? | `meta`, `frames`, `find` |
+| How is this node built? | `inspect`, `layout` |
+| What copy, colors, and components does it use? | `texts`, `colors`, `components` |
+| How do selected responsive frames differ? | `layout compare` |
+| What feedback and changes should I review? | `comments`, `versions`, `changes`, `diff text`, `diff blame` |
+
+Names can repeat. Use returned node IDs with `--id` (or `--node`) to select the
+right element. Otherwise, a URL's `node-id` supplies the scope. `frames` discovers
+screen frames within a selected page or section.
+
+### Compare structure and review changes
+
+```bash
+figma layout compare --id 42:1 --id 42:2 "$FIGMA_URL"
+figma components --kind instance --usage "$FIGMA_URL"
+figma components --diff --codebase ./src/components "$FIGMA_URL"
+figma comments --state open "$FIGMA_URL"
+figma versions "$FIGMA_URL"
+figma changes --from VERSION_A --to VERSION_B "$FIGMA_URL"
+figma diff text --from VERSION_A --to VERSION_B "$FIGMA_URL"
+figma diff blame --to VERSION_B "$FIGMA_URL"
+```
+
+Replace example frame and version IDs with IDs from your file.
+
+- Responsive comparison uses explicitly selected frames in the order supplied.
+  It does not infer or test browser breakpoints.
+- Component usage groups instances by component ID. Codebase comparison matches
+  normalized names from immediate directories and root source files; it does not
+  compare implementation behavior or visual appearance.
+- Comments support node scope, thread state, author, date range, and ancestors.
+- `changes` reports frontend-relevant structural differences. `diff text` compares
+  copy; `diff blame` searches for the version that introduced target text.
+
+## Generate implementation inputs
+
+**Export the data and files your implementation needs.** Keep application design
+and behavior in your codebase; generated CSS is a starting point, not a complete UI.
+
+```bash
+figma css --recursive --output design.css "$FIGMA_URL"
+figma tokens --format css --output tokens.css "$FIGMA_URL"
+figma assets --output ./assets "$FIGMA_URL"
+figma export --output reference.png --metadata reference.json "$FIGMA_URL"
+```
+
+| Command | Available output |
+| --- | --- |
+| `css` | CSS rules from layout and appearance, optionally including descendants. |
+| `tokens` | CSS variables, Tailwind theme extension, or style-dictionary JSON. |
+| `assets` | Batch image, instance, and vector exports with a manifest. |
+| `export` | A node as PNG, JPG, SVG, or PDF; raster scale or target width; optional metadata. |
+
+### Choose explicit sources for repeatable output
+
+Tokens default to Variables, then Styles, then a document scan. Scan tokens are
+named by value. Automatic selection can fall back after API errors as well as
+empty results.
+
+For CI, pin `--source variables`, `--source styles`, or `--source scan`. Use
+`--scan-fallback=false` for named sources only. `tokens --team` is not supported.
+
+Asset downloads fail on partial results unless you set `--allow-partial`. Inspect
+the manifest before accepting a partial export.
+
+## Check the result
+
+**Measure differences, then investigate the smallest relevant region.** Capture
+`actual.png` with your browser tooling and compare it with the exported reference:
+
+```bash
+pixel-perfect reference.png actual.png \
+  --reference-metadata reference.json \
+  --overlay overlay.png \
+  --report visual-diff.html
+```
+
+This writes a difference mask, a directional overlay, and a self-contained report.
+Structured output includes changed-pixel ratios, raw and perceptual error metrics,
+mismatch bounds, and local color evidence.
+
+Both prepared images must have equal dimensions and matching logical bounds and
+scale. The tool does not resize or align them automatically. Export metadata can
+apply an explicit logical crop to the reference.
+
+### Locate a mismatch
+
+Export annotations from the same Figma node to label intersecting image regions:
+
+```bash
+figma inspect --recursive --annotations-output annotations.json "$FIGMA_URL"
+
+pixel-perfect reference.png actual.png \
+  --reference-metadata reference.json --annotations annotations.json
+pixel-perfect probe reference.png actual.png \
+  --reference-metadata reference.json --at 20,20
+pixel-perfect scan reference.png actual.png \
+  --reference-metadata reference.json --row 20
+```
+
+Choose probe and scan coordinates inside the prepared image. Keep crop options
+consistent across comparisons, probes, and scans. Annotations add context without
+changing measurements. Explicit inspect depth also bounds annotation traversal;
+the stdout result limit does not limit the annotation file.
+
+The [pixel-perfect guide](cmd/pixel-perfect/README.md) covers crops, masks, ignored
+regions, profiles, movement suggestions, and optional provider descriptions.
+
+### Set acceptance limits deliberately
+
+Differences alone **do not fail the comparison**. For exact raw-pixel matching at
+the default threshold, add a zero changed-ratio limit:
+
+```bash
+pixel-perfect reference.png actual.png \
+  --reference-metadata reference.json --max-changed-ratio 0
+```
+
+For tolerances, calibrate `--max-rmse`, `--max-changed-ratio`, and
+`--max-perceptual-changed-ratio` against accepted captures and known regressions.
+Do not copy a threshold from another UI or raise it just to make a check pass.
+
+Fix browser, OS, fonts, viewport, device scale, and application state between
+captures. Wait for fonts and disable animations. Keep behavior, accessibility,
+and human visual review separate: lower image error does not prove a working or
+acceptable UI. Optional model descriptions are advisory, not validation evidence.
 
 ## Install
 
 ### Build from source
 
-Requires Git and Go 1.25.5 or newer. Run these commands from your terminal:
+Requires Git and Go 1.25.5 or newer:
 
 ```bash
 git clone https://github.com/cristianoliveira/figma-cli.git
@@ -29,7 +189,7 @@ export PATH="$PWD/bin:$PATH"
 ```
 
 To install into your Go binary directory instead, run this from the repository
-root, then add your Go binary directory to `PATH`:
+root, then add that directory to `PATH`:
 
 ```bash
 go install ./cmd/figma ./cmd/pixel-perfect
@@ -44,150 +204,47 @@ nix run .#figma -- --help
 nix run .#pixel-perfect -- --help
 ```
 
-Use `nix build .#figma .#pixel-perfect` to build both tools, or `nix develop` to
-enter the development shell.
+Use `nix build .#figma .#pixel-perfect` to build both tools. Use `nix develop` for
+the development shell.
 
 ## Configure Figma access
 
 Create a [Figma personal access token](https://www.figma.com/developers/api#access-tokens)
-with access to the files you need. Set it in your shell, then check access:
+with access to the files you need. Export it in your shell and verify access:
 
 ```bash
 export FIGMA_ACCESS_TOKEN="replace-with-your-token"
 figma me
 ```
 
-Prefer your shell's secret manager or CI secret store. Do not commit tokens.
-The CLI reads environment variables; it does **not** load `.env` files itself.
-If you use an environment loader, configure it to export `FIGMA_ACCESS_TOKEN`.
+Prefer a shell secret manager or CI secret store. Never commit tokens. The CLI
+reads environment variables; it does **not** load `.env` files itself.
 
-Running `figma` or `pixel-perfect` without arguments shows the executable path
-and suggested commands. These views do not make network requests or read images.
-`figma me`, unlike the no-argument view, checks access with Figma.
+Running either tool without arguments shows its executable path and suggested
+commands without network requests or image reads. Use `figma me` to check
+credentials with Figma. Local image comparison needs no credentials; optional
+visual descriptions require provider configuration and send images to that provider.
 
-## Quick start
+## Use predictable command contracts
 
-Replace the example URL with a frame URL from your Figma file. Quote URLs so
-shell characters such as `&` are passed unchanged.
+**Request only what you need, and check the exit code before consuming results.**
 
-```bash
-FIGMA_URL="https://www.figma.com/design/KEY/App?node-id=42-1"
-
-figma inspect --handoff "$FIGMA_URL"
-figma layout "$FIGMA_URL"
-figma assets --output ./assets "$FIGMA_URL"
-figma export --output reference.png "$FIGMA_URL"
-```
-
-Capture `actual.png` from your implementation with your browser tooling. Then run:
-
-```bash
-pixel-perfect reference.png actual.png --report visual-diff.html
-```
-
-The comparison writes a difference mask and reports metrics. Differences alone
-**do not fail the command**. Add a validation limit for CI, such as
-`--max-changed-ratio 0` when you require an exact match at the default threshold.
-Both prepared images must have equal dimensions; the tool does not resize or
-align them automatically.
-
-## Features
-
-### Find and inspect designs
-
-| Command | Use it to |
+| Contract | Behavior |
 | --- | --- |
-| `me` | Check your identity and Figma access. |
-| `projects`, `files` | List a team's projects and a project's files. |
-| `meta` | Read file metadata. |
-| `frames` | List screen frames in a selected page or section. |
-| `find` | Search layers by name, type, or both. |
-| `inspect` | Read node bounds, layout, appearance, text, and component properties. |
-| `layout` | Read an ordered frame tree with copy and optional spacing measurements. |
-| `layout compare` | Compare explicitly selected responsive frames. |
-| `texts`, `colors` | Extract ordered copy and a color palette. |
-| `components` | List components, sets, instances, and instance usage. |
+| Structured output | TOON by default; global `--json` selects compatibility JSON. |
+| Text and file output | CSS, tokens, and recursive text views retain their own formats. |
+| Collection bounds | Most collection commands return at most 100 local results. Read `total` and `truncated`. |
+| Layout depth | Defaults to 4; `--full` removes the local depth bound. |
+| Pixel inspection | Probe/scan default to CSV and 25 points or 25 runs per image; use `--format json` for JSON. |
+| Streams | Results and structured errors use stdout; diagnostics use stderr. |
+| Exit codes | `0` success; `1` operational failure, failed gate, or documented quiet no-match; `2` usage error. |
 
-Start with a small scope, then inspect only the nodes you need:
+Use truncation hints or `--full` to retrieve more output. Do not combine `--full`
+with `--limit`, or layout `--full` with explicit `--depth`. Local limits, traversal
+depth, and API pagination are separate controls.
 
-```bash
-figma find --name Button --limit 10 "$FIGMA_URL"
-figma inspect --handoff "$FIGMA_URL"
-figma layout --depth 2 --measure-spacing "$FIGMA_URL"
-figma texts "$FIGMA_URL"
-figma components --kind instance --usage "$FIGMA_URL"
-```
-
-Names can repeat. Use returned node IDs to select the right element with `--id`
-(or its alias `--node`). A URL's `node-id` supplies the scope when no override is set.
-
-For responsive comparison, select at least two frames in the intended order:
-
-```bash
-figma layout compare --id 42:1 --id 42:2 "$FIGMA_URL"
-```
-
-This compares design frames; it does not infer or test browser breakpoints.
-
-### Generate implementation inputs
-
-| Command | Output |
-| --- | --- |
-| `css` | CSS rules from layout and appearance, optionally including descendants. |
-| `tokens` | CSS variables, Tailwind theme extension, or style-dictionary JSON. |
-| `assets` | Batch image, instance, and vector exports with a manifest. |
-| `export` | One node as PNG, JPG, SVG, or PDF; optional export metadata. |
-
-```bash
-figma css --recursive --output design.css "$FIGMA_URL"
-figma tokens --format css --output tokens.css "$FIGMA_URL"
-figma tokens --format tailwind --output tailwind.tokens.js "$FIGMA_URL"
-figma tokens --format json --output tokens.json "$FIGMA_URL"
-figma export --format png --width 800 --output reference.png "$FIGMA_URL"
-```
-
-Token source selection defaults to Variables, then Styles, then a document scan.
-Scan tokens are named by value. Use `--scan-fallback=false` for named sources only,
-or pin `--source variables`, `--source styles`, or `--source scan` in CI. Automatic
-selection can fall back after API errors as well as empty results. Team-library
-extraction through `tokens --team` is not supported.
-
-Asset downloads fail on partial results unless you set `--allow-partial`. Check the
-manifest before using that option. Generated CSS is a starting point, not a complete
-responsive implementation.
-
-### Review components, comments, and history
-
-```bash
-figma components --diff --codebase ./src/components "$FIGMA_URL"
-figma comments --state open "$FIGMA_URL"
-figma versions "$FIGMA_URL"
-figma changes --from VERSION_A --to VERSION_B "$FIGMA_URL"
-figma diff text --from VERSION_A --to VERSION_B "$FIGMA_URL"
-figma diff blame --to VERSION_B "$FIGMA_URL"
-```
-
-Replace version placeholders with IDs from `versions`.
-
-- Component/codebase comparison matches normalized names from immediate component
-  directories and root source files. It does not compare behavior, source semantics,
-  or visual appearance.
-- Comments support node scope, thread state, author, date range, and ancestor filters.
-- `changes` reports frontend-relevant structural differences. `diff text` compares
-  copy; `diff blame` searches history for the version that introduced target text.
-
-## Keep output small and predictable
-
-Structured results use **TOON** by default. Pass global `--json` for compatibility
-JSON. CSS, token files, recursive text views, and probe/scan CSV keep their own formats.
-
-Most collection commands return at most 100 local results. Read `total` and
-`truncated` rather than assuming every result was returned. Use the emitted hint
-or `--full` when needed; do not combine `--full` with `--limit`. API pagination and
-command-specific depth controls are separate.
-
-`layout` defaults to depth 4. Its `--full` removes the local depth bound and cannot
-be combined with explicit `--depth`. For a compact recursive inspection:
+For a compact implementation outline, select fields instead of filtering a large
+payload yourself:
 
 ```bash
 figma inspect --recursive --depth 3 --format text \
@@ -195,65 +252,28 @@ figma inspect --recursive --depth 3 --format text \
   "$FIGMA_URL"
 ```
 
-See [command contracts](docs/command-contracts.md) for output fields, bounds, and
-compatibility rules. Run `figma COMMAND --help` for local flags and examples.
+A failed pixel gate still writes the comparison result to stdout and a diagnosis
+to stderr. See [command contracts](docs/command-contracts.md) for exact semantics,
+and use each command's `--help` for supported options.
 
-## Compare a design with a browser capture
+## Develop and extend
 
-Export the same node for the reference, logical crop metadata, and annotations:
+Keep commands focused on wiring. Keep Figma transport, document extraction, image
+measurement, and output rendering separate so each can be tested independently.
 
-```bash
-figma export --output reference.png --metadata reference.json "$FIGMA_URL"
-figma inspect --recursive --annotations-output annotations.json "$FIGMA_URL"
-
-pixel-perfect reference.png actual.png \
-  --reference-metadata reference.json \
-  --annotations annotations.json \
-  --overlay overlay.png \
-  --report visual-diff.html
-```
-
-The implementation screenshot must use the same logical bounds and scale.
-Annotations label intersecting mismatch regions; they do not change measurements.
-An explicit inspect `--depth` also bounds annotation traversal. The stdout result
-limit does not limit the annotation file.
-
-For closer diagnosis:
-
-```bash
-pixel-perfect probe reference.png actual.png --at 20,20
-pixel-perfect scan reference.png actual.png --row 20
-```
-
-Probe and scan use CSV by default, with a limit of 25 points or 25 runs per image.
-Use `--format json`, `--limit`, or `--full` as needed. If the comparison used crops,
-pass the same crop options to probe and scan.
-
-For repeatable captures, fix the browser, OS, fonts, viewport, device scale, and
-application state. Wait for fonts and disable animations. Review behavior and
-accessibility separately: matching pixels do not prove a working UI.
-
-See the [pixel-perfect guide](cmd/pixel-perfect/README.md) for metrics, crops,
-profiles, masks, validation gates, reports, and optional visual descriptions.
-
-## Exit codes
-
-| Code | Meaning |
+| Directory | Responsibility |
 | --- | --- |
-| `0` | Success, including empty queries or comparisons without a failed gate. |
-| `1` | Operational failure, failed comparison gate, or a documented quiet no-match. |
-| `2` | Invalid arguments or flags. |
+| `cmd/` | Command definitions and executable entry points. |
+| `internal/cli/`, `internal/output/` | Dependency wiring, formats, and error contracts. |
+| `internal/figma/` | Figma input parsing, HTTP, and typed API adapters. |
+| `internal/extract/` | Pure document transformations. |
+| `internal/assets/`, `internal/comments/`, `internal/diff/` | Export, comment, and history workflows. |
+| `internal/components/`, `internal/annotations/` | Name-based parity and coordinate annotations. |
+| `internal/imagediff/` | Generic PNG measurements, independent of Figma. |
+| `internal/pixelperfectcmd/`, `internal/pixelperfectreport/` | Image workflow and HTML reports. |
+| `internal/imagecontext/` | Optional provider descriptions. |
 
-Results and structured errors go to stdout. Diagnostics go to stderr. A failed
-pixel validation gate still emits the comparison result to stdout and explains
-the failure on stderr. Check the exit code before treating output as a success.
-
-## Development
-
-Run development commands from the repository root. `nix develop` supplies Go,
-`goimports`, `golangci-lint`, and test tooling.
-
-Start with tests for the package you change:
+Run focused tests from the repository root:
 
 ```bash
 go test ./internal/extract -run TestExtractLayout -count=1
@@ -261,28 +281,12 @@ go test ./internal/imagediff -run TestCompareImages -count=1
 git diff --check
 ```
 
-Use the repository watcher or CI for full checks. Run binary smoke tests with
-`-count=1` because they build subprocesses. Live Figma checks are
-[opt-in](docs/live-figma-smoke.md); normal tests do not require credentials.
+Use the repository watcher or CI for full checks. Run subprocess-based smoke tests
+with `-count=1`. Live Figma checks are [opt-in](docs/live-figma-smoke.md); normal
+tests need no credentials. Regenerate API models from `openapi/` instead of editing
+`internal/figma/api/` generated code by hand.
 
-### Code layout
-
-| Directory | Responsibility |
-| --- | --- |
-| `cmd/` | Command definitions and executable entry points. |
-| `internal/cli/`, `internal/output/` | Dependency wiring, formats, errors, and output contracts. |
-| `internal/figma/` | Figma inputs, HTTP, and typed API adapters. |
-| `internal/extract/` | Pure document transformations. |
-| `internal/assets/`, `internal/comments/`, `internal/diff/` | Export, comment, and history workflows. |
-| `internal/components/`, `internal/annotations/` | Name-based parity checks and coordinate annotations. |
-| `internal/imagediff/` | Generic PNG measurements, independent of Figma. |
-| `internal/pixelperfectcmd/`, `internal/pixelperfectreport/` | Image workflow and HTML reports. |
-| `internal/imagecontext/` | Optional provider descriptions, separate from measurements. |
-
-Regenerate models in `internal/figma/api/` from `openapi/`; do not edit generated
-code by hand. Keep commands focused on wiring and pure logic in its owning package.
-
-### More documentation
+### Further reading
 
 - [Figma agent workflow](skills/figma-cli/SKILL.md)
 - [Figma-to-browser workflow](skills/figma-pixel-perfect-loop/SKILL.md)
