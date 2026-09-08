@@ -4,7 +4,7 @@
 
 # Boundaries
 
-The skill describes an iterative workflow and references stable CLI contracts. It must not contain the target implementation or leak evaluation answers; holdout controls belong in [evaluation fixtures](evals/AGENTS.md).
+The skill describes an iterative workflow and references stable CLI contracts. It must not contain the target implementation or leak evaluation answers; holdout controls belong in [evaluation fixtures](../../tests/evals/AGENTS.md).
 
 # Connections
 

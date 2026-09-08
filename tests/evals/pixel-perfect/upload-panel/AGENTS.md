@@ -8,8 +8,8 @@ The controls are grader inputs, not skill content or production examples. Verifi
 
 # Connections
 
-- [Evaluation root](evals/AGENTS.md): owns the evaluation scope and placement policy.
-- [Pixel-perfect skill](skills/pixel-perfect/AGENTS.md): is evaluated against these controls.
+- [Evaluation root](../../AGENTS.md): owns the evaluation scope and placement policy.
+- [Pixel-perfect skill](../../../../skills/pixel-perfect/AGENTS.md): is evaluated against these controls.
 
 # Placement
 

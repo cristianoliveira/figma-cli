@@ -8,9 +8,9 @@ These helpers validate evaluation inputs and packaging. They do not score model 
 
 # Connections
 
-- [Pixel-perfect skill](skills/pixel-perfect/AGENTS.md): is the subject of the package checks.
-- [Evaluation fixtures](evals/AGENTS.md): owns holdout implementation controls and accepted evidence.
+- [Pixel-perfect skill](../AGENTS.md): is the subject of the package checks.
+- [Evaluation fixtures](tests/evals/AGENTS.md): owns holdout implementation controls and accepted evidence.
 
 # Placement
 
-Keep schema and packaging checks beside the skill inputs. Keep accepted implementations, defect controls, and coordinator-owned evidence in the separate `evals/` tree.
+Keep schema and packaging checks beside the skill inputs. Keep accepted implementations, defect controls, and coordinator-owned evidence in the separate `tests/evals/` tree.
