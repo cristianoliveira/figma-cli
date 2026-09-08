@@ -1,8 +1,15 @@
-# Pixel Perfect implementation evals
+# Pixel-perfect skill evaluations
 
-Evaluate whether the skill helps an agent deliver a working component from a
-PNG—not whether it can recite CLI flags. No Figma token or live upload service
-is needed. Cases and expectations are in `evals.json` (skill-creator format).
+Measure whether the skill helps an agent build a working UI from a PNG. Knowing
+CLI flags is not enough: the result must have real source, working controls, and
+independently checked screenshots.
+
+Cases and expectations are in [`evals.json`](evals.json), in skill-creator format.
+No Figma token or live upload service is needed. Model runs can use paid provider
+calls; agree on scope before starting them.
+
+Follow this order: check fixtures, agree on run limits, run candidate and baseline,
+then grade retained evidence. Keep accepted solutions out of candidate inputs.
 
 ## Cases and success criteria
 
@@ -18,7 +25,7 @@ Each case gets the same source archive, reference PNG, and fixed data. Do not
 pre-implement the target component in the fixture. See
 [fixture instructions](../fixtures/README.md) for dependencies and repacking.
 
-## Offline validation
+## 1. Check inputs offline
 
 From the repository root:
 
@@ -26,28 +33,31 @@ From the repository root:
 python3 -B -m unittest discover -s skills/pixel-perfect/evals -p 'test_*.py' -v
 ```
 
-These checks validate packaging, fixture integrity, schema essentials, and crop
-geometry. They are **not** model quality scores. Verify an extracted app with
-`npm ci --ignore-scripts`, `npm run test:coverage`, and `npm run build` before
-spending model calls.
+These checks validate packaging, fixture integrity, required fields, and crop
+geometry. They do **not** measure model quality. In a disposable extracted app,
+run `npm ci --ignore-scripts`, `npm run test:coverage`, and `npm run build` before
+spending model calls. See the [fixture guide](../fixtures/README.md) for setup.
 
-## Run a comparison after scope approval
+## 2. Agree on scope and run a comparison
 
-Agree on model/tier, cases, repetitions, concurrency, timeouts, and iteration
-limits first. Suggested smoke: **case 1, one candidate/baseline pair, sequential,
-900 seconds per run, five refinement iterations**. This is two model executions;
-grading calls, if used, are additional. A smoke run does not establish reliability.
-Then consider all three cases with three repetitions per side (18 executions).
+Choose the model/tier, cases, repetitions, concurrency, timeouts, and refinement
+limits before running. A small first check is **case 1, one candidate/baseline
+pair, sequential, 900 seconds per run, five refinement iterations**.
 
-Use the installed `skill-creator` runner rather than adding another eval engine.
-Snapshot the complete original skill outside the candidate before edits. For a
-legacy snapshot containing installed dependencies, prepare a separate baseline
-execution copy containing its unchanged `SKILL.md` and required references/scripts
-only; supply the exact same fixtures through `--file` to both configurations.
-Record that preparation in eval metadata. Never send `node_modules` or prior
-session transcripts as skill content.
+That is two model executions; grading calls cost extra. One pair checks setup,
+not reliability. A larger run with all three cases and three repetitions per side
+requires 18 executions. Case 3 keeps its stricter two-iteration limit.
 
-Example setup (absolute paths; choose a fresh iteration directory):
+Use the installed `skill-creator` runner; do not add another evaluation engine.
+Save the complete original skill outside the candidate before edits. If that
+snapshot contains installed dependencies, make a separate baseline execution copy
+with its unchanged `SKILL.md` and required references/scripts only. Supply the same
+fixtures through `--file` to both sides and record the preparation in run metadata.
+Never include `node_modules` or old session transcripts as skill content.
+
+Example setup: start at the repository root. Replace the absolute paths below
+with your installed runner, saved baseline, and a new iteration directory. Read
+the installed runner's help before use; its interface can change.
 
 ```sh
 export SKILL_ROOT="$PWD/skills/pixel-perfect"
@@ -93,7 +103,7 @@ outputs under `outputs/`. It isolates context, **not the host filesystem or
 network**. Use disposable workspaces, loopback servers, and no production data.
 Stop browsers/dev servers after each run; never reuse a run directory.
 
-## Grade evidence, not assertions in the final message
+## 3. Grade evidence, not the agent's claims
 
 Follow skill-creator's `agents/grader.md`. Save `grading.json` beside each run's
 `timing.json` with expectation `text`, `passed`, and specific `evidence`, plus
@@ -113,9 +123,10 @@ summary counts and pass rate. Review these gates:
 - Count runtime/provider/tool setup failures as infrastructure errors, not
   successful negative cases. Absence of metrics is not a verified match.
 
-Use independent grading where practical; disclose inline-grading limitations.
-Keep expectations fixed for both sides. If an assertion is flawed, revise it
-explicitly and regrade both. Report pass rates **and** time/tokens/variation.
+Use a separate grader where practical. If the same agent grades its own work,
+state that limit. Keep expectations fixed for both sides. If a check is flawed,
+record the change and regrade both sides. Report pass rates, time, tokens, and
+variation across runs.
 
 From skill-creator, aggregate and generate its existing review viewer:
 
@@ -127,6 +138,12 @@ python3 eval-viewer/generate_review.py "$(dirname "$CASE_ROOT")" \
   --static "$(dirname "$CASE_ROOT")/review.html"
 ```
 
-Keep screenshots, agent outputs, reports, and benchmark workspaces outside the
-skill and untracked. Current scope is content execution; these prompts do not
-measure whether an agent chooses the skill from the full installed catalog.
+## 4. Keep results separate from inputs
+
+Keep screenshots, agent outputs, reports, and run workspaces outside the skill
+and untracked. Stop each run's browser and server before starting another run.
+Never reuse a run directory or copy an accepted solution into the starter fixture.
+
+These cases test execution with a supplied skill. They do not test whether an
+agent selects that skill from its installed catalog. A successful run also does
+not establish a universal pixel tolerance or a general quality improvement.

@@ -1,224 +1,238 @@
-# Upload-panel calibration controls
+# Upload-panel evaluation controls
 
-Keep the accepted answer and evaluator checks here, **outside `skills/`**. The
-skill-creator runner copies the entire skill into the implementing agent's run;
-putting the answer there would leak the solution. These files are grader inputs,
-not task inputs. Never pass this folder through `--skill-path` or `--file`.
+This folder contains accepted evidence, deliberate defects, and independent checks
+for the upload-panel implementation task. It is for graders, **not candidate
+agents**.
 
-Context isolation is not a filesystem sandbox. For a true holdout, run the
-implementing agent in an environment that cannot access this directory. Merely
-keeping it outside the copied skill does not prevent host filesystem access.
+Keep these files outside `skills/`. Never pass this folder through `--skill-path`
+or `--file`. The skill runner copies skill content into candidate runs, so putting
+an answer there would reveal the solution.
 
-## Accepted reference
+Folder separation is not a filesystem sandbox. For a true holdout, run candidates
+in an environment that cannot read this directory. A run that can access the host
+filesystem is not isolated from answers merely because they were not copied.
 
-`accepted/` contains the source-only app archive, reference PNG, accepted browser
-screenshot, original comparison metrics/mask/overlay, capture settings, and
-checksummed provenance. Cristian accepted this result with **“Looks good”**.
-The original app tests and six component tests remain inside the source archive.
-There are no installed dependencies, transcripts, credentials, or browser profiles.
+## Choose a check
 
-This is a known acceptable implementation, **not the only correct source code**.
-Do not replace the blank starter app in `skills/pixel-perfect/fixtures/` with it.
-Treat this snapshot as immutable; record a separately named example if accepting
-a new version. The original metric artifact paths are historical; `mask.png` and
-`overlay.png` are the corresponding durable files here.
+| Goal | Tool | Requires |
+| --- | --- | --- |
+| Check fixture integrity and runner policy | Python unit tests | Python 3.10+; no browser or model calls. |
+| Exercise accepted and defective implementations | `verify.py` | Node.js 22.12+, npm 11, `pixel-perfect`, and `playwright-cli` with Chromium. |
+| Verify one candidate's delivered app | `ab_verify.py` | The browser/build toolchain and a completed run with `outputs/app`. |
+| Inspect a source mutation without a browser | `controls.py` | Python 3.10+. |
 
-## Four one-defect controls
+Run commands below from the repository root. Use a new disposable evidence
+workspace each time. Dependency installation may need npm registry access.
+The control runner makes no model calls, Figma requests, or real uploads.
 
-`variants.json` describes exact source replacements. Each variant starts from
-the accepted archive, never from another mutated app. Full copies are generated
-only in disposable workspaces, avoiding duplicate archives in Git.
+## Check integrity offline
 
-| Control | Deliberate defect | Content check | Retry check | Initial image differs from accepted |
-| --- | --- | --- | --- | --- |
-| Accepted | None | Pass | Pass | No |
-| Row spacing | Rows 40px instead of 46px | Pass | Pass | Yes |
-| Missing row | Omit completed video item | Fail | Pass | Yes |
-| Status colors | Completed text purple instead of green | Pass | Pass | Yes |
-| Broken Retry | Retry leaves failed item unchanged | Pass | Fail | **No** |
-
-The checker does not receive the variant's name or expected outcome. It checks
-all seven visible names/states, exercises Retry, and captures real DOM. Only the
-runner compares observations to the declared expected outcome. A negative
-control being detected is a **successful evaluator check**, not a good component.
-
-## Implementation alternatives
-
-`alternatives.json` adds two candidates without changing the accepted snapshot:
-
-- **Grid rows:** use CSS Grid instead of Flexbox. In the measured capture, it is
-  pixel-identical at threshold 0 despite different source code.
-- **Retry icon:** use a thinner 1.5px stroke. It changes 113 pixels at threshold 8
-  while keeping the control name, hit area, content, and Retry behavior.
-
-Both pass all 22 app tests, coverage gates, build, and the browser content/Retry
-checks. These are small edits to one implementation, not independently built apps.
-The **thinner Retry icon is accepted**: Cristian answered “Yes” to “Would you
-accept this thinner icon too?”. Exact feedback, reviewed screenshot, and source
-hashes are preserved in `reviews/retry-icon.json` and `reviews/retry-icon.png`.
-Grid remains pending separate human review. Passing technical checks alone does
-not change `review_status` to accepted.
-
-Run them alongside the original controls:
-
-```sh
-python3 -B tests/evals/pixel-perfect/upload-panel/verify.py \
-  "$PWD/.tmp/pixel-perfect-controls/alternatives-NEW" --include-alternatives
-```
-
-Unlike deliberate defects, alternatives do not prescribe `visual_difference`
-in their expectations. The runner still records that measurement, but does not
-reject a candidate just because some pixels differ. Content and Retry must pass.
-Read the generated `retry-icon/accepted-delta-report.html` to review the icon
-against the original accepted render. The recorded approval covers only the
-thinner Retry icon, not all icon changes or a universal pixel tolerance.
-
-`alternative-observations.json` stores the measured results and screenshot/checker
-hashes. The older `observations.json` is retained as a historical measurement of
-the original controls; its checker hashes describe the earlier code, not the
-current runner. The observations also retain their original pre-review pending
-statuses; `alternatives.json` and linked review records show current decisions.
-Neither observation file is an automatically calibrated tolerance.
-
-## Coordinator-owned A/B verification
-
-`ab_verify.py` grades one agent run without trusting its screenshots, claims, or
-metrics. It requires the app directly at `outputs/app`, installs locked
-dependencies, runs tests and a production build, and uses the fixed Chromium
-profile in `accepted/capture.json`. `ab_browser_check.js` then takes raw
-transparent `initial.png` and `final.png` screenshots from fresh seven-item
-source state, tests Cancel/Cancel all/Retry separately, and checks keyboard
-collapse/expand. A threshold-zero comparison must reproduce the two raw source
-captures before reference metrics are recorded.
-
-Run it after an agent run, from a new coordinator workspace:
-
-```sh
-python3 -B tests/evals/pixel-perfect/upload-panel/ab_verify.py \
-  /absolute/run-directory /absolute/new-evidence-directory --port 5193
-```
-
-The coordinator, not the candidate, produces `reference-metrics.json`, mask,
-overlay, report, screenshots, source hashes, and `result.json`. Metrics remain
-review evidence, not an automated visual-quality threshold.
-
-## Mid-tier bundle pilot
-
-`mid-bundle-pilot.json` records one GPT-5.6 Luna/high pair: skill + CLI versus
-neither, with the same neutral prompt and a 900-second cap. **No visual winner
-was established.** Baseline completed but postprocessed its screenshots and used
-a five-item final scene. Assisted timed out after browser setup detours and
-measurement work; its unfinished test file fails the production type check.
-Both snapshots retain the original tests and pass 18 tests plus coverage gates.
-
-Before another pair, pin the tested browser and explicitly require raw captures
-of the same seven-item scene. The record retains protocol, usage, artifact hashes,
-and local evidence paths. It is a pilot failure record, not a skill benchmark win.
-
-## Revised mid-tier bundle result
-
-`mid-bundle-v2.json` records one completed GPT-5.6 Luna/high pair. Both
-conditions passed independent build, tests, fixed seven-row content, Cancel /
-Cancel all / Retry, keyboard collapse/expand, and raw source-capture
-reproduction. Skill + CLI reduced coordinator-measured changed ratio from
-23.2747% to 17.8888% and perceptual RMSE from 0.14251 to 0.13117, but used
-2.23× wall time and 2.69× reported total tokens.
-
-The completed blind review selected **Condition B** as closer; unblinded, B is
-**neither skill nor CLI**. Exact feedback, “This looks closer”, is preserved in
-`mid-bundle-v2-feedback-blind.json`. It does not accept either render. This
-human result conflicts with full-frame metrics, so this pair establishes **no
-visual-quality win** for skill + CLI. Keep human review; diagnose regional and
-alpha/shadow metric weighting before another model pair.
-
-## DeepSeek factorial status
-
-`factorial-deepseek-v1.json` records a separate 2×2 skill/CLI experiment with
-DeepSeek v4 Flash/high. Preflight confirmed CLI availability only in its two
-intended cells and rejected explicit browser selection everywhere. All four
-conditions timed out at the 900-second cap before delivering source. It has no
-functional or visual result; do not infer an effect or repeat the same design
-unchanged.
-
-## Verify offline integrity
-
-From repository root (Python 3.10+):
-
-```sh
+```bash
 python3 -B -m unittest discover -s tests/evals/pixel-perfect/upload-panel -p 'test_*.py' -v
 ```
 
-Tests cover provenance, archive paths/links/size limits, exact single-file
-mutations, missing/ambiguous replacements, starter separation, and runner policy.
-Runner-policy tests mock browser/process execution and do not prove UI behavior.
+Tests cover provenance, archive paths/links/size limits, exact mutations,
+missing or ambiguous replacements, separation from the starter, and runner policy.
+Tests that mock browser/process execution do **not** prove UI behavior.
 
-## Run real controls
+## Run browser controls
 
-Requires Node.js 22.12+, npm 11, installed `pixel-perfect`, and `playwright-cli`
-with Chromium. npm registry access is needed for the first locked install;
-there are **no model calls, Figma requests, or actual uploads**.
+Choose a new path in place of `run-NEW`:
 
-```sh
+```bash
 python3 -B tests/evals/pixel-perfect/upload-panel/verify.py \
   "$PWD/.tmp/pixel-perfect-controls/run-NEW" --port 5191
 ```
 
-Use a new workspace each time. The runner:
+Add `--include-alternatives` to check the two implementation alternatives as well:
 
-1. Verifies accepted checksums and safely materializes five source trees (seven
-   with `--include-alternatives`).
-2. Installs locked dependencies once with lifecycle scripts disabled; variants
-   share that install through local symlinks. Only trusted accepted code runs.
-3. Runs accepted app tests/coverage and, when selected, both alternatives' tests
-   and coverage. Builds **every** control so syntax or build failures cannot
-   masquerade as detected defects.
-4. Uses fresh, short-named browser sessions and loopback-only servers. Captures
-   436 × 406 at DPR 1, waits for fonts, and disables animations/carets.
-5. Requires the current accepted render to reproduce the saved screenshot at
-   threshold 0 before interpreting controls. Browser/OS/system-font drift blocks
-   calibration; it is not a failed component or permission to update the golden.
-6. Applies the same content/Retry checks to all controls. Compares each image
-   both with the design PNG and accepted render at threshold 8, without resizing,
+```bash
+python3 -B tests/evals/pixel-perfect/upload-panel/verify.py \
+  "$PWD/.tmp/pixel-perfect-controls/alternatives-NEW" --include-alternatives
+```
+
+The runner:
+
+1. Checks accepted hashes and creates five source trees, or seven with alternatives.
+2. Installs locked dependencies with lifecycle scripts disabled. Variants share that
+   install through local symlinks. This runner executes trusted control code only.
+3. Runs accepted-app tests and coverage, plus alternative tests and coverage when
+   selected. Builds every control so a build error cannot count as a detected defect.
+4. Uses fresh browser sessions and loopback servers. Captures 436 × 406 at DPR 1,
+   waits for fonts, and disables animations and carets.
+5. Requires the accepted render to match its saved screenshot at threshold 0.
+   Browser, OS, or font drift blocks the run; it is not permission to update the golden.
+6. Runs the same content/Retry checks on every control. Compares each capture with
+   both the design PNG and accepted render at threshold 8, without resizing,
    cropping, or ignored regions. Saves screenshots, overlays, reports, and JSON.
-7. Closes only its own browser/server and saves `results.json`.
+7. Closes its own browser/server and writes `results.json`.
 
-Exit codes: **0** all controls behaved as declared; **1** at least one defect
-escaped its expected checks; **2** infrastructure error. Inspect logs, not just
-an exit code. Browser crashes and malformed results never count as passing
-negative controls. Failed workspace artifacts remain available for diagnosis.
+| Exit | Meaning |
+| --- | --- |
+| `0` | Every control behaved as declared. |
+| `1` | At least one control did not produce its expected checks. |
+| `2` | Infrastructure error. |
 
-To inspect one source variant without running a browser:
+Read logs as well as exit codes. Browser crashes and malformed results do not
+count as detected defects. Failed workspace artifacts remain for diagnosis.
 
-```sh
+## Accepted reference
+
+[`accepted/`](accepted/) contains a source-only app archive, design PNG, accepted
+browser capture, original metrics/mask/overlay, capture settings, and checksummed
+provenance. Cristian accepted the result with **“Looks good”**. The archive retains
+the original app tests and six component tests, without installed dependencies,
+transcripts, credentials, or browser profiles.
+
+This is one acceptable implementation, **not the only correct implementation**.
+Do not replace the blank starter in `skills/pixel-perfect/fixtures/` with it.
+Keep the snapshot immutable; store a separately named example for a new acceptance.
+Original metric paths are historical. `mask.png` and `overlay.png` are the retained
+artifacts in this folder's accepted snapshot.
+
+## Deliberate defects
+
+[`variants.json`](variants.json) defines exact source replacements. Each variant
+starts from the accepted archive, not from another modified variant. Full source
+trees are created only in disposable workspaces.
+
+| Control | Defect | Content check | Retry check | Initial image differs from accepted |
+| --- | --- | --- | --- | --- |
+| Accepted | None | Pass | Pass | No |
+| Row spacing | 40px rows instead of 46px | Pass | Pass | Yes |
+| Missing row | Completed video item omitted | Fail | Pass | Yes |
+| Status colors | Completed text purple instead of green | Pass | Pass | Yes |
+| Broken Retry | Failed item unchanged after Retry | Pass | Fail | **No** |
+
+The browser checker does not receive a variant name or expected result. It checks
+all seven visible names/states, exercises Retry, and captures the DOM. The runner
+then compares observations with expectations. Detecting a known defect means the
+**evaluator worked**, not that the component passed.
+
+To inspect one mutation without a browser:
+
+```bash
 python3 -B tests/evals/pixel-perfect/upload-panel/controls.py \
   broken-retry "$PWD/.tmp/broken-retry-app"
 ```
 
-The original component regression test also catches broken Retry. After installing
-dependencies, run this inside the accepted or broken app directory:
+The component regression test also catches broken Retry. After installing
+dependencies, run this inside the accepted or broken app:
 
-```sh
+```bash
 npm test -- src/UploadStatus.test.tsx -t 'Cancel all preserves'
 ```
 
-Accepted passes. Broken Retry produces a failed assertion (not a setup error).
-The browser runner already checks the same transition independently.
+Accepted passes; broken Retry produces an assertion failure, not a setup error.
+The browser runner checks that transition independently.
 
-## What this establishes—and does not
+## Acceptable alternatives and review status
 
-`observations.json` records one real run, not expected numbers invented by tests.
-The accepted render reproduced exactly; all four intentional defects were
-caught. Broken Retry has **zero visual difference**, proving screenshots cannot
-replace behavior checks. Wrong status color changes the whole-image ratio only
-slightly, despite being a deliberate color defect.
+[`alternatives.json`](alternatives.json) defines two small changes to the accepted
+source, without modifying its snapshot:
 
-`visual_difference` means **different from the accepted control**, not
-**unacceptable to a human**. Exact reproduction is an environment guard for this
-mutation experiment, not a demand that future implementations use identical code
-or pixels. These checks establish sensitivity to four known defects; they do not
-establish specificity against other acceptable implementations.
+| Alternative | Recorded evidence | Human review |
+| --- | --- | --- |
+| Grid rows | CSS Grid instead of Flexbox; pixel-identical at threshold 0 in the measured capture. | Pending. |
+| Thinner Retry icon | 1.5px stroke; 113 changed pixels at threshold 8; same control name, hit area, content, and Retry behavior. | Accepted. |
 
-Do not turn 13.36% (the accepted design difference) into a universal cutoff. Next:
-review the two alternatives, then gather more acceptable implementations and
-small defects before proposing and validating region-specific gates. Human review remains the visual acceptance gate
-until those limits are calibrated. Behavior/content checks remain independent.
+Both passed all 22 app tests, coverage gates, build, and browser content/Retry
+checks in the recorded run. They are variations of one implementation, not
+independently built apps.
+
+Cristian accepted the thinner icon with **“Yes”** to “Would you accept this thinner
+icon too?”. [The review record](reviews/retry-icon.json) and
+[reviewed screenshot](reviews/retry-icon.png) preserve that decision. It applies
+only to this change, not all icon changes or a universal pixel tolerance.
+
+Alternatives require passing content and Retry checks but do not prescribe
+`visual_difference`. Some changed pixels alone do not reject them. Review the
+runner's `retry-icon/accepted-delta-report.html` to inspect the change.
+
+[`alternative-observations.json`](alternative-observations.json) stores measured
+results and screenshot/checker hashes. [`observations.json`](observations.json)
+is an earlier record for the original controls; its checker hashes refer to the
+older code. Observation files retain their pre-review statuses. Use
+`alternatives.json` and linked review records for current decisions.
+
+## Verify one candidate independently
+
+`ab_verify.py` checks a delivered app instead of trusting the agent's screenshots,
+claims, or metrics. It expects the app directly at `outputs/app` within the run.
+Run from a coordinator workspace that the candidate does not control:
+
+```bash
+python3 -B tests/evals/pixel-perfect/upload-panel/ab_verify.py \
+  /absolute/run-directory /absolute/new-evidence-directory --port 5193
+```
+
+It installs locked dependencies, runs tests/build, and uses the Chromium settings
+in `accepted/capture.json`. `ab_browser_check.js` captures raw transparent
+`initial.png` and `final.png` from fresh seven-item state. It checks Cancel,
+Cancel all, Retry, and keyboard collapse/expand separately.
+
+The source must reproduce both raw captures at threshold 0 before reference
+metrics are recorded. The coordinator produces source hashes, screenshots,
+`reference-metrics.json`, mask, overlay, report, and `result.json`. Metrics are
+review evidence, not an automatic visual-quality cutoff. Candidate source is
+executable code: use a disposable environment without secrets or production access.
+
+## Recorded experiments
+
+These are individual experiments, not general claims about model or skill quality.
+Keep failed runs and human feedback alongside metrics.
+
+### First mid-tier pair: no completed comparison
+
+[`mid-bundle-pilot.json`](mid-bundle-pilot.json) records one GPT-5.6 Luna/high pair:
+skill + CLI versus neither, with the same neutral prompt and a 900-second cap.
+The baseline finished but postprocessed screenshots and used five final items.
+The assisted run timed out after setup and measurement work; its unfinished test
+file failed the production type check. Both retained original tests and passed
+18 tests plus coverage gates.
+
+**No visual winner was established.** The record retains protocol, usage, artifact
+hashes, and local evidence paths. It is a failed pilot, not a benchmark win.
+
+### Revised mid-tier pair: metrics and human review disagreed
+
+[`mid-bundle-v2.json`](mid-bundle-v2.json) records one completed GPT-5.6 Luna/high
+pair. Both passed independent build/tests, seven-row content, Cancel/Cancel all/
+Retry, keyboard collapse/expand, and raw capture reproduction.
+
+Skill + CLI reduced measured changed ratio from 23.2747% to 17.8888% and perceptual
+RMSE from 0.14251 to 0.13117. It used 2.23× wall time and 2.69× reported total tokens.
+
+Blind review selected **Condition B**, the run with **neither skill nor CLI**, as
+closer. [Exact feedback](mid-bundle-v2-feedback-blind.json) was “This looks closer”;
+it did not accept either render. This disagreement establishes **no visual-quality
+win** for skill + CLI. Investigate regional and alpha/shadow weighting before
+another pair, and keep human review.
+
+### DeepSeek 2×2 experiment: no delivered source
+
+[`factorial-deepseek-v1.json`](factorial-deepseek-v1.json) records four skill/CLI
+conditions with DeepSeek v4 Flash/high. Preflight confirmed CLI access only in
+its two intended conditions and rejected explicit browser selection everywhere.
+All four timed out at 900 seconds before delivering source. There is no functional
+or visual result from which to infer an effect. Do not repeat the setup unchanged.
+
+## What the controls prove
+
+The recorded control run reproduced the accepted image exactly and detected all
+four deliberate defects. Broken Retry had **zero visual difference**. Screenshots
+therefore cannot replace behavior checks. The wrong status color changed the
+whole-image ratio only slightly, despite being a deliberate defect.
+
+`visual_difference` means different from the accepted control, not unacceptable
+to a human. Exact reproduction checks the environment for this mutation experiment;
+it does not require future implementations to use the same source or pixels.
+
+These controls show detection of four known defects. They do not establish that
+other acceptable implementations will pass. Do not turn the accepted design
+difference of 13.36% into a universal cutoff.
+
+Next, complete human review of the Grid alternative and gather more acceptable
+implementations and small defects. Keep human visual acceptance separate from
+behavior/content checks until proposed region-specific gates have been calibrated
+and validated.

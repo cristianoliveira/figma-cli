@@ -1,24 +1,44 @@
-# Research Collection
+# Research notes
 
-This collection includes research documents, agent reports, and temporary files from the Figma CLI project.
+Use this directory for reviewed findings that future contributors need. Put
+current usage instructions in the [project README](../README.md) or
+[command contracts](../docs/command-contracts.md), not in research notes.
 
-## Purpose
+## Choose a location
 
-- Store research findings related to Figma API, CLI design, and related technologies
-- Include agent reports and outputs from AI-assisted development sessions
-- Capture temporary research files and experimental documentation
+| Material | Location |
+| --- | --- |
+| Durable findings and decision evidence | `research/` |
+| Task reports | `${AGENT_WORKSPACE:-$PWD/.tmp}/reports/<dd-mm-yy>/` |
+| Temporary experiments and raw output | A local, untracked workspace such as `.tmp/researches/` |
+| Proposed implementation work | [`plans/todo/`](../plans/todo/README.md) |
 
-## Location
+Resolve report paths from the repository root. Keep temporary artifacts untracked;
+do not force-add ignored files. Reports and raw output do not belong in this
+folder unless they have been reviewed and are useful as permanent evidence.
 
-- Primary location: `research/` directory (this folder)
-- Agent outputs: `.tmp/reports/` and `.tmp/researches/` directories
-- Any markdown files (`*.md`) in these locations will be indexed
+## Write a useful note
 
-## Usage for Agents
+Include:
 
-Agents should write their reports and research findings to:
-- `.tmp/reports/` for task completion reports
-- `.tmp/researches/` for research notes and findings
-- `research/` for permanent research documentation
+1. The question and date.
+2. Relevant versions, inputs, and sources.
+3. What you observed, separate from assumptions or interpretations.
+4. Commands or steps needed to reproduce the finding.
+5. Limits, unresolved questions, and any resulting decision.
 
-All markdown files in these locations will be automatically indexed in the qmd research collection and available for semantic search.
+Use a descriptive filename, short sections, and relative links to repository
+files. Link external claims to their sources. Remove credentials, private design
+data, and machine-specific paths before committing.
+
+## Search
+
+Search tracked notes from the repository root:
+
+```bash
+rg -n 'search term' research docs
+```
+
+There is no repository-managed automatic research index. If you use a local
+search tool such as qmd, configure its collections yourself. Do not assume another
+contributor has the same index or local report directory.

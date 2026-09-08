@@ -1,63 +1,88 @@
 # Component implementation fixtures
 
-These are inputs, not a completed solution. The app does not contain the upload
-status panel; the evaluated agent must implement it.
+These files are inputs for the [pixel-perfect skill evaluations](../evals/README.md).
+They do not contain a completed upload status panel. The evaluated agent must
+build it.
 
 | File | Purpose |
 | --- | --- |
-| `todoapp.tar.gz` | Source-only React/TypeScript/Vite app, including original tests and npm lockfile. |
-| `upload-modal-multifiles.png` | Original, unmodified 436 × 406 reference, including shadow padding. |
-| `reference.sha256` | Reference checksum; verify before and after an eval. |
-| `upload-state.json` | Fixed seven-row demo state: two uploading, one failed, four completed. |
+| `todoapp.tar.gz` | Source-only React/TypeScript/Vite app with original tests and an npm lockfile. |
+| `upload-modal-multifiles.png` | Unmodified 436 × 406 reference, including shadow padding. |
+| `reference.sha256` | Reference checksum to verify before and after a run. |
+| `upload-state.json` | Fixed seven-row state: two uploading, one failed, and four completed. |
 
-The reference's Shared Drive label is visual content, not permission to build a
-remote upload integration. Use explicit local state transitions. Do not advance
-progress on timers or depend on the todo app's date-relative seed data for panel
-captures. The PNG is the visual source of truth; JSON supplies content and states,
-not a hidden pixel-perfect implementation. Exact source font metadata is not
-available, so remaining typography differences must be reported, not dismissed.
+The PNG defines appearance; JSON supplies content and state. The Shared Drive
+label is not a request for a remote upload service. Use local actions and fixed
+progress values, not timers. Exact source font metadata is unavailable; report
+remaining typography differences rather than dismissing them.
 
-## Unpack and verify
+## Requirements
 
-Use a fresh disposable directory per run. Requires Python 3.10+ for fixture tools,
-Node.js 22.12+ and npm 11 for the app; browser capture and `pixel-perfect` are
-required for model evals.
+- Python 3.10+ for fixture tools.
+- Node.js 22.12+ and npm 11 for the app.
+- Browser capture tooling and `pixel-perfect` for implementation evaluations.
+- npm registry access when locked dependencies are not cached.
 
-```sh
-mkdir -p /tmp/pixel-perfect-example
-# Run from this fixtures directory; use a new destination for every real eval.
-tar -xzf todoapp.tar.gz -C /tmp/pixel-perfect-example
-cd /tmp/pixel-perfect-example/todoapp
+No Figma token or live upload service is needed.
+
+## Unpack and check
+
+Run from this fixtures directory. `mktemp` creates a new workspace for each run:
+
+```bash
+WORKSPACE="$(mktemp -d "${TMPDIR:-/tmp}/pixel-perfect-fixture.XXXXXX")"
+tar -xzf todoapp.tar.gz -C "$WORKSPACE"
+cd "$WORKSPACE/todoapp"
 npm ci --ignore-scripts
 npm test
 npm run build
 npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-The archive preserves the original app README and tests. Its normal homepage
-uses browser storage and date-relative sample tasks. For captures, create an
-isolated preview of the actual new component and supply `upload-state.json`.
-Use a fresh browser context per run and a unique session/port if running pairs
-concurrently. Do not expose fixture servers beyond loopback.
+The final command starts a foreground server; stop it when finished. For concurrent
+runs, select a different port and browser session for each workspace. Keep servers
+on loopback.
+
+The archive preserves the original app README and tests. The normal homepage uses
+browser storage and date-relative sample tasks. For panel captures, use an isolated
+preview of the new component with `upload-state.json` and a fresh browser context.
+Do not use the homepage's changing seed data as screenshot state.
+
+## Check fixture integrity
+
+From the repository root:
+
+```bash
+python3 -B -m unittest discover -s skills/pixel-perfect/evals -p 'test_*.py' -v
+```
+
+These offline tests check the checksum, fixed state, archive contents, and evaluation
+inputs. Passing them does not prove that a model can implement the component.
 
 ## Update the archive
 
-Edit an unpacked copy, run its tests/build, then from the repository root:
+Edit an unpacked source copy and verify its tests and build. Then, from the
+repository root, replace the path below with that copy:
 
-```sh
+```bash
 python3 skills/pixel-perfect/evals/pack_fixture.py \
   /absolute/unpacked/todoapp skills/pixel-perfect/fixtures/todoapp.tar.gz
 python3 -B -m unittest discover -s skills/pixel-perfect/evals -p 'test_*.py' -v
 ```
 
-The packer uses a source/config/asset allowlist. It keeps `.npmrc`, `.gitignore`,
-the lockfile, and tests, but excludes `node_modules`, build/coverage output,
-TypeScript caches, browser artifacts, and agent histories. It rejects symlinks
-and normalizes archive metadata; identical source produces identical bytes on
-the same Python/zlib toolchain. Review the allowlist if adding a new source or
-asset type. Do not keep a second expanded app in this skill folder: the eval
-runner copies the whole skill into every candidate run.
+The packer:
 
-A source-only archive reduces fixture copies and repository size. It does not
-remove the need to install dependencies in disposable runs, nor reduce the
-amount of source an agent must read to implement the component.
+- Allows selected source, configuration, and asset files, including the lockfile,
+  `.npmrc`, `.gitignore`, and tests.
+- Excludes dependencies, build and coverage output, caches, browser artifacts,
+  and agent histories.
+- Rejects symlinks and normalizes archive metadata.
+- Produces identical bytes for identical source on the same Python/zlib toolchain.
+
+Review the allowlist before adding a file type. Keep only the source archive here,
+not a second expanded app. The evaluation runner copies the whole skill into each
+candidate run, so dependencies and generated output would add unnecessary data.
+
+Never replace the starter with an accepted solution. Accepted implementations and
+grader evidence stay outside `skills/` and must not be passed to candidate agents.
+A source-only archive saves copy space; each disposable run still needs dependencies.

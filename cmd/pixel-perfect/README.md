@@ -1,108 +1,214 @@
 # pixel-perfect
 
-**Stop eyeballing screenshots. Measure exactly what changed, where it changed, and whether it should fail CI.**
+Compare two PNG files and report what changed. Use the metrics, mismatch regions,
+and image artifacts to debug a UI or check a visual regression in CI.
 
-`pixel-perfect` is a deterministic PNG comparison CLI for visual-regression loops, implementation debugging, and automated quality gates. It turns two screenshots into objective metrics, localized mismatch regions, diagnostic artifacts, and a machine-readable result.
-
-It never silently resizes or aligns inputs to make a comparison look better. The evidence stays honest: unequal dimensions fail, suggested offsets are reported rather than applied, and heuristic classifications never replace raw metrics.
-
-`pixel-perfect` works with any equal-sized PNGs and requires no Figma credentials. When used with the companion [`figma`](../../README.md) CLI, it closes the loop between semantic design intent and rendered implementation.
-
-Its primary consumer can be an agent, not a human looking at an overlay. Structured metrics, regions, color pairs, probes, and scans let the agent validate and diagnose its own work without requiring a vision model. Optional visual context is deliberately advisory rather than part of measurement.
-
-## Why use it
-
-A single “12% different” score is not enough to fix a UI. You need to know whether the problem is geometry, color, transparency, text rasterization, alignment, or one isolated region.
-
-`pixel-perfect` provides:
-
-- exact and perceptual changed-pixel measurements
-- RGB, luminance, alpha, edge, and perceptual RMSE
-- connected mismatch regions with dominant color pairs
-- advisory per-region movement candidates without silent alignment
-- deterministic geometry, solid-fill, sparse-raster, and mixed hints
-- transparent masks, directional overlays, and self-contained HTML reports
-- point probes and row/column scans for boundary-level diagnosis
-- reusable comparison profiles, masks, crops, and ignored regions
-- explicit CI gates with non-zero exit status
-- optional advisory visual descriptions without affecting deterministic results
-
-Use it as a tight feedback loop while implementing a screen, or as a stable regression gate after the screen ships.
-
-## Progressive diagnosis, bounded context
-
-Visual debugging should not require loading two full screenshots into model context on every iteration. Start with compact global metrics, then request progressively narrower evidence:
-
-1. Compare images to identify changed bounds and ranked regions.
-2. Focus one region with `--region`.
-3. Inspect exact suspicious coordinates with `probe`.
-4. Inspect edge and color transitions with `scan`.
-5. Use an overlay, HTML report, or optional visual context only when deterministic evidence is insufficient.
-
-Each step reduces the search space while keeping output machine-readable and token-efficient.
+`pixel-perfect` works offline without Figma credentials or a vision model. It does
+not capture screenshots, resize inputs, or align them automatically. Prepared
+images must have equal dimensions. Optional movement suggestions and visual
+descriptions do not change the measurements.
 
 ## Install
 
+From the repository root, with Go 1.25.5 or newer:
+
 ```bash
-# Run from this repository
-nix run .#pixel-perfect -- --help
-
-# Build
-nix build .#pixel-perfect
-
-# Or with Go
-go install github.com/cristianoliveira/figma-cli/cmd/pixel-perfect@latest
+go build -o bin/pixel-perfect ./cmd/pixel-perfect
+export PATH="$PWD/bin:$PATH"
 ```
+
+Or use Nix from the repository root:
+
+```bash
+nix run .#pixel-perfect -- --help
+nix build .#pixel-perfect
+```
+
+See the [project README](../../README.md#install) for clone and setup instructions.
 
 ## Quick start
 
+Supply a reference screenshot and a screenshot of your implementation:
+
 ```bash
-pixel-perfect reference.png implementation.png \
+pixel-perfect reference.png actual.png \
+  --overlay overlay.png \
+  --report visual-diff.html
+```
+
+This prints TOON metrics and writes:
+
+- `actual.diff.png`: a transparent changed-pixel mask; override with `--output`.
+- `overlay.png`: a directional overlay, with reference differences in red and
+  actual differences in green.
+- `visual-diff.html`: a self-contained report.
+
+Use `--json` for compatibility JSON. Keep input and output paths separate.
+
+**A difference alone does not fail the command.** Add `--max-*` flags to set a
+pass/fail rule. Invalid inputs and file errors still fail without those flags.
+
+Run `pixel-perfect --help` for comparison options, `pixel-perfect probe --help`
+for pixel inspection, and `pixel-perfect scan --help` for row and column scans.
+
+## Find the cause of a difference
+
+Start with the summary, then request smaller areas:
+
+```bash
+# Compare one area: x,y,width,height.
+pixel-perfect reference.png actual.png --region 10,10,100,40
+
+# Read colors and channel deltas at exact points.
+pixel-perfect probe reference.png actual.png --at 20,20 --at 30,20
+
+# Read color runs across a row or down a column.
+pixel-perfect scan reference.png actual.png --row 20
+pixel-perfect scan reference.png actual.png --column 30
+```
+
+Choose coordinates inside your images. A region keeps coordinates in the prepared
+image space; it does not move that region's origin to zero.
+
+### Probes and scans
+
+| Command | Default output | Default bound |
+| --- | --- | --- |
+| Comparison | TOON | 20 mismatch regions |
+| `probe` | CSV | 25 points |
+| `scan` | CSV | 25 color runs per image |
+
+Comparison uses `--max-regions` or `--full`. Probe and scan use `--limit` or
+`--full`; do not combine those two flags. Truncated probe/scan output gives exact
+counts and a command to retrieve all results. Use `--format json` for their JSON
+views, including RGBA values and coordinates in the original inputs.
+
+Sample a line and its surrounding pixels with:
+
+```bash
+pixel-perfect probe reference.png actual.png \
+  --from 10,20 --to 50,20 --step 4 --radius 1 --format json
+```
+
+Line endpoints are inclusive. `--step` samples every Nth point; `--radius` expands
+selections into deduplicated squares. Selected points must be in bounds.
+`--row` aliases `--y`; `--column` aliases `--x`.
+
+## Metrics
+
+| Field | Meaning |
+| --- | --- |
+| `changedPixels`, `changedRatio` | Pixels with a channel difference above `--threshold`, and their share of compared pixels. |
+| `comparedPixels` | Number of pixels included after region and exclusion controls. |
+| `rmse` | Normalized RGB or RGBA root mean square error, based on input transparency. |
+| `rgbRmse`, `luminanceRmse`, `alphaRmse` | Color, brightness, and transparency errors. |
+| `edgeRmse` | Difference in local visible-luminance gradients; useful for geometry checks. |
+| `perceptualRmse` | OKLab HyAB color distance after alpha compositing. |
+| `perceptualChangedPixels`, `perceptualChangedRatio` | Pixels above `--perceptual-threshold`, and their share of compared pixels. |
+| `antialiasedPixels` | Changed pixels with neighborhood ramp evidence; reported, not removed. |
+| `evidence` | Counts in raw-only, perceptual-only, and overlapping changed-pixel sets. |
+| `bounds`, `changedRows` | The smallest changed rectangle and sorted changed row indexes. |
+| `regions` | Local bounds, measurements, dominant color pairs, and classification hints. |
+
+Region classifications are deterministic hints, not diagnoses of exact CSS:
+
+- `solid-fill`: concentrated color change with mostly aligned edges.
+- `geometry`: edge differences dominate.
+- `sparse-raster`: sparse changes, often text or antialiasing.
+- `mixed`: no dominant signal.
+
+Inspect the underlying metrics and images before choosing a fix. A lower global
+score does not prove that a component looks better or behaves correctly.
+
+## Set validation gates
+
+```bash
+pixel-perfect reference.png actual.png --json \
   --threshold 8 \
-  --overlay diff-overlay.png \
-  --report visual-diff.html
+  --perceptual-threshold 0.1 \
+  --max-rmse 0.02 \
+  --max-changed-ratio 0.01 \
+  --max-perceptual-changed-ratio 0.005
 ```
 
-The command prints structured TOON metrics by default (`--json` selects compatibility JSON), writes a transparent difference mask beside actual image, creates a red/green directional overlay, and produces a report you can inspect or share.
+These values are **examples, not recommended tolerances**.
 
-Add objective release criteria when the comparison belongs in CI:
+- `--threshold` ignores raw channel differences at or below its value (0–255;
+  default 0) when counting changed pixels.
+- `--perceptual-threshold` controls perceptually changed pixels (default 0.1;
+  finite, non-negative HyAB distance). It is not a guaranteed visibility boundary.
+- `--max-*` flags set acceptance limits. They do not change measurements.
+
+A configured gate fails only when the metric exceeds its maximum. Output contains
+`validation.passed` and all failed metrics, even on failure. The process exits 1
+and writes a diagnosis to stderr; stdout remains a structured comparison result.
+
+### Calibrate before using CI
+
+1. Capture the accepted implementation several times under fixed conditions.
+2. Measure repeat-run noise for the metrics you will gate.
+3. Capture a small change that your team considers a real regression.
+4. Choose limits above observed noise and below that regression. If those ranges
+   overlap, improve the capture setup or use more focused checks.
+5. Commit the capture settings and comparison command with the visual test.
+
+Recheck limits after browser, OS, or font changes. Do not select a tolerance after
+seeing a failing result just to make it pass.
+
+## Crop inputs explicitly
+
+Use crops when screenshots include different surrounding areas:
 
 ```bash
-pixel-perfect reference.png implementation.png \
-  --max-changed-ratio 0.02 \
-  --max-perceptual-changed-ratio 0.01 \
-  --max-rmse 0.03
+pixel-perfect reference.png actual.png \
+  --reference-crop 10,10,100,80 \
+  --actual-crop 30,20,100,80
 ```
 
-Both inputs must be equal-sized PNGs. Unequal dimensions fail instead of producing misleading metrics.
+Crops use `x,y,width,height` in each original image. The cropped images must have
+equal dimensions. Region, probe, and scan coordinates then refer to cropped space;
+output records the original input coordinates. Pass the same crop options to
+follow-up probes and scans.
 
-## Use with Figma CLI
+For a Figma reference, `--reference-metadata` can apply the logical crop recorded
+by `figma export`. Do not combine it with `--reference-crop`.
 
-The companion `figma` CLI can export both the reference image and coordinate context needed to turn raster mismatches into actionable design regions:
+## Exclude known differences
 
 ```bash
-figma export \
-  --output reference.png \
-  --metadata reference.json \
-  <figma-node-url>
-
-figma inspect \
-  --recursive \
-  --annotations-output annotations.json \
-  <figma-node-url>
-
-pixel-perfect reference.png implementation.png \
-  --reference-metadata reference.json \
-  --annotations annotations.json \
-  --overlay diff-overlay.png \
-  --report visual-diff.html
+pixel-perfect reference.png actual.png \
+  --ignore-region 0,0,20,20 \
+  --ignore-region 50,20,10,10 \
+  --mask comparison-mask.png
 ```
 
-`--reference-metadata` preserves logical crop coordinates. `--annotations` enriches mismatch regions with intersecting design-node labels while leaving measurements and exit status untouched.
+`--ignore-region` is repeatable. The mask must match the prepared comparison image:
+visible non-black pixels are included; black or transparent pixels are ignored.
+Excluded pixels do not contribute to comparison metrics. Document exclusions so
+real regressions are not hidden.
 
-## Comparison profiles
+## Group regions and inspect movement
 
-Store frequently reused region and offset settings in a versioned JSON profile:
+```bash
+pixel-perfect reference.png actual.png \
+  --suggest-offset 5 \
+  --suggest-movement 12 \
+  --region-gap 8 \
+  --min-region-pixels 12
+```
+
+- `--suggest-offset` searches for a whole-image translation within the given radius.
+- `--suggest-movement` reports up to five local translation candidates. `dx` and
+  `dy` describe reference-to-actual movement; confidence reflects RMSE improvement.
+- `--region-gap` groups nearby mismatch regions, such as letters in a text block.
+- `--min-region-pixels` omits small regions from reporting.
+
+These options do not realign inputs or change global metrics. Small-region
+filtering changes reporting, not validation.
+
+## Reuse settings with a profile
+
+Save this as `pixel-perfect.json`:
 
 ```json
 {
@@ -114,268 +220,109 @@ Store frequently reused region and offset settings in a versioned JSON profile:
 ```
 
 ```bash
-pixel-perfect reference.png implementation.png --profile pixel-perfect.json
+pixel-perfect reference.png actual.png --profile pixel-perfect.json
+pixel-perfect reference.png actual.png --profile pixel-perfect.json --suggest-offset 0
 ```
 
-Explicit flags override profile values, including values equal to built-in defaults:
+Precedence is **built-in defaults < profile < explicit flags**, even when a flag
+sets a built-in default. Output records resolved values and their sources.
+
+Version 1 supports only the three settings shown above. Keep thresholds, input
+paths, crops, masks, and artifact paths on the command line. Unknown fields,
+unsupported versions, and invalid values fail.
+
+## Use Figma coordinates and labels
+
+Replace the URL with your frame URL. Export the reference and annotations from the
+same node, then capture your implementation at matching logical bounds and scale:
 
 ```bash
-pixel-perfect reference.png implementation.png \
-  --profile pixel-perfect.json \
-  --suggest-offset 0
+FIGMA_URL="https://www.figma.com/design/KEY/App?node-id=42-1"
+figma export --output reference.png --metadata reference.json "$FIGMA_URL"
+figma inspect --recursive --annotations-output annotations.json "$FIGMA_URL"
+
+pixel-perfect reference.png actual.png \
+  --reference-metadata reference.json \
+  --annotations annotations.json \
+  --report visual-diff.html
 ```
 
-Precedence is `built-in defaults < profile < explicit flags`. Output JSON includes resolved profile values and their source. Unknown fields, unsupported versions, and invalid values fail explicitly. Profiles configure comparison behavior only; input, crop, mask, report, overlay, and output paths remain explicit CLI arguments.
-
-## Experimental alpha topology evidence
-
-For transparent artwork such as exported icons or vectors, measure exact alpha-foreground connected components:
-
-```bash
-pixel-perfect reference.png implementation.png \
-  --topology-evidence \
-  --topology-alpha-threshold 10
-```
-
-Evidence reports component count, bounds, pixel occupancy, and image-boundary contact for reference and actual images. Foreground uses four-connectivity and alpha strictly greater than configured threshold. Opaque screenshots report `available: false` because no objective background can be inferred. This is raw diagnostic evidence only: it does not label shapes, suggest CSS, or affect validation and exit status. Isolated visible pixels remain components rather than being silently discarded.
-
-## Coordinate annotations
-
-Optionally enrich mismatch regions with generic structural context:
-
-```bash
-pixel-perfect reference.png implementation.png --annotations annotations.json
-```
+Annotations are optional and not Figma-specific. A generic annotation file looks like:
 
 ```json
 {
   "version": 1,
   "coordinateSpace": {"width": 1280, "height": 720},
-  "annotations": [{
-    "id": "sidebar-row",
-    "label": "Selected sidebar row",
-    "bounds": {"x": 20, "y": 76, "width": 248, "height": 56},
-    "metadata": {"source": "figma"}
-  }]
-}
-```
-
-Intersecting annotations appear on each mismatch region with region and annotation intersection ratios. Metadata is opaque: pixel-perfect does not interpret or require Figma-specific fields. Annotations never change metrics, region detection, validation, or exit status. Coordinate-space dimensions must match the prepared comparison image; invalid files fail explicitly.
-
-## Pixel probe
-
-```bash
-pixel-perfect probe reference.png implementation.png --at 316,300 --at 320,300
-pixel-perfect probe reference.png implementation.png --from 91,144 --to 243,296 --step 4 --radius 1
-```
-
-`probe` inspects pixels in both equal-sized PNGs and prints CSV by default: `x,y,ref,act,delta,input_ref,input_act`. Use repeatable `--at` for sparse points or inclusive `--from x,y --to x,y` for a line. `--step N` samples every Nth point; `--radius N` expands each selection into a deduplicated square. Output defaults to 25 points with exact `total`, `returned`, and truncation metadata; truncated output includes a copyable `--full` hint. Use `--format json` for `points[]`, RGBA, per-channel delta, and `inputPoint`. Each point must be in bounds. Probe accepts `--reference-crop`, `--actual-crop`, and `--reference-metadata`; coordinates are in comparison/cropped space.
-
-For repeated boundary checks, scan one row or column into compact color runs:
-
-```bash
-pixel-perfect scan reference.png implementation.png --y 300  # horizontal row
-pixel-perfect scan reference.png implementation.png --x 316  # vertical column
-```
-
-`scan` prints CSV by default: `image,axis,index,start,end,length,hex,input_axis,input_index`, making edge transitions visible without N probe calls. Output defaults to 25 runs per image with exact totals and a conditional `--full` hint. Use `--format json` for full RGBA run data. Scan accepts `--reference-crop`, `--actual-crop`, and `--reference-metadata`; row/column indexes are in comparison/cropped space.
-
-## Optional visual context
-
-```bash
-pixel-perfect reference.png implementation.png \
-  --output diff-mask.png \
-  --visual-context
-```
-
-`--visual-context` adds advisory appearance descriptions for deterministic changed regions. It does not alter metrics, classifications, or validation gates. OpenRouter remains default; select OpenAI with `--visual-context-provider openai`. Use `--visual-context-model` for per-call model override.
-
-Configuration is based on Pi Spectacles at `~/.pi/agent/pi-spectacles.json`. OpenRouter uses its existing top-level settings and environment variables. OpenAI uses `OPENAI_API_KEY`, `OPENAI_VISION_MODEL`, and `OPENAI_BASE_URL`, or an optional nested configuration:
-
-```json
-{
-  "openai": {
-    "apiKey": "...",
-    "model": "gpt-5.4-mini",
-    "baseUrl": "https://api.openai.com/v1"
-  }
-}
-```
-
-The screenshots are sent only when `--visual-context` is present. If selected provider is not configured, comparison succeeds and `visualContext.disclaimer` explains why advisory context is unavailable.
-
-## Focus and validation
-
-```bash
-pixel-perfect reference.png implementation.png \
-  --region 522,282,200,48 \
-  --threshold 8 \
-  --output button-mask.png \
-  --max-rmse 0.03 \
-  --max-changed-ratio 0.02 \
-  --max-perceptual-changed-ratio 0.01
-```
-
-- `--region x,y,width,height` compares one area while retaining absolute coordinates in JSON.
-- `--threshold` ignores channel differences at or below the supplied value.
-- `--max-rmse`, `--max-changed-ratio`, and `--max-perceptual-changed-ratio` make the process exit non-zero when a limit is exceeded.
-- A failed gate still writes comparison JSON to stdout with `validation.passed: false` and every failed metric; the actionable diagnostic stays on stderr.
-
-## Diagnosis
-
-```bash
-pixel-perfect reference.png implementation.png \
-  --output mask.png \
-  --overlay overlay.png \
-  --suggest-offset 5 \
-  --suggest-movement 12 \
-  --region-gap 8 \
-  --min-region-pixels 12
-```
-
-- `--overlay`: red is stronger/present in reference; green is stronger/present in implementation.
-- `--suggest-offset`: reports best whole-image translation within radius but never applies it.
-- `--suggest-movement`: reports up to five local translation candidates around mismatch regions. `bounds` is the reference search area, `dx`/`dy` describe reference-to-actual movement, and confidence is RMSE improvement. Candidates are advisory and never alter metrics, alignment, or exit status.
-- `--region-gap`: groups nearby clusters, such as glyphs in one text block.
-- `--min-region-pixels`: removes insignificant clusters from region reporting without changing global metrics.
-
-## Ignore known differences
-
-```bash
-pixel-perfect reference.png implementation.png \
-  --output mask.png \
-  --ignore-region 0,0,100,40 \
-  --ignore-region 500,200,80,80 \
-  --mask comparison-mask.png
-```
-
-`--ignore-region` is repeatable. A comparison mask must match full reference dimensions: visible non-black pixels are included; black or transparent pixels are ignored.
-
-## Structured result
-
-Default output is TOON. The compatibility shape below is produced with `--json`:
-
-```json
-{
-  "width": 575,
-  "height": 477,
-  "changedPixels": 9429,
-  "comparedPixels": 274275,
-  "changedRatio": 0.03437,
-  "rmse": 0.093,
-  "rgbRmse": 0.087,
-  "luminanceRmse": 0.061,
-  "alphaRmse": 0.012,
-  "edgeRmse": 0.048,
-  "perceptualRmse": 0.052,
-  "perceptualChangedPixels": 2310,
-  "perceptualChangedRatio": 0.0084,
-  "perceptualThreshold": 0.1,
-  "antialiasedPixels": 1840,
-  "evidence": {
-    "rawOnlyPixels": 7119,
-    "perceptualOnlyPixels": 0,
-    "rawAndPerceptualPixels": 2310
-  },
-  "bounds": {"x": 12, "y": 80, "width": 520, "height": 310},
-  "changedRows": [80, 81, 120, 121],
-  "regions": [
+  "annotations": [
     {
-      "bounds": {"x": 522, "y": 282, "width": 200, "height": 48},
-      "changedPixels": 9429,
-      "changedRatio": 0.9822,
-      "rmse": 0.143,
-      "edgeRmse": 0.031,
-      "perceptualRmse": 0.122,
-      "perceptualChangedPixels": 7214,
-      "perceptualChangedRatio": 0.7515,
-      "antialiasedPixels": 318,
-      "dominantColorPairs": [
-        {"reference": "#0667C8", "actual": "#1676D2", "pixels": 7214}
-      ],
-      "classification": "solid-fill"
+      "id": "sidebar-row",
+      "label": "Selected sidebar row",
+      "bounds": {"x": 20, "y": 76, "width": 248, "height": 56},
+      "metadata": {"source": "figma"}
     }
-  ],
-  "suggestedOffset": {"x": -2, "y": 1, "rmse": 0.041},
-  "movedRegions": [{
-    "bounds": {"x": 510, "y": 270, "width": 224, "height": 72},
-    "dx": 8,
-    "dy": 0,
-    "confidence": 0.96
-  }],
-  "mask": "mask.png",
-  "overlay": "overlay.png"
+  ]
 }
 ```
 
-### Metrics
+Coordinate-space dimensions must match the prepared image. Intersecting labels
+and overlap ratios appear on mismatch regions. Metadata is passed through, not
+interpreted. Annotations do not change metrics or acceptance gates; invalid
+annotation files still fail validation.
 
-- `rmse`: normalized RGB or RGBA error, matching image transparency semantics.
-- `rgbRmse`: color-channel difference.
-- `luminanceRmse`: brightness difference.
-- `alphaRmse`: transparency and effect difference.
-- `edgeRmse`: local visible-luminance gradient difference; useful for geometry.
-- `perceptualRmse`: OKLab HyAB color distance after alpha compositing; useful for human-visible color change.
-- `perceptualChangedPixels` and `perceptualChangedRatio`: pixels above the reported `perceptualThreshold`; configure it with `--perceptual-threshold` (default `0.1`; any finite non-negative HyAB distance is accepted). Raw changed-pixel evidence and `--threshold` semantics remain unchanged.
-- `antialiasedPixels`: raw changed pixels that match neighborhood ramp evidence. This is report-only and never silently removes changes.
-- `evidence`: exact overlap between raw and perceptual changed-pixel sets, exposing disagreement without forcing an interpretation.
-- `changedRatio`: thresholded changed pixels divided by compared pixels.
-- `bounds`: smallest absolute rectangle containing all changed pixels.
-- `changedRows`: sorted absolute row indexes containing changed pixels; useful as compact localization evidence.
+## Optional visual descriptions
 
-### Choosing thresholds
-
-There is no universal "good" perceptual ratio or RMSE. Results depend on screenshot size, fonts, operating system, browser rasterization, and whether changed pixels belong to important UI. Treat thresholds as project-specific regression limits, not visual-quality grades.
-
-`--threshold` and `--perceptual-threshold` answer different questions:
-
-- `--threshold N` ignores raw per-channel differences at or below `N` before calculating `changedPixels`.
-- `--perceptual-threshold D` counts pixels whose OKLab HyAB distance is greater than `D`. The default `0.1` is a comparison starting point, not a guaranteed just-noticeable-difference boundary.
-- `--max-*` flags define acceptance gates. They do not change measurements.
-
-Calibrate a stable test instead of copying limits from another page:
-
-1. Capture the same accepted implementation several times under the stable-screenshot conditions below.
-2. Record the highest repeat-run `rmse`, `changedRatio`, and `perceptualChangedRatio` as environment noise.
-3. Capture one smallest change that the team considers a real regression.
-4. Choose limits above observed noise and below that regression. Keep enough margin to avoid flaky equality-at-the-boundary failures.
-5. Commit the capture environment and chosen command beside the visual test. Recalibrate when browser, OS, or fonts change.
-
-Example CI gate after calibration:
+Only enable this when sending the screenshots to a provider is acceptable:
 
 ```bash
+pixel-perfect reference.png actual.png --visual-context
 pixel-perfect reference.png actual.png \
-  --threshold 8 \
-  --perceptual-threshold 0.1 \
-  --max-rmse 0.02 \
-  --max-changed-ratio 0.01 \
-  --max-perceptual-changed-ratio 0.005
+  --visual-context --visual-context-provider openai
 ```
 
-Those numbers demonstrate flag usage only; they are not defaults or general recommendations. During diagnosis, inspect region bounds, classifications, dominant color pairs, and overlays rather than reducing the result to one score.
+Descriptions are advisory. They do not change deterministic metrics,
+classifications, or validation gates. Provider calls can cost money and send
+private image content outside your machine.
 
-### Region classifications
+| Provider | API key | Optional model and endpoint overrides |
+| --- | --- | --- |
+| OpenRouter (default) | `OPENROUTER_API_KEY` | `OPENROUTER_MEDIA_MODEL`, `OPENROUTER_BASE_URL` |
+| OpenAI | `OPENAI_API_KEY` | `OPENAI_VISION_MODEL`, `OPENAI_BASE_URL` |
 
-Classifications are deterministic hints; raw metrics remain authoritative.
+Use `--visual-context-model` for a per-call model override and
+`--visual-context-prompt` to add a focus. Configuration can also come from
+`~/.pi/agent/pi-spectacles.json`, or the file named by `PI_SPECTACLES_CONFIG`.
+OpenRouter settings are top-level; OpenAI settings can use an `openai` object.
+Keep credentials outside the repository.
 
-- `solid-fill`: concentrated color mismatch with mostly aligned edges.
-- `geometry`: edge difference dominates.
-- `sparse-raster`: sparse change, often text or antialiasing.
-- `mixed`: no dominant signal.
+Missing credentials add a disclaimer without failing an otherwise successful
+comparison. Other configuration or provider errors can fail the command. Leave
+visual context off when CI must depend only on local image evidence.
 
-## Stable screenshots
+## Capture stable screenshots
 
-For reproducible comparisons, keep these fixed:
+Keep these fixed between captures:
 
-- viewport and `deviceScaleFactor: 1`
-- browser engine, OS, zoom, and screenshot method
-- installed font files; wait for `document.fonts.ready`
-- page background and transparency
-- animation, transition, caret, and cursor state
-- effect padding around shadows; element screenshots often clip them
+- Browser engine, OS, viewport, zoom, and device scale (commonly DPR 1).
+- Font files; wait for `document.fonts.ready`.
+- Application data, interaction state, background, and transparency.
+- Animations, transitions, carets, and cursor visibility.
+- Capture bounds, including padding for shadows and other effects.
 
-Same dimensions are necessary but do not prove that screenshots share one coordinate system. Use DOM/design bounds and `--suggest-offset` to diagnose alignment.
+Equal dimensions do not prove equal coordinate systems. Check design/DOM bounds
+and use offset suggestions to investigate alignment, not to hide it.
 
-## Limitations
+## Exit codes and limits
 
-`pixel-perfect` is a measurement and diagnostic primitive, not a CSS debugger. Raster results remain sensitive to fonts, browser/OS rendering, alpha, capture bounds, and antialiasing. Region classifications are heuristics and cannot reliably name the exact CSS property to change.
+| Code | Meaning |
+| --- | --- |
+| `0` | Comparison completed and no configured gate failed. |
+| `1` | A gate failed or an operational error occurred. |
+| `2` | Invalid command arguments or options. |
+
+Usage and operational errors are structured on stdout. Failed gates keep the
+comparison result on stdout and their diagnosis on stderr. See
+[command contracts](../../docs/command-contracts.md) for the shared output rules.
+
+This tool measures raster differences. It cannot identify the exact CSS fix or
+prove accessibility, interaction behavior, or human visual acceptance. Keep
+browser behavior tests and visual review alongside image measurements.

@@ -1,70 +1,56 @@
-# AXI follow-up initiative
+# Completed agent-interface work
 
-Baseline: commit `67ec36b` hardened agent-facing command contracts for `figma` and `pixel-perfect`.
+This folder records the completed Agent Experience Interface (AXI) work for
+`figma` and `pixel-perfect`. It started from commit `67ec36b`.
 
-This initiative closes remaining Agent Experience Interface gaps without mixing behavior changes, architecture refactors, skill packaging, and live integration work into one risky change.
+The task files preserve the problems, decisions, and acceptance criteria from that
+work. They are historical records, not a list of current defects. For current
+behavior, read [command contracts](../../../docs/command-contracts.md). For open
+work, read [the todo index](../../todo/README.md).
 
-## Problem
+## Completed tasks
 
-Core AXI contracts now exist, but five risks remain:
+| Task | Purpose |
+| --- | --- |
+| [01 — Contract guardrails](01-contract-migration-and-schema-guardrails.md) | Define output compatibility and protect schemas. |
+| [02 — Layout bounds](02-layout-tree-bounds.md) | Bound nested layout output and report omissions. |
+| [03 — Pixel comparison refactor](03-pixel-perfect-command-refactor.md) | Split comparison orchestration into named stages. |
+| [04 — Skill drift checks](04-skill-sync-and-drift-checks.md) | Keep agent guidance aligned with command behavior. |
+| [05 — Live Figma smoke tests](05-live-figma-smoke-tests.md) | Add opt-in checks against real Figma endpoints. |
+| [06 — Compatibility profile](06-strict-alignment-contract-profile.md) | Choose default formats, error channels, and migration rules. |
+| [07 — TOON output](07-toon-output-migration.md) | Use TOON for structured output while retaining JSON compatibility. |
+| [08 — Structured errors](08-structured-errors.md) | Return actionable errors without exposing secrets or raw dependency details. |
+| [09 — Bounds and recovery](09-output-bounds-and-hints.md) | Limit output and provide commands to retrieve omitted results. |
+| [10 — Discovery and measurement](10-discovery-and-measurement.md) | Identify executables and measure output size and recovery steps. |
 
-1. `figma layout` can emit an unbounded nested tree.
-2. newly added output fields and default collection limits need explicit migration and schema guardrails;
-3. `pixel-perfect` comparison orchestration is correct but concentrated in one high-complexity Cobra closure;
-4. installable Figma skill guidance can drift from live Cobra help and output contracts;
-5. mocked HTTP tests do not prove current Figma permissions and live endpoint behavior.
+See the [strict-alignment record](strict-alignment-initiative.md) for the second
+phase and its compatibility decisions.
 
-## Recommended order
+## Rules to keep when extending the CLI
 
-1. [Contract migration and schema guardrails](01-contract-migration-and-schema-guardrails.md)
-2. [Bound `figma layout` trees](02-layout-tree-bounds.md)
-3. [Refactor pixel-perfect orchestration](03-pixel-perfect-command-refactor.md)
-4. [Synchronize skill guidance and add drift checks](04-skill-sync-and-drift-checks.md)
-5. [Add opt-in live Figma smoke tests](05-live-figma-smoke-tests.md)
-6. [Choose strict-alignment compatibility profile](06-strict-alignment-contract-profile.md)
-7. [Add TOON output boundary](07-toon-output-migration.md)
-8. [Add structured, redacted errors](08-structured-errors.md)
-9. [Bound output and add truncation recovery](09-output-bounds-and-hints.md)
-10. [Complete executable discovery and measurements](10-discovery-and-measurement.md)
+- Start behavior changes with a failing test.
+- Validate options before network, filesystem, image, or provider work.
+- Keep structured results and error envelopes on stdout. Put diagnostics on stderr.
+- Preserve documented exit codes and command-specific quiet-mode behavior.
+- Report empty results, effective scope, pre-limit totals, and truncation explicitly.
+- Keep local limits, traversal depth, and API pagination distinct.
+- Keep commands focused on wiring. Put extraction, measurement, and rendering in
+  their owning packages.
+- Make live Figma tests opt-in. Normal tests must not need credentials.
 
-Strict-alignment overview: [complete initiative](strict-alignment-initiative.md).
+## Verify a follow-up change
 
-```text
-contract guardrails ──> layout contract ──> skill sync
-          │
-          └────────────> pixel refactor
+Run focused tests for the changed behavior first. Check whitespace with
+`git diff --check`. Use the repository watcher or CI for full checks.
 
-all stable local contracts ──────────────> live smoke
-```
-
-## Shared delivery rules
-
-- Start each behavior slice with a failing test.
-- Validate arguments before network, filesystem, image decoding, or provider calls.
-- Preserve stdout for result data and stderr for diagnostics.
-- Keep exit codes stable: `0` success/no-op, `1` operational failure, `2` usage error.
-- Preserve empty arrays, effective query context, pre-limit totals, and explicit truncation.
-- Do not silently reinterpret `--full`, `--limit`, or depth.
-- Keep Cobra commands thin. Pure extraction stays in `internal/extract`; image measurement stays in `internal/imagediff`; rendering stays at one output boundary.
-- Run smoke tests with `-count=1` because they build binaries in subprocesses.
-- Never require live Figma credentials in normal pull-request tests.
-
-## Initiative success criteria
-
-- Every potentially large output is bounded or explicitly paginated by default.
-- Output field semantics and compatibility policy are documented and protected by tests.
-- Pixel comparison command orchestration is split into named, testable stages without changing output bytes, artifacts, or exit behavior.
-- Skill examples and exact flag references cannot silently drift from Cobra contracts.
-- Maintainers can run a read-only live smoke workflow without exposing credentials or making ordinary CI flaky.
-
-## Standard verification gate
+For example, from the repository root:
 
 ```bash
-goimports -w <changed-go-files>
-git diff --check
-golangci-lint run ./...
-go test -count=1 ./...
-go test -cover ./...
+go test ./internal/cli -count=1
+go test ./internal/output -count=1
+go test ./internal/pixelperfectcmd -run TestCommand -count=1
 ```
 
-For changed binaries, also build and probe stdout, stderr, and exit status directly.
+When a command contract changes, also check the built binary's stdout, stderr,
+and exit code. Run subprocess-based smoke tests with `-count=1` so cached test
+results do not hide a changed binary.
