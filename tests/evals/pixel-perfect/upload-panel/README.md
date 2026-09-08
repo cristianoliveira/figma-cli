@@ -62,7 +62,7 @@ not change `review_status` to accepted.
 Run them alongside the original controls:
 
 ```sh
-python3 -B evals/pixel-perfect/upload-panel/verify.py \
+python3 -B tests/evals/pixel-perfect/upload-panel/verify.py \
   "$PWD/.tmp/pixel-perfect-controls/alternatives-NEW" --include-alternatives
 ```
 
@@ -94,7 +94,7 @@ captures before reference metrics are recorded.
 Run it after an agent run, from a new coordinator workspace:
 
 ```sh
-python3 -B evals/pixel-perfect/upload-panel/ab_verify.py \
+python3 -B tests/evals/pixel-perfect/upload-panel/ab_verify.py \
   /absolute/run-directory /absolute/new-evidence-directory --port 5193
 ```
 
@@ -145,7 +145,7 @@ unchanged.
 From repository root (Python 3.10+):
 
 ```sh
-python3 -B -m unittest discover -s evals/pixel-perfect/upload-panel -p 'test_*.py' -v
+python3 -B -m unittest discover -s tests/evals/pixel-perfect/upload-panel -p 'test_*.py' -v
 ```
 
 Tests cover provenance, archive paths/links/size limits, exact single-file
@@ -159,7 +159,7 @@ with Chromium. npm registry access is needed for the first locked install;
 there are **no model calls, Figma requests, or actual uploads**.
 
 ```sh
-python3 -B evals/pixel-perfect/upload-panel/verify.py \
+python3 -B tests/evals/pixel-perfect/upload-panel/verify.py \
   "$PWD/.tmp/pixel-perfect-controls/run-NEW" --port 5191
 ```
 
@@ -190,7 +190,7 @@ negative controls. Failed workspace artifacts remain available for diagnosis.
 To inspect one source variant without running a browser:
 
 ```sh
-python3 -B evals/pixel-perfect/upload-panel/controls.py \
+python3 -B tests/evals/pixel-perfect/upload-panel/controls.py \
   broken-retry "$PWD/.tmp/broken-retry-app"
 ```
 

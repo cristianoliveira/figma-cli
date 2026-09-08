@@ -23,7 +23,7 @@ class ControlTests(unittest.TestCase):
 
     def test_reference_is_the_original_task_png(self):
         original = (
-            ROOT.parents[2]
+            ROOT.parents[3]
             / "skills/pixel-perfect/fixtures/upload-modal-multifiles.png"
         )
         self.assertEqual(
@@ -31,7 +31,7 @@ class ControlTests(unittest.TestCase):
         )
 
     def test_solution_is_not_inside_the_agent_skill_or_starter(self):
-        skill = ROOT.parents[2] / "skills/pixel-perfect"
+        skill = ROOT.parents[3] / "skills/pixel-perfect"
         self.assertFalse(ROOT.is_relative_to(skill))
         with tarfile.open(skill / "fixtures/todoapp.tar.gz") as archive:
             self.assertFalse(any("UploadStatus" in name for name in archive.getnames()))
