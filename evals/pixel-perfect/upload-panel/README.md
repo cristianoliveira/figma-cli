@@ -80,6 +80,28 @@ current runner. The observations also retain their original pre-review pending
 statuses; `alternatives.json` and linked review records show current decisions.
 Neither observation file is an automatically calibrated tolerance.
 
+## Coordinator-owned A/B verification
+
+`ab_verify.py` grades one agent run without trusting its screenshots, claims, or
+metrics. It requires the app directly at `outputs/app`, installs locked
+dependencies, runs tests and a production build, and uses the fixed Chromium
+profile in `accepted/capture.json`. `ab_browser_check.js` then takes raw
+transparent `initial.png` and `final.png` screenshots from fresh seven-item
+source state, tests Cancel/Cancel all/Retry separately, and checks keyboard
+collapse/expand. A threshold-zero comparison must reproduce the two raw source
+captures before reference metrics are recorded.
+
+Run it after an agent run, from a new coordinator workspace:
+
+```sh
+python3 -B evals/pixel-perfect/upload-panel/ab_verify.py \
+  /absolute/run-directory /absolute/new-evidence-directory --port 5193
+```
+
+The coordinator, not the candidate, produces `reference-metrics.json`, mask,
+overlay, report, screenshots, source hashes, and `result.json`. Metrics remain
+review evidence, not an automated visual-quality threshold.
+
 ## Mid-tier bundle pilot
 
 `mid-bundle-pilot.json` records one GPT-5.6 Luna/high pair: skill + CLI versus
