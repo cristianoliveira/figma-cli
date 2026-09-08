@@ -80,6 +80,19 @@ current runner. The observations also retain their original pre-review pending
 statuses; `alternatives.json` and linked review records show current decisions.
 Neither observation file is an automatically calibrated tolerance.
 
+## Mid-tier bundle pilot
+
+`mid-bundle-pilot.json` records one GPT-5.6 Luna/high pair: skill + CLI versus
+neither, with the same neutral prompt and a 900-second cap. **No visual winner
+was established.** Baseline completed but postprocessed its screenshots and used
+a five-item final scene. Assisted timed out after browser setup detours and
+measurement work; its unfinished test file fails the production type check.
+Both snapshots retain the original tests and pass 18 tests plus coverage gates.
+
+Before another pair, pin the tested browser and explicitly require raw captures
+of the same seven-item scene. The record retains protocol, usage, artifact hashes,
+and local evidence paths. It is a pilot failure record, not a skill benchmark win.
+
 ## Verify offline integrity
 
 From repository root (Python 3.10+):
