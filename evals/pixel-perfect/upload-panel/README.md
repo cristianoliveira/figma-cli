@@ -115,6 +115,17 @@ Before another pair, pin the tested browser and explicitly require raw captures
 of the same seven-item scene. The record retains protocol, usage, artifact hashes,
 and local evidence paths. It is a pilot failure record, not a skill benchmark win.
 
+## Revised mid-tier bundle result
+
+`mid-bundle-v2.json` records one completed GPT-5.6 Luna/high pair. Both
+conditions passed independent build, tests, fixed seven-row content, Cancel /
+Cancel all / Retry, keyboard collapse/expand, and raw source-capture
+reproduction. Skill + CLI reduced coordinator-measured changed ratio from
+23.2747% to 17.8888% and perceptual RMSE from 0.14251 to 0.13117, but used
+2.23× wall time and 2.69× reported total tokens. This one pair supports a
+visual-metric signal, not a general conclusion. Human blinded visual review is
+still pending; no automated threshold accepts either result.
+
 ## Verify offline integrity
 
 From repository root (Python 3.10+):
