@@ -131,6 +131,15 @@ human result conflicts with full-frame metrics, so this pair establishes **no
 visual-quality win** for skill + CLI. Keep human review; diagnose regional and
 alpha/shadow metric weighting before another model pair.
 
+## DeepSeek factorial status
+
+`factorial-deepseek-v1.json` records a separate 2×2 skill/CLI experiment with
+DeepSeek v4 Flash/high. Preflight confirmed CLI availability only in its two
+intended cells and rejected explicit browser selection everywhere. All four
+conditions timed out at the 900-second cap before delivering source. It has no
+functional or visual result; do not infer an effect or repeat the same design
+unchanged.
+
 ## Verify offline integrity
 
 From repository root (Python 3.10+):
