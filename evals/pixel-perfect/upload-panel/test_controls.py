@@ -68,7 +68,10 @@ class ControlTests(unittest.TestCase):
                 self.assertEqual(
                     specification["expected"], {"content": True, "retry": True}
                 )
-                self.assertEqual(specification["review_status"], "pending_human_review")
+                self.assertEqual(
+                    specification["review_status"],
+                    "accepted" if name == "retry-icon" else "pending_human_review",
+                )
                 with tempfile.TemporaryDirectory() as temporary:
                     destination = Path(temporary) / name
                     controls.prepare(name, destination)
@@ -77,6 +80,28 @@ class ControlTests(unittest.TestCase):
                         modified[specification["file"]],
                     )
         self.assertEqual(original, controls.load_source(ROOT / "accepted/app.tar.gz"))
+
+    def test_icon_acceptance_is_bound_to_reviewed_image_and_source(self):
+        alternative = controls.alternatives()["retry-icon"]
+        review = json.loads((ROOT / alternative["review"]).read_text())
+        self.assertEqual(review["decision"], "accept")
+        self.assertEqual(review["feedback"], "Yes")
+        self.assertEqual(review["question"], "Would you accept this thinner icon too?")
+        image = (ROOT / review["screenshot"]).read_bytes()
+        self.assertEqual(hashlib.sha256(image).hexdigest(), review["screenshot_sha256"])
+        measured = json.loads((ROOT / "alternative-observations.json").read_text())
+        self.assertEqual(
+            review["screenshot_sha256"], measured["screenshot_sha256"]["retry-icon"]
+        )
+        source = controls.load_source(ROOT / "accepted/app.tar.gz")
+        changed = controls.mutate(source, alternative)[alternative["file"]]
+        self.assertEqual(
+            hashlib.sha256(changed).hexdigest(), review["modified_source_sha256"]
+        )
+        self.assertEqual(
+            hashlib.sha256((ROOT / "accepted/app.tar.gz").read_bytes()).hexdigest(),
+            review["base_archive_sha256"],
+        )
 
     def test_ambiguous_or_missing_mutation_fails(self):
         for source in (b"before before", b"no match"):

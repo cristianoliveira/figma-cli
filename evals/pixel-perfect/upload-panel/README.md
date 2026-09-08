@@ -42,7 +42,7 @@ all seven visible names/states, exercises Retry, and captures real DOM. Only the
 runner compares observations to the declared expected outcome. A negative
 control being detected is a **successful evaluator check**, not a good component.
 
-## Implementation alternatives (review pending)
+## Implementation alternatives
 
 `alternatives.json` adds two candidates without changing the accepted snapshot:
 
@@ -53,8 +53,11 @@ control being detected is a **successful evaluator check**, not a good component
 
 Both pass all 22 app tests, coverage gates, build, and the browser content/Retry
 checks. These are small edits to one implementation, not independently built apps.
-Their human visual acceptance is **pending**. Passing technical checks does not
-change `review_status` to accepted.
+The **thinner Retry icon is accepted**: Cristian answered “Yes” to “Would you
+accept this thinner icon too?”. Exact feedback, reviewed screenshot, and source
+hashes are preserved in `reviews/retry-icon.json` and `reviews/retry-icon.png`.
+Grid remains pending separate human review. Passing technical checks alone does
+not change `review_status` to accepted.
 
 Run them alongside the original controls:
 
@@ -67,12 +70,15 @@ Unlike deliberate defects, alternatives do not prescribe `visual_difference`
 in their expectations. The runner still records that measurement, but does not
 reject a candidate just because some pixels differ. Content and Retry must pass.
 Read the generated `retry-icon/accepted-delta-report.html` to review the icon
-against the accepted render. Both alternatives still require human review.
+against the original accepted render. The recorded approval covers only the
+thinner Retry icon, not all icon changes or a universal pixel tolerance.
 
 `alternative-observations.json` stores the measured results and screenshot/checker
 hashes. The older `observations.json` is retained as a historical measurement of
 the original controls; its checker hashes describe the earlier code, not the
-current runner. Neither observation file is an automatically calibrated tolerance.
+current runner. The observations also retain their original pre-review pending
+statuses; `alternatives.json` and linked review records show current decisions.
+Neither observation file is an automatically calibrated tolerance.
 
 ## Verify offline integrity
 

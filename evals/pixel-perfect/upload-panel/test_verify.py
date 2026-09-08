@@ -138,7 +138,7 @@ class VerificationPolicyTests(unittest.TestCase):
         self.assertEqual(len(npm_installs), 1)
         self.assertIn("--ignore-scripts", npm_installs[0].args[0])
 
-    def test_alternatives_allow_visual_difference_but_do_not_infer_acceptance(self):
+    def test_alternatives_allow_visual_difference_and_preserve_declared_review(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory) / "run"
             passed, commands = self.run_mocked(workspace, include_alternatives=True)
@@ -148,7 +148,10 @@ class VerificationPolicyTests(unittest.TestCase):
         self.assertTrue(results["retry-icon"]["observed"]["visual_difference"])
         for name in ("grid-rows", "retry-icon"):
             self.assertTrue(results[name]["detected_as_expected"])
-            self.assertEqual(results[name]["review_status"], "pending_human_review")
+            self.assertEqual(
+                results[name]["review_status"],
+                "accepted" if name == "retry-icon" else "pending_human_review",
+            )
         tests = [
             call
             for call in commands.call_args_list

@@ -13,6 +13,7 @@
     "old": "<RotateCcw size={18} />",
     "new": "<RotateCcw size={18} strokeWidth={1.5} />",
     "expected": {"content": true, "retry": true},
-    "review_status": "pending_human_review"
+    "review_status": "accepted",
+    "review": "reviews/retry-icon.json"
   }
 }
