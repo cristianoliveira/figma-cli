@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/cristianoliveira/figma-cli/internal/assets"
+	"github.com/cristianoliveira/figma-cli/internal/assetsedge"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/spf13/cobra"
@@ -95,7 +96,7 @@ func newExportCommandWithClient(deps Deps, downloadClient *http.Client) *cobra.C
 			if exportDownloadClient == nil {
 				exportDownloadClient = client.HTTP
 			}
-			if err := assets.DownloadFile(exportDownloadClient, outputPath, assetURL); err != nil {
+			if err := assetsedge.DownloadFile(exportDownloadClient, outputPath, assetURL); err != nil {
 				return err
 			}
 			result := map[string]any{"format": format, "node": resolvedNodeID, "scale": scale}

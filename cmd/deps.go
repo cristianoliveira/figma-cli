@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/cristianoliveira/figma-cli/internal/assets"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/inspect"
@@ -27,6 +28,7 @@ type Deps struct {
 	GetEnv           func(string) string
 	StdoutEnvPrinter func() (string, error)
 	InspectService   InspectServiceFactory
+	AssetApplication func() AssetApplication
 }
 
 // defaultResolveExecutable resolves the current binary path. It is overridable
@@ -64,13 +66,22 @@ func newInspectServiceFromAdapter(nodes inspect.NodeFetcher, vars inspect.Variab
 func NewProductionDeps() Deps {
 	loadClient := cli.LoadClient
 	return Deps{
-		LoadClient:     loadClient,
-		DownloadClient: nil,
-		FetchVariables: figma.FetchVariables,
-		ResolveExec:    defaultResolveExecutable,
-		GetEnv:         defaultGetEnv,
-		InspectService: defaultInspectServiceFactory(loadClient),
+		LoadClient:       loadClient,
+		DownloadClient:   nil,
+		FetchVariables:   figma.FetchVariables,
+		ResolveExec:      defaultResolveExecutable,
+		GetEnv:           defaultGetEnv,
+		InspectService:   defaultInspectServiceFactory(loadClient),
+		AssetApplication: defaultAssetApplication,
 	}
+}
+
+// defaultAssetApplication returns the production asset application
+// instance. It is the wiring for TASK-0005: the command builds the
+// edge adapters and hands them, plus the request, to this pure
+// application service.
+func defaultAssetApplication() AssetApplication {
+	return assets.NewApplication()
 }
 
 // DepsForLoadClient is a tiny helper for tests that only need to stub the
@@ -79,9 +90,10 @@ func NewProductionDeps() Deps {
 // construct the full Deps struct themselves.
 func DepsForLoadClient(loadClient func() (*figma.Client, error)) Deps {
 	return Deps{
-		LoadClient:     loadClient,
-		FetchVariables: figma.FetchVariables,
-		ResolveExec:    defaultResolveExecutable,
-		GetEnv:         defaultGetEnv,
+		LoadClient:       loadClient,
+		FetchVariables:   figma.FetchVariables,
+		ResolveExec:      defaultResolveExecutable,
+		GetEnv:           defaultGetEnv,
+		AssetApplication: defaultAssetApplication,
 	}
 }

@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/cristianoliveira/figma-cli/internal/assets"
+	"github.com/cristianoliveira/figma-cli/internal/assetsedge"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -24,15 +26,25 @@ const (
 
 var assetFilenameCharacters = regexp.MustCompile(`[^a-z0-9]+`)
 
-// newAssetsCommand constructs `figma assets`. The downloadClient dependency
-// is optional; nil means the command uses the Figma client's HTTP client,
-// matching the previous default behaviour.
+// AssetApplication is the consumer-owned port the `figma assets`
+// command drives. Production composition wires it through
+// assets.NewApplication in cmd/deps.go; tests inject fakes. The
+// command builds the edge adapters (Figma source, Figma URL source,
+// HTTP sink) and hands them, plus the request, to the application.
+type AssetApplication interface {
+	Run(ctx context.Context, req assets.ApplicationRequest) (assets.AssetExportManifest, error)
+}
+
+// newAssetsCommand constructs `figma assets`. The command is now
+// responsible only for flag/argument parsing, building the application
+// request, and rendering the manifest. Filtering, naming, collision
+// policy, and orchestration live in the asset application service.
 func newAssetsCommand(deps Deps) *cobra.Command {
 	return newAssetsCommandWithClient(deps, nil)
 }
 
-// newAssetsCommandWithClient exposes the downloadClient injection point for
-// tests; production callers should use newAssetsCommand.
+// newAssetsCommandWithClient exposes the optional downloadClient injection
+// for tests; production callers should use newAssetsCommand.
 func newAssetsCommandWithClient(deps Deps, downloadClient *http.Client) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "assets [figma-url-or-file-id]",
@@ -81,16 +93,21 @@ func newAssetsCommandWithClient(deps Deps, downloadClient *http.Client) *cobra.C
 			if filenameMode == "name" {
 				filename = func(asset extract.Asset) string { return assetNameFilename(asset, trimNamePrefix) }
 			}
-			manifest, err := assets.ExportAssets(assets.AssetExportRequest{
-				Client:          client,
-				FileID:          input.FileID,
-				NodeIDs:         nodeIDs,
-				OutputDirectory: outputDirectory,
+
+			// Application service and edge adapters are wired from the
+			// Figma client. The application itself owns filtering,
+			// collision policy, and manifest construction; the
+			// adapters own transport + filesystem.
+			app := deps.AssetApplication()
+			manifest, err := app.Run(cmd.Context(), assets.ApplicationRequest{
+				Source:          assetsedge.NewFigmaAssetSource(client, input.FileID, nodeIDs),
+				URLSource:       assetsedge.NewFigmaExportURLSource(client, input.FileID),
+				Sink:            newAssetsSink(client, downloadClient),
 				Kind:            kind,
 				Format:          format,
 				NameFilter:      nameFilter,
-				DownloadClient:  downloadClient,
 				Filename:        filename,
+				OutputDirectory: outputDirectory,
 			})
 			if err != nil {
 				return err
@@ -123,6 +140,16 @@ func newAssetsCommandWithClient(deps Deps, downloadClient *http.Client) *cobra.C
 	command.Flags().String("trim-name-prefix", "", "prefix to remove in name filename mode")
 	command.Flags().Bool("allow-partial", false, "exit successfully when only some assets export")
 	return command
+}
+
+// newAssetsSink builds the production HTTP/filesystem sink, honouring
+// the optional downloadClient dependency the command carries for tests.
+func newAssetsSink(client *figma.Client, downloadClient *http.Client) assets.AssetSink {
+	httpClient := downloadClient
+	if httpClient == nil {
+		httpClient = client.HTTP
+	}
+	return assetsedge.NewHTTPAssetSink(httpClient)
 }
 
 func assetExportResult(manifest assets.AssetExportManifest, allowPartial bool) error {
