@@ -1,20 +1,17 @@
-package assets
+package assetsedge
 
 import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/cristianoliveira/figma-cli/internal/output"
 )
 
-// DefaultExportOutputPath builds the default file path for an exported asset.
-func DefaultExportOutputPath(fileID string, nodeID string, format string) string {
-	return fmt.Sprintf("%s_%s.%s", fileID, strings.ReplaceAll(nodeID, ":", "-"), format)
-}
-
-// DownloadFile downloads fileURL via httpClient and writes the bytes to outputPath.
+// DownloadFile downloads fileURL via httpClient and writes the bytes to
+// outputPath. It is the standalone download helper used by the
+// `figma export` command (which downloads a single asset rather than a
+// manifest).
 func DownloadFile(httpClient *http.Client, outputPath string, fileURL string) error {
 	resp, err := httpClient.Get(fileURL)
 	if err != nil {

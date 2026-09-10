@@ -1,4 +1,4 @@
-package assets
+package assetsedge
 
 import (
 	"net/http"
@@ -11,16 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultExportOutputPath(t *testing.T) {
-	got := DefaultExportOutputPath("file123", "1:2", "png")
-	assert.Equal(t, "file123_1-2.png", got)
-}
-
 func TestDownloadFile(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("fake-image-data"))
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	outputPath := filepath.Join(t.TempDir(), "export.png")
 	err := DownloadFile(server.Client(), outputPath, server.URL)
@@ -35,7 +30,7 @@ func TestDownloadFileCreatesMissingParentDirectories(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("fake-image-data"))
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	outputPath := filepath.Join(t.TempDir(), "missing", "nested", "export.png")
 	err := DownloadFile(server.Client(), outputPath, server.URL)
@@ -50,7 +45,7 @@ func TestDownloadFileErrorStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	outputPath := filepath.Join(t.TempDir(), "export.png")
 	err := DownloadFile(server.Client(), outputPath, server.URL)
