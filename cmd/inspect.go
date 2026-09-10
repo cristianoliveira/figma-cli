@@ -51,7 +51,7 @@ func newInspectCommand(deps Deps) *cobra.Command {
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			handoff, _ := cmd.Flags().GetBool("handoff")
 			includeVectorPaths, _ := cmd.Flags().GetBool("include-vector-paths")
-			depth := inspectDepthForRequest(cmd)
+			depth := inspectDepthForRequest(cmd, recursive)
 			includeHidden, _ := cmd.Flags().GetBool("include-hidden")
 			inspectFormat, _ := cmd.Flags().GetString("format")
 			fields, _ := cmd.Flags().GetStringSlice("fields")
@@ -178,13 +178,21 @@ func inspectNodeID(input *figma.FileInput, explicitNodeID string) (string, error
 }
 
 // inspectDepthForRequest returns the depth value the service should use.
-// When --depth is not explicitly supplied, the service receives the
-// unbounded sentinel (-1) so legacy recursive traversal is preserved.
-// This matches the pre-TASK-0003 behaviour where the CLI flag default
-// did not constrain the recursive walker.
-func inspectDepthForRequest(cmd *cobra.Command) int {
+// When --depth is not explicitly supplied:
+//   - recursive inspection receives the unbounded sentinel (-1) so legacy
+//     recursive traversal is preserved;
+//   - handoff keeps the historical default of 4 (extract.HandoffOptions
+//     bounded implementation specs).
+//
+// An explicit --depth is forwarded unchanged for either mode. Single
+// node inspection does not use the depth value.
+func inspectDepthForRequest(cmd *cobra.Command, recursive bool) int {
 	if !cmd.Flags().Changed("depth") {
-		return -1
+		if recursive {
+			return -1
+		}
+		depth, _ := cmd.Flags().GetInt("depth")
+		return depth
 	}
 	depth, _ := cmd.Flags().GetInt("depth")
 	return depth

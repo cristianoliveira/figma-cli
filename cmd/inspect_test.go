@@ -304,6 +304,35 @@ func TestInspectCommandRecursiveWithExplicitDepthPassesIt(t *testing.T) {
 	assert.Equal(t, 2, fake.gotRequest.Depth, "explicit --depth must be forwarded to the service")
 }
 
+func TestInspectCommandHandoffWithoutDepthKeepsLegacyDefault(t *testing.T) {
+	fake := &fakeInspectService{result: &inspect.Result{
+		Mode:    inspect.ModeHandoff,
+		Scope:   output.Scope{FileKey: "abc", NodeIDs: []string{"42:1"}},
+		Nodes:   []extract.InspectOutput{},
+		Handoff: &extract.HandoffOutput{},
+	}}
+	result := executeCommand(newInspectCommand(depsWithFakeInspect(fake)),
+		"https://www.figma.com/design/abc/Name?node-id=42-1", "--handoff")
+
+	require.NoError(t, result.Err)
+	assert.True(t, fake.gotRequest.Handoff)
+	assert.Equal(t, 4, fake.gotRequest.Depth, "unchanged --depth in handoff mode must keep the legacy default of 4")
+}
+
+func TestInspectCommandHandoffWithExplicitDepthPassesIt(t *testing.T) {
+	fake := &fakeInspectService{result: &inspect.Result{
+		Mode:    inspect.ModeHandoff,
+		Scope:   output.Scope{FileKey: "abc", NodeIDs: []string{"42:1"}},
+		Nodes:   []extract.InspectOutput{},
+		Handoff: &extract.HandoffOutput{},
+	}}
+	result := executeCommand(newInspectCommand(depsWithFakeInspect(fake)),
+		"https://www.figma.com/design/abc/Name?node-id=42-1", "--handoff", "--depth", "1")
+
+	require.NoError(t, result.Err)
+	assert.Equal(t, 1, fake.gotRequest.Depth, "explicit --depth must be forwarded in handoff mode")
+}
+
 func TestInspectCommandContextPropagatesToService(t *testing.T) {
 	fake := &fakeInspectService{result: &inspect.Result{
 		Mode:   inspect.ModeSingle,
