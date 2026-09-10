@@ -20,16 +20,14 @@
           proxyVendor = true;
         };
         figma = mkCLI "figma" "cmd/figma";
-        pixel-perfect = mkCLI "pixel-perfect" "cmd/pixel-perfect";
       in {
         packages = {
-          inherit figma pixel-perfect;
+          inherit figma;
           default = figma;
         };
 
         apps = {
           figma = utils.lib.mkApp { drv = figma; };
-          pixel-perfect = utils.lib.mkApp { drv = pixel-perfect; };
           default = utils.lib.mkApp { drv = figma; };
         };
 

@@ -90,3 +90,13 @@ func withoutEnvironmentVariable(environment []string, name string) []string {
 	}
 	return filtered
 }
+
+func buildCommand(t *testing.T, name string) string {
+	t.Helper()
+	binary := filepath.Join(t.TempDir(), name)
+	command := exec.Command("go", "build", "-o", binary, "./cmd/"+name)
+	command.Dir = filepath.Join("..", "..")
+	output, err := command.CombinedOutput()
+	require.NoError(t, err, string(output))
+	return binary
+}

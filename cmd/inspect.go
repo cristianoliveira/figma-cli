@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/cristianoliveira/figma-cli/internal/annotations"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -42,7 +41,6 @@ func newInspectCommandWithVariables(
 			}
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			handoff, _ := cmd.Flags().GetBool("handoff")
-			annotationsOutput, _ := cmd.Flags().GetString("annotations-output")
 			includeVectorPaths, _ := cmd.Flags().GetBool("include-vector-paths")
 			depth, _ := cmd.Flags().GetInt("depth")
 			includeHidden, _ := cmd.Flags().GetBool("include-hidden")
@@ -62,9 +60,6 @@ func newInspectCommandWithVariables(
 			}
 			if handoff && recursive {
 				return cli.NewUsageError(fmt.Errorf("--handoff and --recursive cannot be used together"))
-			}
-			if annotationsOutput != "" && !recursive {
-				return cli.NewUsageError(fmt.Errorf("--annotations-output requires --recursive"))
 			}
 			if includeVectorPaths && recursive && !cmd.Flags().Changed("depth") {
 				return cli.NewUsageError(fmt.Errorf("--include-vector-paths with --recursive requires explicit --depth"))
@@ -112,19 +107,8 @@ func newInspectCommandWithVariables(
 			scope := output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}}
 			if recursive {
 				nodes := extract.InspectTreeRelativeToScope(document, nodeID)
-				annotationDepth := -1
 				if cmd.Flags().Changed("depth") {
 					nodes = extract.InspectTreeRelativeToScopeToDepth(document, nodeID, depth)
-					annotationDepth = depth
-				}
-				if annotationsOutput != "" {
-					documentAnnotations, annotationsErr := extract.ExtractCoordinateAnnotations(document, nodeID, annotationDepth, includeHidden)
-					if annotationsErr != nil {
-						return annotationsErr
-					}
-					if err := annotations.Write(annotationsOutput, documentAnnotations); err != nil {
-						return err
-					}
 				}
 				nodes, total := limitResults(resultLimit, nodes)
 				enrichInspectNodes(nodes, details.Styles, client, input.FileID, fetchVariables)
@@ -158,8 +142,7 @@ func newInspectCommandWithVariables(
 	command.Flags().Bool("recursive", false, "include implementation specs for all descendant nodes")
 	command.Flags().Bool("handoff", false, "emit bounded implementation specs and component usage")
 	command.Flags().Int("depth", 4, "maximum descendant depth for --handoff or --recursive; recursive stays unbounded unless set")
-	command.Flags().Bool("include-hidden", false, "include invisible descendants in --handoff or --annotations-output")
-	command.Flags().String("annotations-output", "", "write generic screenshot-relative coordinate annotations; requires --recursive")
+	command.Flags().Bool("include-hidden", false, "include invisible descendants in --handoff")
 	command.Flags().Bool("include-vector-paths", false, "request and include exact Figma fill/stroke geometry; recursive use requires explicit --depth")
 	command.Flags().String("format", inspectFormatJSON, "output format for recursive inspection: json or text")
 	command.Flags().StringSlice("fields", nil, "comma-separated inspect fields for --format text; nested paths are supported")

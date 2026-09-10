@@ -70,12 +70,10 @@ run-hooks: ## Run all pre-commit hooks manually
 
 # Nix profile
 .PHONY: nix-profile-install
-nix-profile-install: ## Reinstall figma and pixel-perfect from the current local flake
+nix-profile-install: ## Reinstall figma from the current local flake
 	-nix profile remove figma-cli
 	-nix profile remove figma
-	-nix profile remove pixel-perfect
 	nix profile install path:.#figma
-	nix profile install path:.#pixel-perfect
 
 # Utility
 .PHONY: version

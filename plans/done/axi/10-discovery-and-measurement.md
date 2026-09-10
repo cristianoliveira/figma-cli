@@ -11,7 +11,6 @@ Make no-argument views identify the executable using a resolved absolute path wi
 ## Pre-analysis
 
 - `cmd/root.go` reports Figma authentication readiness.
-- `internal/pixelperfectcmd.NewCommand` reports static usage and next steps.
 - root help and local examples are already tested for compactness.
 - skill guidance and Cobra drift tests exist from completed AXI work.
 - common agent decisions differ: Figma agents choose scope/query; pixel agents choose compare/probe/scan and artifact inspection.
@@ -54,4 +53,4 @@ Choose measurement script location and budget after observing current outputs. P
 - No-argument unit and built-binary tests enforce cheap state, zero stderr, and compact byte budgets.
 - `scripts/measure-axi.sh` reproducibly measures stdout/stderr bytes, exit status, commands, and recovery round trips without network calls.
 - `docs/axi-measurements.md` records actual TOON/JSON/CSV shapes and decisions without fixed savings claims.
-- Figma and pixel-perfect skill drift tests protect home examples and bounded-output facts.
+- Figma skill drift tests protect home examples and bounded-output facts.

@@ -24,7 +24,6 @@ Every command answers one question. Use this as a lookup table:
 | What unresolved feedback affects this node? | `figma comments --include-ancestors --state open <url>` |
 | What changed structurally? | `figma changes --from v1 --to v2 <url>` |
 | What changed in the copy? | `figma diff text --from v1 --to v2 <url>` |
-| How different are two PNG screenshots? | `pixel-perfect reference.png actual.png --output diff.png` |
 | What is this file about? | `figma meta <url>` |
 | What versions exist? | `figma versions <url>` |
 | When did this text appear? | `figma diff blame --to <version> <url>` |
@@ -124,10 +123,10 @@ Default filenames remain `lowercase-name_nodeid.ext`.
 figma export --format png --id 42:1 "url"
 figma export --format png --scale 2 --id 42:1 --output ./node@2x.png "url"
 figma export --format svg --output ./icons/star.svg --id 42:1 "url"
-figma export --format png --id 42:1 --output ./node.png --metadata ./node.export.json "url"
+figma export --format png --id 42:1 --output ./node.png "url"
 ```
 
-Formats: `png`, `jpg`, `svg`, `pdf`. Use `--scale` only for raster exports (`png`/`jpg`), default `1`, range `0.01-4`. Use `--metadata` for visual-diff workflows. The sidecar records `nodeBounds`, measured `exportBounds`, `scale`, `dimensionDelta`, `paddingEvidence`, and when derivable `logicalCrop` / `exportPadding`. For PNG exports with vector/effect padding, metadata may derive logical crop from a temporary SVG export so `pixel-perfect --reference-metadata` can avoid manual crop math.
+Formats: `png`, `jpg`, `svg`, `pdf`. Use `--scale` only for raster exports (`png`/`jpg`), default `1`, range `0.01-4`. The `--width` flag is also available for PNG/JPG exports and derives the required scale from the node width.
 
 ### `figma layout` — Inspect frame structure
 
@@ -203,7 +202,6 @@ figma inspect "https://www.figma.com/design/abc/Name?node-id=42-1"
 figma inspect --id 42:1 "abc123" # explicit scope for a bare file key
 figma inspect --recursive "url?node-id=42-1" # implementation specs for entire selected tree with relativeBounds
 figma inspect --recursive --depth 3 --format text --fields name,type,relativeBounds,layout.mode,layout.gap,fills "url?node-id=42-1" # compact selected outline
-figma inspect --recursive --annotations-output frame.annotations.json "url?node-id=42-1"
 figma inspect --include-vector-paths "url?node-id=42-1" # exact fill/stroke path commands
 figma inspect --handoff "url?node-id=42-1"   # bounded implementation specs + component usage
 figma inspect --handoff --depth 2 --include-hidden "url?node-id=42-1"
@@ -214,8 +212,6 @@ figma inspect --handoff --depth 2 --include-hidden "url?node-id=42-1"
 ```
 
 Use `--handoff` as the design-to-code default: it limits traversal to depth 4, excludes invisible descendants, and summarizes repeated component instances. `--recursive` remains the unbounded flat implementation inventory and cannot be combined with `--handoff`. Add `--format text --fields <comma-separated-paths>` when only selected recursive properties are needed; nested paths such as `layout.mode` are supported, absent optional values are omitted, and unknown fields fail before network access. Structured output defaults to TOON; add global `--json` for compatibility JSON. Scoped recursive inspect includes `relativeBounds` measured from the requested scope root while preserving absolute `bounds`; use these for local CSS coordinates instead of manual subtraction. Recursive inspect also includes `spacingFromPrevious` for measured auto-layout gaps between direct visible non-absolute siblings. It reports `parentId`, `previousId`, `axis`, `measured`, `declared`, and `matchesDeclared`; missing Figma `itemSpacing` is treated as declared `0`. Use it to catch collapsed text heights or missing DOM spacing before chasing raster offsets.
-
-`--annotations-output` requires `--recursive` and writes neutral screenshot-relative bounds for selected scope and descendants. Use output with `pixel-perfect --annotations <path>` to attach Figma node IDs and labels to intersecting mismatch regions. This is optional context: it must not change pixel metrics, gates, or exit status. Explicit `--depth` and `--include-hidden` also control annotation traversal.
 
 `--include-vector-paths` opts into Figma `geometry=paths` and returns original `fillGeometry` / `strokeGeometry` path commands, winding rules, override IDs/table, relative transform, and vector size. Use this for contour-sensitive icons or illustrations instead of approximating from bounds. Recursive use requires explicit `--depth`; default inspect output remains unchanged.
 

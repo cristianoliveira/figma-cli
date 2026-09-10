@@ -3,7 +3,7 @@ name: figma-cli
 description: >
   Query a Figma URL or file for layout, CSS, assets, text, components, comments, tokens, or history.
   Use for requests like "inspect this Figma"; requires FIGMA_ACCESS_TOKEN.
-  Not for Figma editing, browser interaction, screenshot comparison, or iterative UI matching.
+  Not for Figma editing, browser interaction, or implementing a UI from a screenshot.
 ---
 
 # Figma CLI
@@ -19,7 +19,6 @@ Answer one concrete design question with structured, frontend-ready Figma data.
    - implementation handoff: `figma inspect --handoff --depth <n> <url>`
    - bounded recursive node details: `figma inspect --recursive --depth <n> <url>`
    - token-light selected outline: `figma inspect --recursive --depth <n> --format text --fields name,type,relativeBounds,layout.mode,layout.gap,fills <url>`
-   - pixel-diff coordinate context: `figma inspect --recursive --annotations-output <path> <url>`
    - exact vector contour truth: `figma inspect --include-vector-paths <vector-url>`
    - structure and spacing: `figma layout --depth 4 <url>`; use `--full` only after traversal metadata proves omitted detail is needed
    - generated styles: `figma css <url>`
@@ -28,7 +27,7 @@ Answer one concrete design question with structured, frontend-ready Figma data.
    - components: `figma components <url>`
    - assets: `figma assets --output <dir> <url>`
    - selected-node raster export: `figma export --format png --output <path> <url-with-node-id>`
-   - screenshot-aligned raster export: `figma export --format png --width <pixels> --output <path> <url-with-node-id>`
+   - raster export at a target width: `figma export --format png --width <pixels> --output <path> <url-with-node-id>`
    - tokens or colors: `figma tokens <file>` / `figma colors <url>`
    - comments: `figma comments <url>`
    - history: `figma versions <url>`, `figma changes`, or `figma diff text`
@@ -48,8 +47,6 @@ Read [command reference](references/commands.md) only when exact flags, output s
 - Prefer bounded `layout --depth` and `inspect --depth` before full traversal. Empty queries retain scope and effective filters. Structured stdout errors use category `usage` with exit 2 or `operational` with exit 1; follow single `recovery` step when present.
 - For PNG/JPG exports, use either `--scale` or target `--width`; the latter derives valid Figma scale from node bounds. Do not combine them.
 - Use `inspect --include-vector-paths` when implementation depends on exact vector contour. Preserve returned fill/stroke path commands and winding rules; do not approximate shape from bounds or normalize path data. Recursive vector inspection requires explicit `--depth` because geometry payloads are large.
-- Export metadata uses pixel-aligned `logicalCrop` and `contentInset` relative to the exported image. Prefer these values over Figma canvas coordinates when preparing screenshot comparisons.
-- For pixel-perfect loops, write generic annotations from same selected frame with `inspect --recursive --annotations-output`. Pass artifact to `pixel-perfect --annotations`; annotations add Figma node IDs/names to mismatch regions without changing metrics. Ensure annotation coordinate-space dimensions match prepared reference image.
 - Layer names are not unique; return every match with node ID.
 - Exact comment ID lookup takes precedence over node filtering.
 - Never edit Figma or claim CLI can mutate design files.
@@ -64,8 +61,6 @@ Should trigger:
 - “Generate tokens from this Figma file.”
 
 Should not trigger:
-- “Compare these two PNG screenshots.” → use `pixel-perfect`.
-- “Keep changing this page until it matches Figma.” → use `figma-pixel-perfect-loop`.
 - “Open this website and click the login button.” → use browser tooling.
 - “How should I structure generic React CSS?”
 

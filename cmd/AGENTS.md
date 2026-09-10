@@ -1,10 +1,10 @@
 # Purpose
 
-`cmd/` owns Cobra command definitions and the two executable composition roots. Commands translate flags and arguments into calls to private capability packages, then render results.
+`cmd/` owns Cobra command definitions and the Figma executable composition root. Commands translate flags and arguments into calls to private capability packages, then render results.
 
 # Boundaries
 
-Keep command handlers thin: validate command-owned input, resolve Figma scope, load dependencies, invoke an internal capability, and select output. Document traversal, API construction, image metrics, and output shaping belong in internal packages.
+Keep command handlers thin: validate command-owned input, resolve Figma scope, load dependencies, invoke an internal capability, and select output. Document traversal, API construction, and output shaping belong in internal packages.
 
 # Connections
 
@@ -21,13 +21,11 @@ Keep command handlers thin: validate command-owned input, resolve Figma scope, l
 
 - `cmd/root.go:Execute`: process-level execution, error rendering, and exit-code handoff.
 - `cmd/figma/main.go:main`: Figma executable composition root.
-- `cmd/pixel-perfect/main.go:main`: standalone comparison executable composition root.
 
 # Boundary flows
 
 - Information flow: `cmd/figma/main.go:main` -> `internal/cli/runtime.go:LoadClient` via `cmd/root.go:Execute`; value: `FIGMA_ACCESS_TOKEN`.
 - Information flow: `internal/figma/document.go:FetchDocument` -> `internal/extract/inspect.go:InspectTree` via `cmd/root.go:Execute`; value: `document (any)`.
-- Information flow: `internal/imagediff/image.go:CompareImagesWithThresholds` -> `internal/output/printer.go:Printer.Structured` via `internal/pixelperfectcmd/command.go:NewCommand`; value: `imagediff.ImageComparison`.
 
 # Placement
 

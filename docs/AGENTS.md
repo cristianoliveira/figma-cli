@@ -1,6 +1,6 @@
 # Purpose
 
-`docs/` contains user-facing command contracts and workflow explanations for the Figma and pixel-perfect CLIs. Documentation should describe the stable interface exposed by the source and live Cobra help.
+`docs/` contains user-facing command contracts and workflow explanations for the Figma CLI. Documentation should describe the stable interface exposed by the source and live Cobra help.
 
 # Boundaries
 

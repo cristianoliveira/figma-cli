@@ -1,19 +1,18 @@
 # Purpose
 
-Figma CLI turns Figma design data into agent-facing structured output, assets, CSS, tokens, and deterministic screenshot evidence. The repository also ships `pixel-perfect`, a standalone PNG comparison CLI.
+Figma CLI turns Figma design data into agent-facing structured output, assets, CSS, and tokens.
 
 # Architecture
 
-[cmd](cmd/AGENTS.md) owns Cobra composition and process entrypoints. It wires capabilities from [internal](internal/AGENTS.md), but application policy belongs in the internal package that owns it. Figma transport and typed API boundaries stay in [internal/figma](internal/figma/AGENTS.md); generated models are isolated in [internal/figma/api](internal/figma/api/AGENTS.md). Pure document shaping belongs in [internal/extract](internal/extract/AGENTS.md), while image comparison remains independent of Figma in [internal/imagediff](internal/imagediff/AGENTS.md). Output contracts are centralized in [internal/output](internal/output/AGENTS.md).
+[cmd](cmd/AGENTS.md) owns Cobra composition and process entrypoints. It wires capabilities from [internal](internal/AGENTS.md), but application policy belongs in the internal package that owns it. Figma transport and typed API boundaries stay in [internal/figma](internal/figma/AGENTS.md); generated models are isolated in [internal/figma/api](internal/figma/api/AGENTS.md). Pure document shaping belongs in [internal/extract](internal/extract/AGENTS.md). Output contracts are centralized in [internal/output](internal/output/AGENTS.md).
 
 # Modules
 
-- [Commands](cmd/AGENTS.md): Figma and pixel-perfect command composition.
+- [Commands](cmd/AGENTS.md): Figma command composition.
 - [Documentation](docs/AGENTS.md): user-facing command and workflow contracts.
-- [Evaluation fixtures](evals/AGENTS.md): offline skill and implementation evaluation evidence.
-- [Internal packages](internal/AGENTS.md): private runtime, API, extraction, and comparison capabilities.
+- [Internal packages](internal/AGENTS.md): private runtime, API, extraction, and output capabilities.
 - [Scripts](scripts/AGENTS.md): repository generation and smoke-support utilities.
-- [Skills](skills/AGENTS.md): agent workflows and their evaluation inputs.
+- [Skills](skills/AGENTS.md): agent workflows for Figma exploration and implementation.
 
 # Landmarks
 
@@ -23,14 +22,11 @@ Figma CLI turns Figma design data into agent-facing structured output, assets, C
 - `internal/figma/document.go:FetchDocument`: retrieves and normalizes a Figma document tree.
 - `internal/extract/inspect.go:InspectTree`: shapes a document tree into inspection output.
 - `internal/output/printer.go:Printer.Structured`: emits the stable TOON/JSON result contract.
-- `cmd/pixel-perfect/main.go:main`: standalone image-comparison entrypoint.
-- `internal/pixelperfectcmd/command.go:NewCommand`: builds the pixel-perfect Cobra workflow.
 
 # Boundary flows
 
 - Information flow: `internal/figma/client.go:Client.FetchJSON` -> `internal/figma/document.go:UnmarshalDocument` via `internal/figma/document.go:FetchDocument`; value: `api.GetFileResponse.Document`.
 - Information flow: `internal/figma/document.go:FetchDocument` -> `internal/extract/inspect.go:InspectTree` via `cmd/root.go:Execute`; value: `document (any)`.
-- Information flow: `internal/imagediff/image.go:CompareImagesWithThresholds` -> `internal/pixelperfectreport/report.go:Render` via `internal/pixelperfectcmd/command.go:NewCommand`; value: `imagediff.ImageComparison`.
 
 # Placement
 

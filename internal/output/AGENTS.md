@@ -22,7 +22,6 @@ Callers provide domain values and select the output mode. This package must not 
 # Boundary flows
 
 - Information flow: `internal/extract/inspect.go:InspectTree` -> `internal/output/printer.go:Printer.Structured` via `cmd/root.go:Execute`; value: `extract.InspectOutput`.
-- Information flow: `internal/imagediff/image.go:CompareImagesWithThresholds` -> `internal/output/printer.go:Printer.Structured` via `internal/pixelperfectcmd/command.go:NewCommand`; value: `imagediff.ImageComparison`.
 
 # Placement
 

@@ -4,8 +4,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -122,20 +120,6 @@ func TestInspectCommandEmitsBoundedHandoff(t *testing.T) {
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"nodes":[{"id":"42:1","name":"Checkout","type":"FRAME","bounds":{},"layout":{},"typography":{}},{"id":"42:3","name":"Button","type":"INSTANCE","componentId":"9:1","bounds":{},"layout":{},"typography":{},"styleBindings":{"fill":"S:fill"},"resolvedStyles":{"fill":{"id":"S:fill","name":"Brand/Primary","type":"FILL"}}},{"id":"42:5","name":"Button","type":"INSTANCE","componentId":"9:1","bounds":{},"layout":{},"typography":{}}],"components":[{"name":"Button","componentId":"9:1","count":2}]}}`, result.Stdout)
 }
 
-func TestInspectCommandWritesGenericCoordinateAnnotations(t *testing.T) {
-	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
-		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Card","type":"FRAME","absoluteBoundingBox":{"x":100.25,"y":200.5,"width":50.2,"height":40.1},"children":[{"id":"42:2","name":"Label","type":"TEXT","absoluteBoundingBox":{"x":112.5,"y":205.25,"width":20.1,"height":10.2}}]}}}}`
-		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
-	})}}
-	path := filepath.Join(t.TempDir(), "missing", "annotations", "annotations.json")
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive", "--annotations-output", path)
-
-	require.NoError(t, result.Err)
-	content, err := os.ReadFile(path)
-	require.NoError(t, err)
-	assert.JSONEq(t, `{"version":1,"coordinateSpace":{"width":51,"height":41},"annotations":[{"id":"42:1","label":"Card","bounds":{"x":0,"y":0,"width":51,"height":41},"metadata":{"nodeType":"FRAME","source":"figma"}},{"id":"42:2","label":"Label","bounds":{"x":12,"y":4,"width":21,"height":11},"metadata":{"nodeType":"TEXT","source":"figma"}}]}`, string(content))
-}
-
 func TestInspectCommandRendersSelectedTextFields(t *testing.T) {
 	client := &figma.Client{HTTP: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Card","type":"FRAME","layoutMode":"VERTICAL","itemSpacing":8,"absoluteBoundingBox":{"x":100,"y":200,"width":320,"height":800},"fills":[{"type":"SOLID","color":{"r":1,"g":1,"b":1,"a":1}}],"children":[{"id":"42:2","name":"Label","type":"TEXT","characters":"Hello","absoluteBoundingBox":{"x":116,"y":212,"width":84,"height":20}}]}}}}`
@@ -175,11 +159,6 @@ func TestInspectCommandValidatesTextProjectionBeforeLoadingClient(t *testing.T) 
 			assert.False(t, loaded)
 		})
 	}
-}
-
-func TestInspectCommandRequiresRecursiveForAnnotations(t *testing.T) {
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return nil, errors.New("must not load") }), "abc", "--id", "1:1", "--annotations-output", "annotations.json")
-	assert.EqualError(t, result.Err, "--annotations-output requires --recursive")
 }
 
 func TestInspectCommandRejectsHandoffWithRecursive(t *testing.T) {
