@@ -1,7 +1,7 @@
 ---
 id: TASK-0002
 title: Build explicit command composition root
-status: todo
+status: doing
 depends_on: []
 priority: high
 tags: [architecture, cli]
