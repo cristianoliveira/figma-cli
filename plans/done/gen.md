@@ -27,7 +27,7 @@ transcription of Figma specs into component boilerplate.
 
 ## Non-goals
 
-- Full visual output (don't try to match pixel-perfect Figma rendering)
+- Full visual output (use the exported Figma data as the source of truth)
 - Complex components (nested tables, charts, canvases)
 - State management, event handlers, business logic
 - Auto-layout → CSS conversion (that's `layout` command's job)

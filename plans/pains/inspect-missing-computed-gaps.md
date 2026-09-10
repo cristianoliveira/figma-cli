@@ -1,13 +1,13 @@
-# inspect is missing computed gaps — making pixel-perfect workflows needlessly iterative
+# inspect is missing computed gaps — making Figma implementation needlessly iterative
 
 **Date:** 2026-07-12
-**Context:** Building a Drive card pixel-perfect against a Figma frame. Used `figma inspect --recursive`, `figma css --recursive`, `figma layout`, `figma export`, `pixel-perfect`, and Playwright.
+**Context:** Building a Drive card from a Figma frame. Used `figma inspect --recursive`, `figma css --recursive`, `figma layout`, `figma export`, and Playwright.
 
 ---
 
 ## The experience
 
-When you're doing pixel-perfect, `figma inspect --recursive` is your canonical source. It's the dump you compare DOM bounding boxes against. Every child node has bounds, layout mode, typography, padding. You trust it.
+When implementing a Figma frame, `figma inspect --recursive` is your canonical source. It is the dump you compare with DOM bounding boxes. Every child node has bounds, layout mode, typography, padding. You trust it.
 
 But there's one number that's missing: **the measured gap between adjacent siblings**.
 
@@ -21,7 +21,7 @@ That's fine once. Across 15+ nodes in a frame, when you're iterating on CSS and 
 
 ## What happened
 
-I spent 5+ image comparison iterations chasing a vertical shift of the blue callout box. `pixel-perfect --suggest-offset` kept saying `y: -8`. I was adjusting card padding, header margins, description height. The actual root cause was simpler: the sales text rendered at 1 line in the browser (24px) instead of Figma's 2 lines (48px), which collapsed the vertical space, which shifted the contact link up by 24px, which shifted the whole dropdown group up, which threw off the chevron position.
+I spent several browser iterations chasing a vertical shift of the blue callout box. The browser layout was offset by `y: -8`. I was adjusting card padding, header margins, description height. The actual root cause was simpler: the sales text rendered at 1 line in the browser (24px) instead of Figma's 2 lines (48px), which collapsed the vertical space, which shifted the contact link up by 24px, which shifted the whole dropdown group up, which threw off the chevron position.
 
 If `inspect --recursive` had told me `computedGap: 0` between the sales text and the contact link, I'd have noticed the height mismatch immediately: "This gap is zero, so for the contact link to be at y=301.718, the text above it must be exactly 48px tall. Let me check the browser height."
 
@@ -29,7 +29,7 @@ If `inspect --recursive` had told me `computedGap: 0` between the sales text and
 
 `figma layout --measure-spacing` exists. It produces exactly this data. But it has two problems in practice:
 
-1. **It's a separate command.** When I'm deep in a pixel-perfect loop with `inspect --recursive` as my reference, I don't think to run a second structure command. The mental model is "inspect = source of truth, CSS = implementation output, pixel-perfect = validation."
+1. **It's a separate command.** When `inspect --recursive` is the reference for browser implementation, I don't think to run a second structure command. The mental model is "inspect = source of truth, CSS = implementation output, browser = validation."
 
 2. **The output is a tree, not per-node metadata.** The gaps are embedded in a visual tree format. I can't pipe it into `jq` and extract a list of all zero-gap sibling pairs in one line. If `inspect --recursive` included a `gapToNextSibling` (or `gapToPreviousSibling`) field on every non-last child, it would be one `jq '.. | select(.gapToNextSibling == 0)'` away.
 

@@ -19,11 +19,7 @@ work, read [the todo index](../../todo/README.md).
 | [06 — Compatibility profile](06-strict-alignment-contract-profile.md) | Choose default formats, error channels, and migration rules. |
 | [07 — TOON output](07-toon-output-migration.md) | Use TOON for structured output while retaining JSON compatibility. |
 | [08 — Structured errors](08-structured-errors.md) | Return actionable errors without exposing secrets or raw dependency details. |
-| [09 — Bounds and recovery](09-output-bounds-and-hints.md) | Limit output and provide commands to retrieve omitted results. |
 | [10 — Discovery and measurement](10-discovery-and-measurement.md) | Identify executables and measure output size and recovery steps. |
-
-See the [strict-alignment record](strict-alignment-initiative.md) for the second
-phase and its compatibility decisions.
 
 ## Rules to keep when extending the CLI
 
