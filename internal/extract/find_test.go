@@ -3,20 +3,25 @@ package extract
 import (
 	"testing"
 
+	"github.com/cristianoliveira/figma-cli/internal/document"
 	"github.com/stretchr/testify/assert"
 )
 
-func searchDoc() map[string]any {
-	return map[string]any{
-		"id": "0:0", "name": "root", "type": "FRAME",
-		"children": []any{
-			map[string]any{"id": "1:1", "name": "Login Button", "type": "COMPONENT"},
-			map[string]any{"id": "1:2", "name": "Card", "type": "FRAME", "children": []any{
-				map[string]any{"id": "1:3", "name": "Signup Button", "type": "INSTANCE"},
-				map[string]any{"id": "1:4", "name": "Icon", "type": "VECTOR"},
+// searchDoc returns the stable document model used by every test in
+// this file. It mirrors the JSON fixture the production Figma adapter
+// maps from, but the test builds the model directly to avoid a
+// figma<->extract import cycle.
+func searchDoc() *document.Node {
+	return &document.Node{
+		ID: "0:0", Name: "root", Type: "FRAME",
+		Children: []*document.Node{
+			{ID: "1:1", Name: "Login Button", Type: "COMPONENT"},
+			{ID: "1:2", Name: "Card", Type: "FRAME", Children: []*document.Node{
+				{ID: "1:3", Name: "Signup Button", Type: "INSTANCE"},
+				{ID: "1:4", Name: "Icon", Type: "VECTOR"},
 			}},
-			map[string]any{"id": "1:5", "name": "Footer", "type": "SECTION"},
-			map[string]any{"id": "1:6", "name": "Stale title", "type": "TEXT", "characters": "Actual title"},
+			{ID: "1:5", Name: "Footer", Type: "SECTION"},
+			{ID: "1:6", Name: "Stale title", Type: "TEXT", Text: "Actual title"},
 		},
 	}
 }
