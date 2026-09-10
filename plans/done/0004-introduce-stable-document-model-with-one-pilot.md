@@ -1,7 +1,7 @@
 ---
 id: TASK-0004
 title: Introduce stable document model with one pilot
-status: doing
+status: done
 depends_on: [TASK-0001]
 priority: high
 tags: [architecture, domain]
