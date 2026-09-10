@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"encoding/json"
 	"testing"
+	"time"
 
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
+	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,7 +37,7 @@ func TestResolveTeamInput(t *testing.T) {
 }
 
 func TestNewProjectsOutput(t *testing.T) {
-	response := api.GetTeamProjectsResponse{Name: "Wire", Projects: []api.Project{{Id: "123", Name: "Design System"}}}
+	response := figma.TeamProjects{Name: "Wire", Projects: []figma.TeamProject{{ID: "123", Name: "Design System"}}}
 
 	got := newProjectsOutput(response)
 
@@ -45,8 +45,16 @@ func TestNewProjectsOutput(t *testing.T) {
 }
 
 func TestNewFilesOutput(t *testing.T) {
-	var response api.GetProjectFilesResponse
-	require.NoError(t, json.Unmarshal([]byte(`{"name":"Design System","files":[{"key":"abc","name":"Primitives","last_modified":"2026-07-07T12:00:00Z","thumbnail_url":"https://example.com/thumb.png"}]}`), &response))
+	modified, err := time.Parse(time.RFC3339, "2026-07-07T12:00:00Z")
+	require.NoError(t, err)
+
+	thumbnail := "https://example.com/thumb.png"
+	response := figma.ProjectFiles{
+		Name: "Design System",
+		Files: []figma.ProjectFile{
+			{Key: "abc", Name: "Primitives", LastModified: modified, ThumbnailURL: &thumbnail},
+		},
+	}
 
 	got := newFilesOutput(response)
 
@@ -59,8 +67,8 @@ func TestNewFilesOutput(t *testing.T) {
 }
 
 func TestNewDiscoveryOutputsUseEmptyArrays(t *testing.T) {
-	assert.Empty(t, newProjectsOutput(api.GetTeamProjectsResponse{}).Projects)
-	assert.NotNil(t, newProjectsOutput(api.GetTeamProjectsResponse{}).Projects)
-	assert.Empty(t, newFilesOutput(api.GetProjectFilesResponse{}).Files)
-	assert.NotNil(t, newFilesOutput(api.GetProjectFilesResponse{}).Files)
+	assert.Empty(t, newProjectsOutput(figma.TeamProjects{}).Projects)
+	assert.NotNil(t, newProjectsOutput(figma.TeamProjects{}).Projects)
+	assert.Empty(t, newFilesOutput(figma.ProjectFiles{}).Files)
+	assert.NotNil(t, newFilesOutput(figma.ProjectFiles{}).Files)
 }

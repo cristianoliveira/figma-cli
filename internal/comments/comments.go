@@ -4,16 +4,17 @@ package comments
 import (
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 )
 
 // Fetch retrieves a file's comments and converts them to command output.
+// The Figma adapter already maps generated API types into stable
+// figma.Comment DTOs, so this package does not import internal/figma/api.
 func Fetch(client *figma.Client, fileID string) ([]extract.CommentOutput, error) {
-	var response api.GetCommentsResponse
-	if err := client.Fetch(figma.BuildCommentsURL(fileID, ""), &response); err != nil {
+	comments, err := figma.FetchComments(client, figma.BuildCommentsURL(fileID, ""))
+	if err != nil {
 		return nil, err
 	}
-	outputs := mapAPIComments(response.Comments)
+	outputs := mapAPIComments(comments)
 	for index := range outputs {
 		outputs[index].URL = figma.BuildCommentWebURL(fileID, outputs[index].NodeID, outputs[index].ID)
 	}

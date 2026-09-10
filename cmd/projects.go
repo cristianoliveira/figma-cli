@@ -6,7 +6,6 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -34,10 +33,12 @@ func resolveTeamInput(args []string, getenv func(string) string) (string, error)
 	return figma.ParseTeamInput(input)
 }
 
-func newProjectsOutput(response api.GetTeamProjectsResponse) projectsOutput {
+// newProjectsOutput maps the stable figma.TeamProjects DTO into the
+// command-layer output shape.
+func newProjectsOutput(response figma.TeamProjects) projectsOutput {
 	projects := make([]projectOutput, 0, len(response.Projects))
 	for _, project := range response.Projects {
-		projects = append(projects, projectOutput{ID: project.Id, Name: project.Name})
+		projects = append(projects, projectOutput{ID: project.ID, Name: project.Name})
 	}
 	return projectsOutput{Team: response.Name, Total: len(projects), Projects: projects}
 }

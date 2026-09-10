@@ -8,7 +8,6 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -46,23 +45,27 @@ type versionsOutput struct {
 	Pagination versionsPaginationOutput `json:"pagination"`
 }
 
-func newVersionsOutput(response api.GetFileVersionsResponse) versionsOutput {
+// newVersionsOutput maps the stable figma.FileVersions DTO into the
+// command-layer output shape. Pagination cursors are translated into
+// concrete version IDs and the API's nullable timestamps are collapsed into
+// a "named" boolean for clarity.
+func newVersionsOutput(response figma.FileVersions) versionsOutput {
 	versions := make([]versionOutput, 0, len(response.Versions))
 	for _, v := range response.Versions {
 		versions = append(versions, versionOutput{
-			ID:           v.Id,
+			ID:           v.ID,
 			CreatedAt:    v.CreatedAt.Format(time.RFC3339),
 			Label:        v.Label,
 			Description:  v.Description,
 			Named:        v.Label != nil || v.Description != nil,
-			User:         versionUserOutput{Handle: v.User.Handle, ID: v.User.Id},
-			ThumbnailURL: v.ThumbnailUrl,
+			User:         versionUserOutput{Handle: v.User.Handle, ID: v.User.ID},
+			ThumbnailURL: v.ThumbnailURL,
 		})
 	}
 
 	pagination := versionsPaginationOutput{
-		HasMore: response.Pagination.NextPage != nil,
-		HasPrev: response.Pagination.PrevPage != nil,
+		HasMore: response.Pagination.HasNextPage,
+		HasPrev: response.Pagination.HasPrevPage,
 	}
 	if len(versions) > 0 {
 		if pagination.HasMore {

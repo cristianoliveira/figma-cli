@@ -21,7 +21,8 @@ func TestFetchTeamProjects(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Wire", got.Name)
 	require.Len(t, got.Projects, 1)
-	assert.Equal(t, "123", got.Projects[0].Id)
+	assert.Equal(t, "123", got.Projects[0].ID)
+	assert.Equal(t, "Design System", got.Projects[0].Name)
 }
 
 func TestFetchTeamProjectsErrorStatus(t *testing.T) {
@@ -48,6 +49,10 @@ func TestFetchProjectFiles(t *testing.T) {
 	assert.Equal(t, "Design System", got.Name)
 	require.Len(t, got.Files, 1)
 	assert.Equal(t, "abc", got.Files[0].Key)
+	assert.Equal(t, "Primitives", got.Files[0].Name)
+	assert.False(t, got.Files[0].LastModified.IsZero())
+	require.NotNil(t, got.Files[0].ThumbnailURL)
+	assert.Equal(t, "https://example.com/thumb.png", *got.Files[0].ThumbnailURL)
 }
 
 func TestFetchProjectFilesErrorStatus(t *testing.T) {

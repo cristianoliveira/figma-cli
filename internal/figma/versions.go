@@ -6,11 +6,14 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 )
 
-// FetchVersions fetches the version history of a file via the Figma API.
-func FetchVersions(client *Client, apiURL string) (api.GetFileVersionsResponse, error) {
-	var result api.GetFileVersionsResponse
-	if err := client.Fetch(apiURL, &result); err != nil {
-		return api.GetFileVersionsResponse{}, fmt.Errorf("fetching versions: %w", err)
+// FetchVersions fetches the version history of a file via the Figma API and
+// returns the result as a stable FileVersions DTO. The generated API
+// response is mapped at the adapter boundary so callers do not depend on
+// internal/figma/api.
+func FetchVersions(client *Client, apiURL string) (FileVersions, error) {
+	var raw api.GetFileVersionsResponse
+	if err := client.Fetch(apiURL, &raw); err != nil {
+		return FileVersions{}, fmt.Errorf("fetching versions: %w", err)
 	}
-	return result, nil
+	return MapFileVersions(raw), nil
 }

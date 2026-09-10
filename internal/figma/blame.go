@@ -3,7 +3,6 @@ package figma
 import (
 	"github.com/cristianoliveira/figma-cli/internal/diff"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 )
 
 // TextHistory fetches Figma version history and node text for the diff use case.
@@ -27,7 +26,7 @@ func (h *TextHistory) Versions() ([]diff.Version, error) {
 	history := make([]diff.Version, len(versions))
 	for index, version := range versions {
 		history[index] = diff.Version{
-			ID:        version.Id,
+			ID:        version.ID,
 			CreatedAt: version.CreatedAt,
 			User:      version.User.Handle,
 		}
@@ -44,9 +43,11 @@ func (h *TextHistory) TextAt(versionID string) ([]extract.TextNode, error) {
 }
 
 // FetchAllVersions pages through a file's version history (newest-first) until
-// the end. It uses the largest page size to minimise requests.
-func FetchAllVersions(client *Client, fileID string) ([]api.Version, error) {
-	var all []api.Version
+// the end. It uses the largest page size to minimise requests. The result is
+// returned as stable FileVersion DTOs so the generated api.Version type does
+// not leak past the adapter.
+func FetchAllVersions(client *Client, fileID string) ([]FileVersion, error) {
+	var all []FileVersion
 	after := ""
 	for {
 		u, err := BuildVersionsURL(fileID, VersionsQuery{PageSize: 50, After: after})
@@ -61,10 +62,10 @@ func FetchAllVersions(client *Client, fileID string) ([]api.Version, error) {
 			break
 		}
 		all = append(all, resp.Versions...)
-		if resp.Pagination.NextPage == nil {
+		if !resp.Pagination.HasNextPage {
 			break
 		}
-		after = resp.Versions[len(resp.Versions)-1].Id
+		after = resp.Versions[len(resp.Versions)-1].ID
 	}
 	return all, nil
 }
