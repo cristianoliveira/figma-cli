@@ -1,6 +1,10 @@
 package extract
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/cristianoliveira/figma-cli/internal/document"
+)
 
 // LayerMatch is a found layer, used by `figma find`.
 type LayerMatch struct {
@@ -18,11 +22,15 @@ type SearchCriteria struct {
 	Type string
 }
 
-// Search walks a document tree and returns every node matching the criteria.
-// With both Name and Type empty it returns all nodes in the tree.
-func Search(value any, criteria SearchCriteria) []LayerMatch {
-	object, ok := value.(map[string]any)
-	if !ok {
+// Search walks the stable document model and returns every node
+// matching the criteria. With both Name and Type empty it returns all
+// nodes in the tree, in pre-order depth-first order. A nil document
+// returns no matches.
+//
+// This function does not traverse `map[string]any`; it operates
+// exclusively on the stable model produced by `figma.MapDocument`.
+func Search(root *document.Node, criteria SearchCriteria) []LayerMatch {
+	if root == nil {
 		return nil
 	}
 
@@ -30,38 +38,32 @@ func Search(value any, criteria SearchCriteria) []LayerMatch {
 	typeLower := strings.ToLower(criteria.Type)
 
 	var matches []LayerMatch
-	if nodeMatches(object, nameLower, typeLower) {
+	if nodeMatches(root, nameLower, typeLower) {
 		matches = append(matches, LayerMatch{
-			ID:   StringValue(object["id"]),
-			Name: StringValue(object["name"]),
-			Type: StringValue(object["type"]),
-			Text: textCharacters(object),
+			ID:   root.ID,
+			Name: root.Name,
+			Type: root.Type,
+			Text: textCharacters(root),
 		})
 	}
-
-	children, ok := object["children"].([]any)
-	if !ok {
-		return matches
-	}
-	for _, child := range children {
+	for _, child := range root.Children {
 		matches = append(matches, Search(child, criteria)...)
 	}
 	return matches
 }
 
-func textCharacters(object map[string]any) string {
-	if object["type"] != textNodeType {
+func textCharacters(node *document.Node) string {
+	if node.Type != textNodeType {
 		return ""
 	}
-	return StringValue(object["characters"])
+	return node.Text
 }
 
-// nodeMatches reports whether a node satisfies the lower-cased criteria.
-func nodeMatches(object map[string]any, nameLower, typeLower string) bool {
-	if nameLower != "" && !strings.Contains(strings.ToLower(StringValue(object["name"])), nameLower) {
+func nodeMatches(node *document.Node, nameLower, typeLower string) bool {
+	if nameLower != "" && !strings.Contains(strings.ToLower(node.Name), nameLower) {
 		return false
 	}
-	if typeLower != "" && strings.ToLower(StringValue(object["type"])) != typeLower {
+	if typeLower != "" && !strings.EqualFold(node.Type, typeLower) {
 		return false
 	}
 	return true

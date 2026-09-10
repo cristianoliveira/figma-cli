@@ -44,7 +44,11 @@ func newFindCommand(deps Deps) *cobra.Command {
 			}
 			client = client.WithContext(cmd.Context())
 			nodeIDs := figma.ResolveNodeIDs(input, nodeID)
-			doc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
+			rawDoc, err := figma.FetchDocument(client, input.FileID, nodeIDs, "", "")
+			if err != nil {
+				return err
+			}
+			doc, err := figma.MapDocument(rawDoc)
 			if err != nil {
 				return err
 			}
