@@ -1,7 +1,7 @@
 ---
 id: TASK-0001
 title: Seal generated Figma API boundary
-status: todo
+status: done
 depends_on: []
 priority: high
 tags: [architecture, figma]
