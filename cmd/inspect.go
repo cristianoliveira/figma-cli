@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/inspect"
 	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -16,19 +16,22 @@ const (
 	inspectFormatText = "text"
 )
 
-// newInspectCommand constructs `figma inspect` using the explicit Deps.
-// Flag state lives on per-instance variables so two independently built
-// roots cannot leak defaults between executions.
-func newInspectCommand(deps Deps) *cobra.Command {
-	return newInspectCommandWithVariables(deps, deps.FetchVariables)
+// InspectService is the application port that `figma inspect` drives.
+// The factory accepts it through Deps so production composition can wire
+// it against the Figma adapter and tests can drive it with fakes.
+//
+// We declare it as an interface so the command depends on the contract
+// shape, not on the concrete *inspect.Service. This keeps cmd/inspect.go
+// testable against a fake without reaching for the real implementation.
+type InspectService interface {
+	Inspect(inspect.Request) (*inspect.Result, error)
 }
 
-// newInspectCommandWithVariables lets tests inject a variable-fetch fake;
-// production callers should use newInspectCommand.
-func newInspectCommandWithVariables(
-	deps Deps,
-	fetchVariables func(*figma.Client, string) (map[string]any, error),
-) *cobra.Command {
+// newInspectCommand constructs `figma inspect`. The command is now
+// responsible only for flag/argument parsing and rendering; fetch,
+// scope resolution, extraction, enrichment, and limiting live in the
+// inspect application service.
+func newInspectCommand(deps Deps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "inspect [figma-url-or-file-id]",
 		Short: "Show a curated summary of a specific Figma node",
@@ -42,6 +45,9 @@ func newInspectCommandWithVariables(
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
+			if err := validateInspectFlags(cmd); err != nil {
+				return cli.NewUsageError(err)
+			}
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			handoff, _ := cmd.Flags().GetBool("handoff")
 			includeVectorPaths, _ := cmd.Flags().GetBool("include-vector-paths")
@@ -49,30 +55,6 @@ func newInspectCommandWithVariables(
 			includeHidden, _ := cmd.Flags().GetBool("include-hidden")
 			inspectFormat, _ := cmd.Flags().GetString("format")
 			fields, _ := cmd.Flags().GetStringSlice("fields")
-			if inspectFormat != inspectFormatJSON && inspectFormat != inspectFormatText {
-				return cli.NewUsageError(fmt.Errorf("unknown inspect format %q (want json or text)", inspectFormat))
-			}
-			if inspectFormat == inspectFormatText && !recursive {
-				return cli.NewUsageError(fmt.Errorf("--format text requires --recursive"))
-			}
-			if cmd.Flags().Changed("fields") && inspectFormat != inspectFormatText {
-				return cli.NewUsageError(fmt.Errorf("--fields requires --format text"))
-			}
-			if err := extract.ValidateInspectFields(fields); err != nil {
-				return cli.NewUsageError(err)
-			}
-			if handoff && recursive {
-				return cli.NewUsageError(fmt.Errorf("--handoff and --recursive cannot be used together"))
-			}
-			if includeVectorPaths && recursive && !cmd.Flags().Changed("depth") {
-				return cli.NewUsageError(fmt.Errorf("--include-vector-paths with --recursive requires explicit --depth"))
-			}
-			if depth < 0 {
-				return cli.NewUsageError(fmt.Errorf("--depth must be zero or greater"))
-			}
-			if !recursive && (cmd.Flags().Changed("limit") || cmd.Flags().Changed("full")) {
-				return cli.NewUsageError(fmt.Errorf("--limit and --full require --recursive"))
-			}
 			resultLimit, err := readResultLimit(cmd)
 			if err != nil {
 				return err
@@ -85,60 +67,30 @@ func newInspectCommandWithVariables(
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
-			client, err := deps.LoadClient()
+
+			service, err := deps.InspectService()
 			if err != nil {
 				return err
 			}
-			client = client.WithContext(cmd.Context())
-			var details figma.NodeDetails
-			if includeVectorPaths {
-				geometryDepth := "1"
-				if recursive {
-					geometryDepth = strconv.Itoa(depth)
-				}
-				details, err = figma.FetchNodeDetailsWithVectorPaths(client, input.FileID, []string{nodeID}, geometryDepth)
-			} else {
-				details, err = figma.FetchNodeDetails(client, input.FileID, []string{nodeID})
-			}
+
+			result, err := service.Inspect(inspect.Request{
+				Context:            cmd.Context(),
+				FileID:             input.FileID,
+				NodeID:             nodeID,
+				Recursive:          recursive,
+				Handoff:            handoff,
+				IncludeHidden:      includeHidden,
+				Depth:              depth,
+				IncludeVectorPaths: includeVectorPaths,
+				Format:             inspect.Format(inspectFormat),
+				Fields:             fields,
+				ResultLimit:        resultLimit.limit(),
+			})
 			if err != nil {
 				return err
 			}
-			document, ok := details.Documents[0].(map[string]any)
-			if !ok {
-				return fmt.Errorf("node %s has an invalid document", nodeID)
-			}
-			scope := output.Scope{FileKey: input.FileID, NodeIDs: []string{nodeID}}
-			if recursive {
-				nodes := extract.InspectTreeRelativeToScope(document, nodeID)
-				if cmd.Flags().Changed("depth") {
-					nodes = extract.InspectTreeRelativeToScopeToDepth(document, nodeID, depth)
-				}
-				nodes, total := limitResults(resultLimit, nodes)
-				enrichInspectNodes(nodes, details.Styles, client, input.FileID, fetchVariables)
-				if inspectFormat == inspectFormatText {
-					text, formatErr := extract.FormatInspectText(nodes, fields)
-					if formatErr != nil {
-						return formatErr
-					}
-					if len(nodes) < total {
-						text = fmt.Sprintf("Showing %d of %d nodes. Run with --full for all nodes.\n\n%s", len(nodes), total, text)
-					}
-					return cli.NewPrinter(cmd).Text("inspect", text)
-				}
-				return cli.NewPrinter(cmd).Structured(newLimitedQuery(cmd, scope, nil, total, nodes))
-			}
-			if handoff {
-				result := extract.ExtractHandoff(document, extract.HandoffOptions{MaxDepth: depth, IncludeHidden: includeHidden})
-				enrichInspectNodes(result.Nodes, details.Styles, client, input.FileID, fetchVariables)
-				return cli.NewPrinter(cmd).Structured(output.Detail[extract.HandoffOutput]{Scope: scope, Result: result})
-			}
-			node := extract.NodeToInspectOutput(document)
-			node = enrichInspectNode(node, details.Styles, client, input.FileID, fetchVariables)
-			result := output.Detail[extract.InspectOutput]{Scope: scope, Result: node}
-			if err := cli.NewPrinter(cmd).Structured(result); err != nil {
-				return err
-			}
-			return nil
+
+			return renderInspectResult(cmd, result)
 		},
 	}
 	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")
@@ -153,40 +105,70 @@ func newInspectCommandWithVariables(
 	return command
 }
 
-func enrichInspectNode(
-	node extract.InspectOutput,
-	styles map[string]map[string]any,
-	client *figma.Client,
-	fileID string,
-	fetchVariables func(*figma.Client, string) (map[string]any, error),
-) extract.InspectOutput {
-	nodes := []extract.InspectOutput{node}
-	enrichInspectNodes(nodes, styles, client, fileID, fetchVariables)
-	return nodes[0]
+// validateInspectFlags enforces the pre-call contract documented in the
+// command's Long text. It returns nil for valid combinations and a
+// descriptive error otherwise.
+func validateInspectFlags(cmd *cobra.Command) error {
+	inspectFormat, _ := cmd.Flags().GetString("format")
+	if inspectFormat != inspectFormatJSON && inspectFormat != inspectFormatText {
+		return fmt.Errorf("unknown inspect format %q (want json or text)", inspectFormat)
+	}
+	recursive, _ := cmd.Flags().GetBool("recursive")
+	handoff, _ := cmd.Flags().GetBool("handoff")
+	if inspectFormat == inspectFormatText && !recursive {
+		return fmt.Errorf("--format text requires --recursive")
+	}
+	if cmd.Flags().Changed("fields") && inspectFormat != inspectFormatText {
+		return fmt.Errorf("--fields requires --format text")
+	}
+	fields, _ := cmd.Flags().GetStringSlice("fields")
+	if err := extract.ValidateInspectFields(fields); err != nil {
+		return err
+	}
+	if handoff && recursive {
+		return fmt.Errorf("--handoff and --recursive cannot be used together")
+	}
+	includeVectorPaths, _ := cmd.Flags().GetBool("include-vector-paths")
+	depth, _ := cmd.Flags().GetInt("depth")
+	if includeVectorPaths && recursive && !cmd.Flags().Changed("depth") {
+		return fmt.Errorf("--include-vector-paths with --recursive requires explicit --depth")
+	}
+	if depth < 0 {
+		return fmt.Errorf("--depth must be zero or greater")
+	}
+	if !recursive && (cmd.Flags().Changed("limit") || cmd.Flags().Changed("full")) {
+		return fmt.Errorf("--limit and --full require --recursive")
+	}
+	return nil
 }
 
-func enrichInspectNodes(
-	nodes []extract.InspectOutput,
-	styles map[string]map[string]any,
-	client *figma.Client,
-	fileID string,
-	fetchVariables func(*figma.Client, string) (map[string]any, error),
-) {
-	needsVariables := false
-	for index := range nodes {
-		extract.ResolveInspectStyleBindings(&nodes[index], styles)
-		needsVariables = needsVariables || len(nodes[index].VariableBindings) > 0
+// renderInspectResult turns the application service's Result into the
+// command-layer rendering contract. The two output shapes
+// (output.Detail, output.Query) are the existing CLI output contracts;
+// the service has no knowledge of either.
+func renderInspectResult(cmd *cobra.Command, result *inspect.Result) error {
+	switch result.Mode {
+	case inspect.ModeText:
+		// ModeText is not actually emitted by the service today; kept as
+		// an explicit guard so adding a text-only Result mode is safe.
+		return cli.NewPrinter(cmd).Text("inspect", result.Text)
+	case inspect.ModeRecursive:
+		if result.Text != "" {
+			return cli.NewPrinter(cmd).Text("inspect", result.Text)
+		}
+		return cli.NewPrinter(cmd).Structured(newLimitedQuery(cmd, result.Scope, nil, result.Total, result.Nodes))
+	case inspect.ModeHandoff:
+		if result.Handoff == nil {
+			return fmt.Errorf("inspect service: handoff result missing payload")
+		}
+		return cli.NewPrinter(cmd).Structured(output.Detail[extract.HandoffOutput]{Scope: result.Scope, Result: *result.Handoff})
+	case inspect.ModeSingle:
+		if result.Single == nil {
+			return fmt.Errorf("inspect service: single result missing payload")
+		}
+		return cli.NewPrinter(cmd).Structured(output.Detail[extract.InspectOutput]{Scope: result.Scope, Result: *result.Single})
 	}
-	if !needsVariables {
-		return
-	}
-	variables, err := fetchVariables(client, fileID)
-	if err != nil {
-		return
-	}
-	for index := range nodes {
-		extract.ResolveInspectVariableBindings(&nodes[index], variables)
-	}
+	return fmt.Errorf("inspect service: unknown mode %q", result.Mode)
 }
 
 func inspectNodeID(input *figma.FileInput, explicitNodeID string) (string, error) {
