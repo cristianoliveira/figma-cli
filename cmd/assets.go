@@ -24,9 +24,16 @@ const (
 
 var assetFilenameCharacters = regexp.MustCompile(`[^a-z0-9]+`)
 
-var assetsCmd = newAssetsCommand(cli.LoadClient, nil)
+// newAssetsCommand constructs `figma assets`. The downloadClient dependency
+// is optional; nil means the command uses the Figma client's HTTP client,
+// matching the previous default behaviour.
+func newAssetsCommand(deps Deps) *cobra.Command {
+	return newAssetsCommandWithClient(deps, nil)
+}
 
-func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *http.Client) *cobra.Command {
+// newAssetsCommandWithClient exposes the downloadClient injection point for
+// tests; production callers should use newAssetsCommand.
+func newAssetsCommandWithClient(deps Deps, downloadClient *http.Client) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "assets [figma-url-or-file-id]",
 		Short: "Download image, instance, and vector assets from a Figma node tree",
@@ -65,7 +72,7 @@ func newAssetsCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -144,8 +151,4 @@ func normalizedAssetName(name string) string {
 		return "asset"
 	}
 	return normalized
-}
-
-func init() {
-	rootCmd.AddCommand(assetsCmd)
 }

@@ -23,9 +23,10 @@ type tokensOptions struct {
 	scanFallback bool
 }
 
-var tokensCmd = newTokensCommand(cli.LoadClient)
-
-func newTokensCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newTokensCommand constructs `figma tokens` using the explicit loadClient
+// dependency. All flag state binds to per-instance variables so two roots
+// built independently cannot leak defaults.
+func newTokensCommand(deps Deps) *cobra.Command {
 	options := tokensOptions{}
 	command := &cobra.Command{
 		Use:   "tokens [figma-url-or-file-id]",
@@ -57,7 +58,7 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -180,8 +181,4 @@ func tokensFromStyles(client *figma.Client, fileID string) ([]extract.Token, err
 		return nil, err
 	}
 	return extract.ExtractTokensFromStyles(styles, nodes), nil
-}
-
-func init() {
-	rootCmd.AddCommand(tokensCmd)
 }

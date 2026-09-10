@@ -18,7 +18,7 @@ func TestInspectCommandEmitsStableScopedContract(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","styles":{"fill":"S:fill"}},"styles":{"S:fill":{"key":"key","name":"Brand/Primary","styleType":"FILL","remote":false,"description":""}}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }),
+	result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })),
 		"https://www.figma.com/design/abc/Name?node-id=42-1")
 
 	require.NoError(t, result.Err)
@@ -32,7 +32,7 @@ func TestInspectCommandIncludesVectorPathsOnExplicitRequest(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Wave","type":"VECTOR","fillGeometry":[{"path":"M0 0 C1 2 3 4 5 6 Z","windingRule":"NONZERO"}],"size":{"x":5,"y":6}}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--include-vector-paths")
+	result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "https://www.figma.com/design/abc/Name?node-id=42-1", "--include-vector-paths")
 
 	require.NoError(t, result.Err)
 	assert.Contains(t, result.Stdout, `"path": "M0 0 C1 2 3 4 5 6 Z"`)
@@ -40,7 +40,7 @@ func TestInspectCommandIncludesVectorPathsOnExplicitRequest(t *testing.T) {
 }
 
 func TestInspectCommandRequiresDepthForRecursiveVectorPaths(t *testing.T) {
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return nil, errors.New("must not load") }), "abc", "--id", "1:1", "--recursive", "--include-vector-paths")
+	result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return nil, errors.New("must not load") })), "abc", "--id", "1:1", "--recursive", "--include-vector-paths")
 	assert.EqualError(t, result.Err, "--include-vector-paths with --recursive requires explicit --depth")
 }
 
@@ -49,7 +49,7 @@ func TestInspectCommandRecursivelyEmitsImplementationSpecs(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","absoluteBoundingBox":{"x":100,"y":200,"width":50,"height":40},"componentPropertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"children":[{"id":"42:2","name":"Label","type":"TEXT","characters":"Save","absoluteBoundingBox":{"x":112.5,"y":205.25,"width":20,"height":10}}]}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive")
+	result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"total":2,"results":[{"id":"42:1","name":"Button","type":"COMPONENT","propertyDefinitions":{"Disabled":{"type":"BOOLEAN","defaultValue":false}},"bounds":{"x":100,"y":200,"width":50,"height":40},"relativeBounds":{"x":0,"y":0,"width":50,"height":40,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","text":"Save","bounds":{"x":112.5,"y":205.25,"width":20,"height":10},"relativeBounds":{"x":12.5,"y":5.25,"width":20,"height":10,"relativeTo":"42:1"},"layout":{},"typography":{}}]}`, result.Stdout)
@@ -61,7 +61,7 @@ func TestInspectCommandBoundsRecursiveTraversalWithDepth(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive", "--depth", "1")
+	result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive", "--depth", "1")
 
 	require.NoError(t, result.Err)
 	assert.Contains(t, result.Stdout, `"id": "42:2"`)
@@ -73,7 +73,7 @@ func TestInspectCommandRecursiveEmitsComputedSiblingSpacing(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Stack","type":"FRAME","layoutMode":"VERTICAL","itemSpacing":0,"absoluteBoundingBox":{"x":0,"y":0,"width":100,"height":100},"children":[{"id":"42:2","name":"Copy","type":"TEXT","absoluteBoundingBox":{"x":0,"y":10,"width":80,"height":48}},{"id":"42:3","name":"Link","type":"TEXT","absoluteBoundingBox":{"x":0,"y":58,"width":40,"height":24}}]}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive")
+	result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"total":3,"results":[{"id":"42:1","name":"Stack","type":"FRAME","bounds":{"width":100,"height":100},"relativeBounds":{"x":0,"y":0,"width":100,"height":100,"relativeTo":"42:1"},"layout":{"mode":"VERTICAL"},"typography":{}},{"id":"42:2","name":"Copy","type":"TEXT","bounds":{"y":10,"width":80,"height":48},"relativeBounds":{"x":0,"y":10,"width":80,"height":48,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:3","name":"Link","type":"TEXT","bounds":{"y":58,"width":40,"height":24},"relativeBounds":{"x":0,"y":58,"width":40,"height":24,"relativeTo":"42:1"},"layout":{},"typography":{},"spacingFromPrevious":{"parentId":"42:1","previousId":"42:2","axis":"vertical","measured":0,"declared":0,"matchesDeclared":true}}]}`, result.Stdout)
@@ -85,14 +85,14 @@ func TestInspectCommandAcceptsNodeAliasForExplicitID(t *testing.T) {
 		body := `{"nodes":{"0:147":{"document":{"id":"0:147","name":"Target","type":"FRAME"}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "exampleFileKey123", "--node", "0:147")
+	result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "exampleFileKey123", "--node", "0:147")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"scope":{"fileKey":"exampleFileKey123","nodeIds":["0:147"]},"result":{"id":"0:147","name":"Target","type":"FRAME","bounds":{},"layout":{},"typography":{}}}`, result.Stdout)
 }
 
 func TestInspectCommandRejectsConflictingIDAndNodeAlias(t *testing.T) {
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return nil, errors.New("must not load") }), "abc", "--id", "0:147", "--node", "0:148")
+	result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return nil, errors.New("must not load") })), "abc", "--id", "0:147", "--node", "0:148")
 
 	assert.EqualError(t, result.Err, "--id and --node must match when both are provided")
 }
@@ -103,7 +103,7 @@ func TestInspectCommandRecursiveExplicitIDEmitsRelativeBounds(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Button","type":"COMPONENT","absoluteBoundingBox":{"x":100,"y":200,"width":50,"height":40},"children":[{"id":"42:2","name":"Label","type":"TEXT","absoluteBoundingBox":{"x":112.5,"y":205.25,"width":20,"height":10}}]}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--id", "42:1", "--recursive")
+	result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc", "--id", "42:1", "--recursive")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"total":2,"results":[{"id":"42:1","name":"Button","type":"COMPONENT","bounds":{"x":100,"y":200,"width":50,"height":40},"relativeBounds":{"x":0,"y":0,"width":50,"height":40,"relativeTo":"42:1"},"layout":{},"typography":{}},{"id":"42:2","name":"Label","type":"TEXT","bounds":{"x":112.5,"y":205.25,"width":20,"height":10},"relativeBounds":{"x":12.5,"y":5.25,"width":20,"height":10,"relativeTo":"42:1"},"layout":{},"typography":{}}]}`, result.Stdout)
@@ -114,7 +114,7 @@ func TestInspectCommandEmitsBoundedHandoff(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Checkout","type":"FRAME","children":[{"id":"42:2","name":"Hidden","type":"TEXT","visible":false},{"id":"42:3","name":"Button","type":"INSTANCE","componentId":"9:1","styles":{"fill":"S:fill"},"children":[{"id":"42:4","name":"Label","type":"TEXT","characters":"Pay"}]},{"id":"42:5","name":"Button","type":"INSTANCE","componentId":"9:1"}]},"styles":{"S:fill":{"name":"Brand/Primary","styleType":"FILL"}}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	result := executeCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--handoff", "--depth", "1")
+	result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "https://www.figma.com/design/abc/Name?node-id=42-1", "--handoff", "--depth", "1")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"result":{"nodes":[{"id":"42:1","name":"Checkout","type":"FRAME","bounds":{},"layout":{},"typography":{}},{"id":"42:3","name":"Button","type":"INSTANCE","componentId":"9:1","bounds":{},"layout":{},"typography":{},"styleBindings":{"fill":"S:fill"},"resolvedStyles":{"fill":{"id":"S:fill","name":"Brand/Primary","type":"FILL"}}},{"id":"42:5","name":"Button","type":"INSTANCE","componentId":"9:1","bounds":{},"layout":{},"typography":{}}],"components":[{"name":"Button","componentId":"9:1","count":2}]}}`, result.Stdout)
@@ -126,7 +126,7 @@ func TestInspectCommandRendersSelectedTextFields(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 
-	result := executeDefaultCommand(newInspectCommand(func() (*figma.Client, error) { return client, nil }),
+	result := executeDefaultCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })),
 		"https://www.figma.com/design/abc/Name?node-id=42-1",
 		"--recursive", "--format", "text", "--fields", "name,type,relativeBounds,layout.mode,layout.gap,fills",
 	)
@@ -150,10 +150,10 @@ func TestInspectCommandValidatesTextProjectionBeforeLoadingClient(t *testing.T) 
 		t.Run(test.name, func(t *testing.T) {
 			loaded := false
 			args := append([]string{"abc", "--id", "1:1"}, test.flags...)
-			result := executeCommand(newInspectCommand(func() (*figma.Client, error) {
+			result := executeCommand(newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) {
 				loaded = true
 				return nil, nil
-			}), args...)
+			})), args...)
 
 			assert.EqualError(t, result.Err, test.expected)
 			assert.False(t, loaded)
@@ -162,7 +162,7 @@ func TestInspectCommandValidatesTextProjectionBeforeLoadingClient(t *testing.T) 
 }
 
 func TestInspectCommandRejectsHandoffWithRecursive(t *testing.T) {
-	command := newInspectCommand(func() (*figma.Client, error) { return nil, errors.New("must not load") })
+	command := newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return nil, errors.New("must not load") }))
 	result := executeCommand(command, "https://www.figma.com/design/abc/Name?node-id=42-1", "--handoff", "--recursive")
 
 	assert.EqualError(t, result.Err, "--handoff and --recursive cannot be used together")
@@ -174,7 +174,7 @@ func TestInspectCommandKeepsRawVariablesWhenMetadataIsUnavailable(t *testing.T) 
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 	command := newInspectCommandWithVariables(
-		func() (*figma.Client, error) { return client, nil },
+		DepsForLoadClient(func() (*figma.Client, error) { return client, nil }),
 		func(*figma.Client, string) (map[string]any, error) { return nil, errors.New("forbidden") },
 	)
 	result := executeCommand(command, "https://www.figma.com/design/abc/Name?node-id=42-1")
@@ -185,10 +185,10 @@ func TestInspectCommandKeepsRawVariablesWhenMetadataIsUnavailable(t *testing.T) 
 
 func TestInspectCommandRejectsMissingScopeWithoutLoadingClient(t *testing.T) {
 	loaded := false
-	command := newInspectCommand(func() (*figma.Client, error) {
+	command := newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	})
+	}))
 	command.SilenceErrors = true
 	command.SilenceUsage = true
 	command.SetArgs([]string{"abc"})

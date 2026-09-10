@@ -11,19 +11,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var inspectCmd = newInspectCommand(cli.LoadClient)
-
 const (
 	inspectFormatJSON = "json"
 	inspectFormatText = "text"
 )
 
-func newInspectCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
-	return newInspectCommandWithVariables(loadClient, figma.FetchVariables)
+// newInspectCommand constructs `figma inspect` using the explicit Deps.
+// Flag state lives on per-instance variables so two independently built
+// roots cannot leak defaults between executions.
+func newInspectCommand(deps Deps) *cobra.Command {
+	return newInspectCommandWithVariables(deps, deps.FetchVariables)
 }
 
+// newInspectCommandWithVariables lets tests inject a variable-fetch fake;
+// production callers should use newInspectCommand.
 func newInspectCommandWithVariables(
-	loadClient func() (*figma.Client, error),
+	deps Deps,
 	fetchVariables func(*figma.Client, string) (map[string]any, error),
 ) *cobra.Command {
 	command := &cobra.Command{
@@ -82,7 +85,7 @@ func newInspectCommandWithVariables(
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -188,8 +191,4 @@ func enrichInspectNodes(
 
 func inspectNodeID(input *figma.FileInput, explicitNodeID string) (string, error) {
 	return figma.ResolveSingleNodeID(input, explicitNodeID, "inspect")
-}
-
-func init() {
-	rootCmd.AddCommand(inspectCmd)
 }

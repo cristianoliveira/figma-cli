@@ -70,18 +70,18 @@ func TestRootHelpIsCompactAndPointsToDecisionRelevantCommands(t *testing.T) {
 
 func TestPrimaryExplorationCommandsProvideLocalExamples(t *testing.T) {
 	commands := []*cobra.Command{
-		newMetaCommand(nil),
-		newInspectCommand(nil),
-		newFindCommand(nil),
-		newLayoutCommand(nil),
-		newExportCommand(nil, nil),
-		newFramesCommand(nil),
-		newComponentsCommand(nil),
-		newTextsCommand(nil),
-		newColorsCommand(nil),
-		newAssetsCommand(nil, nil),
-		newCSSCommand(nil),
-		newTokensCommand(nil),
+		newMetaCommand(DepsForLoadClient(nil)),
+		newInspectCommand(DepsForLoadClient(nil)),
+		newFindCommand(DepsForLoadClient(nil)),
+		newLayoutCommand(DepsForLoadClient(nil)),
+		newExportCommandWithClient(DepsForLoadClient(nil), nil),
+		newFramesCommand(DepsForLoadClient(nil)),
+		newComponentsCommand(DepsForLoadClient(nil)),
+		newTextsCommand(DepsForLoadClient(nil)),
+		newColorsCommand(DepsForLoadClient(nil)),
+		newAssetsCommandWithClient(DepsForLoadClient(nil), nil),
+		newCSSCommand(DepsForLoadClient(nil)),
+		newTokensCommand(DepsForLoadClient(nil)),
 	}
 
 	for _, command := range commands {
@@ -93,7 +93,7 @@ func TestPrimaryExplorationCommandsProvideLocalExamples(t *testing.T) {
 }
 
 func TestWorkspaceDiscoveryCommandsProvideLocalExamples(t *testing.T) {
-	commands := []*cobra.Command{meCmd, projectsCmd, filesCmd, versionsCmd, newCommentsCommand(nil)}
+	commands := []*cobra.Command{newMeCommand(), newProjectsCommand(DepsForLoadClient(nil)), newFilesCommand(DepsForLoadClient(nil)), newVersionsCommand(DepsForLoadClient(nil)), newCommentsCommand(DepsForLoadClient(nil))}
 
 	for _, command := range commands {
 		t.Run(command.Name(), func(t *testing.T) {
@@ -104,12 +104,13 @@ func TestWorkspaceDiscoveryCommandsProvideLocalExamples(t *testing.T) {
 }
 
 func TestChangeAnalysisCommandsProvideLocalExamples(t *testing.T) {
+	deps := DepsForLoadClient(nil)
 	commands := map[string]*cobra.Command{
-		"figma changes":        newChangesCommand(nil),
-		"figma diff":           diffCmd,
-		"figma diff text":      diffTextCmd,
-		"figma diff blame":     diffBlameCmd,
-		"figma layout compare": newLayoutCompareCommand(nil),
+		"figma changes":        newChangesCommand(deps),
+		"figma diff":           newDiffCommand(deps),
+		"figma diff text":      newDiffTextCommand(deps),
+		"figma diff blame":     newDiffBlameCommand(deps),
+		"figma layout compare": newLayoutCompareCommand(deps),
 	}
 
 	for prefix, command := range commands {
@@ -137,17 +138,17 @@ func TestCommandOwnedInputErrorsUseUsageExitCode(t *testing.T) {
 		command *cobra.Command
 		args    []string
 	}{
-		{name: "assets kind", command: newAssetsCommand(nil, nil), args: []string{"abc", "--id", "1:2", "--kind", "unsupported"}},
-		{name: "changes versions", command: newChangesCommand(nil), args: []string{"abc"}},
-		{name: "comments state", command: newCommentsCommand(nil), args: []string{"abc", "--state", "unsupported"}},
-		{name: "components kind", command: newComponentsCommand(nil), args: []string{"abc", "--kind", "unsupported"}},
-		{name: "find filters", command: newFindCommand(nil), args: []string{"abc"}},
-		{name: "frames scope", command: newFramesCommand(nil), args: []string{"abc"}},
-		{name: "inspect format", command: newInspectCommand(nil), args: []string{"abc", "--id", "1:2", "--format", "unsupported"}},
-		{name: "layout comparison", command: newLayoutCompareCommand(nil), args: []string{"abc", "--id", "1:2"}},
-		{name: "tokens team", command: newTokensCommand(nil), args: []string{"abc", "--team", "123"}},
-		{name: "tokens format", command: newTokensCommand(nil), args: []string{"abc", "--format", "unsupported"}},
-		{name: "tokens source", command: newTokensCommand(nil), args: []string{"abc", "--source", "unsupported"}},
+		{name: "assets kind", command: newAssetsCommandWithClient(DepsForLoadClient(nil), nil), args: []string{"abc", "--id", "1:2", "--kind", "unsupported"}},
+		{name: "changes versions", command: newChangesCommand(DepsForLoadClient(nil)), args: []string{"abc"}},
+		{name: "comments state", command: newCommentsCommand(DepsForLoadClient(nil)), args: []string{"abc", "--state", "unsupported"}},
+		{name: "components kind", command: newComponentsCommand(DepsForLoadClient(nil)), args: []string{"abc", "--kind", "unsupported"}},
+		{name: "find filters", command: newFindCommand(DepsForLoadClient(nil)), args: []string{"abc"}},
+		{name: "frames scope", command: newFramesCommand(DepsForLoadClient(nil)), args: []string{"abc"}},
+		{name: "inspect format", command: newInspectCommand(DepsForLoadClient(nil)), args: []string{"abc", "--id", "1:2", "--format", "unsupported"}},
+		{name: "layout comparison", command: newLayoutCompareCommand(DepsForLoadClient(nil)), args: []string{"abc", "--id", "1:2"}},
+		{name: "tokens team", command: newTokensCommand(DepsForLoadClient(nil)), args: []string{"abc", "--team", "123"}},
+		{name: "tokens format", command: newTokensCommand(DepsForLoadClient(nil)), args: []string{"abc", "--format", "unsupported"}},
+		{name: "tokens source", command: newTokensCommand(DepsForLoadClient(nil)), args: []string{"abc", "--source", "unsupported"}},
 	}
 
 	for _, test := range tests {
@@ -161,7 +162,7 @@ func TestCommandOwnedInputErrorsUseUsageExitCode(t *testing.T) {
 }
 
 func TestUnknownFlagErrorSuggestsNearestLocalOptionWithoutDumpingHelp(t *testing.T) {
-	command := newInspectCommand(func() (*figma.Client, error) { return nil, nil })
+	command := newInspectCommand(DepsForLoadClient(func() (*figma.Client, error) { return nil, nil }))
 	result := executeCommand(command, "abc", "--nide", "1:2")
 
 	require.Error(t, result.Err)

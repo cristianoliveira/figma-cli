@@ -11,8 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var componentsCmd = newComponentsCommand(cli.LoadClient)
-
 type componentsDiffOutput struct {
 	FileKey    string `json:"fileKey"`
 	FigmaCount int    `json:"figmaCount"`
@@ -20,7 +18,9 @@ type componentsDiffOutput struct {
 	components.Comparison
 }
 
-func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newComponentsCommand constructs `figma components` using the explicit
+// loadClient dependency.
+func newComponentsCommand(deps Deps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "components [figma-url-or-file-id]",
 		Short: "List components, component sets, and instances as JSON",
@@ -81,7 +81,7 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 					return cli.NewUsageError(err)
 				}
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -137,8 +137,4 @@ func newComponentsCommand(loadClient func() (*figma.Client, error)) *cobra.Comma
 	command.Flags().String("codebase", "", "frontend component source directory (required with --diff)")
 	addResultLimitFlags(command)
 	return command
-}
-
-func init() {
-	rootCmd.AddCommand(componentsCmd)
 }

@@ -12,7 +12,7 @@ import (
 func TestTextsCommandEmitsScopedCopySemantics(t *testing.T) {
 	client := fixtureClient(t, `{"nodes":{"1:1":{"document":{"id":"1:1","name":"List","type":"FRAME","children":[{"id":"1:2","name":"Items","type":"TEXT","characters":"One\nTwo","lineTypes":["ORDERED","ORDERED"],"lineIndentations":[0,1]}]}}}}`)
 
-	result := executeCommand(newTextsCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=1-1")
+	result := executeCommand(newTextsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "https://www.figma.com/design/abc/Name?node-id=1-1")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["1:1"]},"query":{"layer":"","recursive":false},"total":1,"results":[{"id":"1:2","name":"Items","text":"One\nTwo","nodeKind":"textBlock","depth":1,"order":0,"parentName":"List","lines":[{"index":0,"text":"One","listType":"ORDERED"},{"index":1,"text":"Two","listType":"ORDERED","indentation":1}]}]}`, result.Stdout)
@@ -20,10 +20,10 @@ func TestTextsCommandEmitsScopedCopySemantics(t *testing.T) {
 
 func TestTextsCommandRejectsMissingScopeBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeCommand(newTextsCommand(func() (*figma.Client, error) {
+	result := executeCommand(newTextsCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}), "abc")
+	})), "abc")
 
 	assert.EqualError(t, result.Err, "--layer or a node ID is required")
 	assert.False(t, loaded)

@@ -18,9 +18,10 @@ const (
 	commentStateResolved = "resolved"
 )
 
-var commentsCmd = newCommentsCommand(cli.LoadClient)
-
-func newCommentsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newCommentsCommand constructs `figma comments` using the explicit
+// loadClient dependency. Flag state binds to per-instance locals so two
+// roots never share defaults.
+func newCommentsCommand(deps Deps) *cobra.Command {
 	var nodeID string
 	var state string
 	var author string
@@ -58,7 +59,7 @@ A numeric URL fragment selects that exact comment regardless of node scope.`,
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -127,8 +128,4 @@ func validateCommentFilters(state, after, before string) error {
 		return fmt.Errorf("--after must not be later than --before")
 	}
 	return nil
-}
-
-func init() {
-	rootCmd.AddCommand(commentsCmd)
 }

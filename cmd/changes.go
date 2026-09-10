@@ -19,9 +19,9 @@ type changesOutput struct {
 	Changes   []extract.StructuralChange `json:"changes"`
 }
 
-var changesCmd = newChangesCommand(cli.LoadClient)
-
-func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newChangesCommand constructs `figma changes` using the explicit loadClient
+// dependency.
+func newChangesCommand(deps Deps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "changes [figma-url-or-file-id] --from version-id --to version-id",
 		Short: "Diff frontend-relevant structure between Figma versions",
@@ -49,7 +49,7 @@ func newChangesCommand(loadClient func() (*figma.Client, error)) *cobra.Command 
 				return cli.NewUsageError(err)
 			}
 			nodeIDs := figma.ResolveNodeIDs(input, explicitNodeID)
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -101,8 +101,4 @@ func prepareStructuralChanges(changes []extract.StructuralChange, terse bool, li
 		}
 	}
 	return prepared, total, total - count
-}
-
-func init() {
-	rootCmd.AddCommand(changesCmd)
 }

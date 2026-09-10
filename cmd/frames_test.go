@@ -9,7 +9,7 @@ import (
 )
 
 func TestFramesCommandContract(t *testing.T) {
-	command := newFramesCommand(func() (*figma.Client, error) { return nil, nil })
+	command := newFramesCommand(DepsForLoadClient(func() (*figma.Client, error) { return nil, nil }))
 
 	assert.Equal(t, "frames [figma-url-or-file-id]", command.Use)
 	require.NotNil(t, command.Flags().Lookup("id"))

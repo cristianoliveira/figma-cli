@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var findCmd = newFindCommand(cli.LoadClient)
-
-func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newFindCommand constructs `figma find` using the explicit loadClient
+// dependency.
+func newFindCommand(deps Deps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "find [figma-url-or-file-id]",
 		Short: "Find Figma layers by name and/or type",
@@ -38,7 +38,7 @@ func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -63,8 +63,4 @@ func newFindCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	addNodeIDFlag(command, "node ID to search within; defaults to URL node-id")
 	addResultLimitFlags(command)
 	return command
-}
-
-func init() {
-	rootCmd.AddCommand(findCmd)
 }

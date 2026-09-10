@@ -16,36 +16,37 @@ type meOutput struct {
 	ImageURL string `json:"imageUrl"`
 }
 
-var meCmd = &cobra.Command{
-	Use:     "me",
-	Short:   "Show the authenticated user (also validates FIGMA_ACCESS_TOKEN)",
-	Example: "  figma me",
-	Long: `Call /v1/me to return the currently authenticated user.
+// newMeCommand constructs the `figma me` command. It takes no dependencies:
+// the command owns its loadClient invocation directly so the factory stays
+// trivially composable.
+func newMeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:     "me",
+		Short:   "Show the authenticated user (also validates FIGMA_ACCESS_TOKEN)",
+		Example: "  figma me",
+		Long: `Call /v1/me to return the currently authenticated user.
 
 Doubles as a token-validity check: a successful response means
 FIGMA_ACCESS_TOKEN is configured and working.
 
 Requires FIGMA_ACCESS_TOKEN environment variable.`,
-	Args: cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		client, err := cli.LoadClient()
-		if err != nil {
-			return err
-		}
-		client = client.WithContext(cmd.Context())
-		me, err := figma.FetchMe(client, figma.BuildMeURL())
-		if err != nil {
-			return err
-		}
-		return cli.NewPrinter(cmd).Structured(meOutput{
-			ID:       me.Id,
-			Handle:   me.Handle,
-			Email:    me.Email,
-			ImageURL: me.ImgUrl,
-		})
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(meCmd)
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			client, err := cli.LoadClient()
+			if err != nil {
+				return err
+			}
+			client = client.WithContext(cmd.Context())
+			me, err := figma.FetchMe(client, figma.BuildMeURL())
+			if err != nil {
+				return err
+			}
+			return cli.NewPrinter(cmd).Structured(meOutput{
+				ID:       me.Id,
+				Handle:   me.Handle,
+				Email:    me.Email,
+				ImageURL: me.ImgUrl,
+			})
+		},
+	}
 }

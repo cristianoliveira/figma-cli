@@ -15,7 +15,7 @@ import (
 func TestCommentsCommandEmitsScopedEmptyResults(t *testing.T) {
 	client := fixtureClient(t, `{"comments":[]}`)
 
-	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "abc")
+	result := executeCommand(newCommentsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"query":{"state":"all","author":"","after":"","before":"","recursive":true,"includeAncestors":false,"commentId":""},"total":0,"results":[]}`, result.Stdout)
@@ -27,7 +27,7 @@ func TestCommentsCommandGroupsReviewThreads(t *testing.T) {
 		{"id":"root","message":"Adjust spacing","created_at":"2026-01-01T00:00:00Z","file_key":"abc","client_meta":{},"reactions":[],"user":{"handle":"Ada","id":"1","img_url":""}}
 	]}`)
 
-	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--state", "open", "--author", "cristian")
+	result := executeCommand(newCommentsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc", "--state", "open", "--author", "cristian")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"query":{"state":"open","author":"cristian","after":"","before":"","recursive":true,"includeAncestors":false,"commentId":""},"total":1,"results":[{"root":{"id":"root","message":"Adjust spacing","created_at":"2026-01-01 00:00:00 +0000 UTC","resolved":false,"user":"Ada","url":"https://www.figma.com/design/abc?m=dev#root"},"replies":[{"id":"reply","message":"Fixed","created_at":"2026-01-02 00:00:00 +0000 UTC","resolved":false,"user":"Cristian","parent_id":"root","url":"https://www.figma.com/design/abc?m=dev#reply"}]}]}`, result.Stdout)
@@ -39,7 +39,7 @@ func TestCommentsCommandSelectsNumericURLFragmentBeforeNodeScope(t *testing.T) {
 		{"id":"other","message":"Ignored","created_at":"2026-01-02T00:00:00Z","file_key":"abc","client_meta":{},"reactions":[],"user":{"handle":"Linus","id":"2","img_url":""}}
 	]}`)
 
-	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=1-2#12345")
+	result := executeCommand(newCommentsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "https://www.figma.com/design/abc/Name?node-id=1-2#12345")
 
 	require.NoError(t, result.Err)
 	assert.Contains(t, result.Stdout, "Target")
@@ -48,10 +48,10 @@ func TestCommentsCommandSelectsNumericURLFragmentBeforeNodeScope(t *testing.T) {
 
 func TestCommentsCommandRejectsInvalidStateBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) {
+	result := executeCommand(newCommentsCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}), "abc", "--state", "pending")
+	})), "abc", "--state", "pending")
 
 	assert.EqualError(t, result.Err, `invalid comment state "pending": expected all, open, or resolved`)
 	assert.False(t, loaded)
@@ -72,7 +72,7 @@ func TestCommentsCommandNonRecursiveScopeExcludesDescendantComments(t *testing.T
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 
-	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=1-2", "--recursive=false")
+	result := executeCommand(newCommentsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "https://www.figma.com/design/abc/Name?node-id=1-2", "--recursive=false")
 
 	require.NoError(t, result.Err)
 	assert.Contains(t, result.Stdout, "Target")
@@ -94,7 +94,7 @@ func TestCommentsCommandIncludesAncestorsWithScopedFileRequest(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 
-	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=1-2", "--include-ancestors")
+	result := executeCommand(newCommentsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "https://www.figma.com/design/abc/Name?node-id=1-2", "--include-ancestors")
 
 	require.NoError(t, result.Err)
 	assert.Contains(t, result.Stdout, "Parent feedback")
@@ -104,7 +104,7 @@ func TestCommentsCommandIncludesAncestorsWithScopedFileRequest(t *testing.T) {
 func TestCommentsCommandReturnsAPIErrors(t *testing.T) {
 	client := fixtureClientWithStatus(t, 403, `{"message":"forbidden"}`)
 
-	result := executeCommand(newCommentsCommand(func() (*figma.Client, error) { return client, nil }), "abc")
+	result := executeCommand(newCommentsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc")
 
 	require.Error(t, result.Err)
 	assert.ErrorContains(t, result.Err, "status 403")
@@ -113,7 +113,7 @@ func TestCommentsCommandReturnsAPIErrors(t *testing.T) {
 func TestTokensCommandEmitsJSONWrappedArtifact(t *testing.T) {
 	client := fixtureClient(t, `{"document":{"id":"0:0","name":"Document","type":"DOCUMENT","children":[{"id":"1:1","name":"Brand","type":"RECTANGLE","fills":[{"type":"SOLID","color":{"r":1,"g":0,"b":0,"a":1}}]}]}}`)
 
-	result := executeCommand(newTokensCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--source", "scan", "--format", "json", "--json")
+	result := executeCommand(newTokensCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc", "--source", "scan", "--format", "json", "--json")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"tokens":"{}\n"}`, result.Stdout)
@@ -123,7 +123,7 @@ func TestTokensCommandCreatesMissingOutputDirectories(t *testing.T) {
 	client := fixtureClient(t, `{"document":{"id":"0:0","name":"Document","type":"DOCUMENT"}}`)
 	path := filepath.Join(t.TempDir(), "missing", "tokens", "tokens.json")
 
-	result := executeCommand(newTokensCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--source", "scan", "--format", "json", "--output", path)
+	result := executeCommand(newTokensCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc", "--source", "scan", "--format", "json", "--output", path)
 
 	require.NoError(t, result.Err)
 	assert.FileExists(t, path)
@@ -131,10 +131,10 @@ func TestTokensCommandCreatesMissingOutputDirectories(t *testing.T) {
 
 func TestTokensCommandRejectsUnsupportedTeamBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeCommand(newTokensCommand(func() (*figma.Client, error) {
+	result := executeCommand(newTokensCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}), "abc", "--team", "wire")
+	})), "abc", "--team", "wire")
 
 	assert.EqualError(t, result.Err, "--team is not supported yet; pass a file URL or file key")
 	assert.False(t, loaded)

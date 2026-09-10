@@ -40,48 +40,49 @@ func newFilesOutput(response figma.ProjectFiles) filesOutput {
 	return filesOutput{Project: response.Name, Total: len(files), Files: files}
 }
 
-var branches bool
-
-var filesCmd = &cobra.Command{
-	Use:   "files <project-url|project-id>",
-	Short: "List files in a Figma project",
-	Example: `  figma files <project-id>
+// newFilesCommand constructs `figma files`. The --branches flag binds to a
+// per-instance local so two roots built independently cannot pollute each
+// other's defaults.
+func newFilesCommand(deps Deps) *cobra.Command {
+	var branches bool
+	command := &cobra.Command{
+		Use:   "files <project-url|project-id>",
+		Short: "List files in a Figma project",
+		Example: `  figma files <project-id>
   figma files https://www.figma.com/files/project/<project-id>/<name>`,
-	Long: `List all files in a Figma project.
+		Long: `List all files in a Figma project.
 
 Pass a numeric project ID or a Figma project URL. Use --branches to request
 branch data from Figma. Requires FIGMA_ACCESS_TOKEN with projects:read access.`,
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		resultLimit, err := readResultLimit(cmd)
-		if err != nil {
-			return err
-		}
-		projectID, err := figma.ParseProjectInput(args[0])
-		if err != nil {
-			return cli.NewUsageError(err)
-		}
-		client, err := cli.LoadClient()
-		if err != nil {
-			return err
-		}
-		client = client.WithContext(cmd.Context())
-		response, err := figma.FetchProjectFiles(client, figma.BuildProjectFilesURL(projectID, branches))
-		if err != nil {
-			return err
-		}
-		result := newFilesOutput(response)
-		result.Files, result.Total = limitResults(resultLimit, result.Files)
-		result.Truncated = len(result.Files) < result.Total
-		if result.Truncated {
-			result.Hint = cli.FullHint(cmd, args)
-		}
-		return cli.NewPrinter(cmd).Structured(result)
-	},
-}
-
-func init() {
-	filesCmd.Flags().BoolVar(&branches, "branches", false, "include branch data")
-	addResultLimitFlags(filesCmd)
-	rootCmd.AddCommand(filesCmd)
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			resultLimit, err := readResultLimit(cmd)
+			if err != nil {
+				return err
+			}
+			projectID, err := figma.ParseProjectInput(args[0])
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			client, err := deps.LoadClient()
+			if err != nil {
+				return err
+			}
+			client = client.WithContext(cmd.Context())
+			response, err := figma.FetchProjectFiles(client, figma.BuildProjectFilesURL(projectID, branches))
+			if err != nil {
+				return err
+			}
+			result := newFilesOutput(response)
+			result.Files, result.Total = limitResults(resultLimit, result.Files)
+			result.Truncated = len(result.Files) < result.Total
+			if result.Truncated {
+				result.Hint = cli.FullHint(cmd, args)
+			}
+			return cli.NewPrinter(cmd).Structured(result)
+		},
+	}
+	command.Flags().BoolVar(&branches, "branches", false, "include branch data")
+	addResultLimitFlags(command)
+	return command
 }

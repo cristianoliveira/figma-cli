@@ -11,7 +11,7 @@ import (
 func TestMetaCommandUsesInjectedClient(t *testing.T) {
 	client := fixtureClient(t, `{"name":"Checkout","document":{"id":"0:0","name":"Document","type":"DOCUMENT"}}`)
 
-	command := newMetaCommand(func() (*figma.Client, error) { return client, nil })
+	command := newMetaCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil }))
 
 	assert.Equal(t, "meta", command.Name())
 	result := executeCommand(command, "abc")
@@ -22,10 +22,10 @@ func TestMetaCommandUsesInjectedClient(t *testing.T) {
 
 func TestMetaCommandRejectsInvalidInputBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeCommand(newMetaCommand(func() (*figma.Client, error) {
+	result := executeCommand(newMetaCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}), "https://www.figma.com/community/x")
+	})), "https://www.figma.com/community/x")
 
 	require.Error(t, result.Err)
 	assert.False(t, loaded)

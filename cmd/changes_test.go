@@ -23,7 +23,7 @@ func TestChangesCommandEmitsScopedStructuralDiff(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 
-	result := executeCommand(newChangesCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--from", "v1", "--to", "v2")
+	result := executeCommand(newChangesCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc", "--from", "v1", "--to", "v2")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":[]},"from":"v1","to":"v2","total":1,"truncated":0,"changes":[{"id":"1:1","path":"Page/New","type":"modified","nodeType":"FRAME","changes":[{"property":"name","from":"Old","to":"New"}]}]}`, result.Stdout)
@@ -52,7 +52,7 @@ func TestChangesCommandQuietSucceedsWhenChangesExist(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 
-	result := executeCommand(newChangesCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--from", "v1", "--to", "v2", "--quiet")
+	result := executeCommand(newChangesCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc", "--from", "v1", "--to", "v2", "--quiet")
 
 	assert.NoError(t, result.Err)
 	assert.Empty(t, result.Stdout)
@@ -61,7 +61,7 @@ func TestChangesCommandQuietSucceedsWhenChangesExist(t *testing.T) {
 func TestChangesCommandQuietUsesGrepStyleExitCodes(t *testing.T) {
 	client := fixtureClient(t, `{"document":{"id":"0:0","name":"Page","type":"DOCUMENT"}}`)
 
-	result := executeCommand(newChangesCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--from", "v1", "--to", "v2", "--quiet")
+	result := executeCommand(newChangesCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc", "--from", "v1", "--to", "v2", "--quiet")
 
 	var exitErr *cli.ExitCodeError
 	require.ErrorAs(t, result.Err, &exitErr)
@@ -71,10 +71,10 @@ func TestChangesCommandQuietUsesGrepStyleExitCodes(t *testing.T) {
 
 func TestChangesCommandRejectsInvalidLimitBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeCommand(newChangesCommand(func() (*figma.Client, error) {
+	result := executeCommand(newChangesCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}), "abc", "--from", "v1", "--to", "v2", "--limit", "0")
+	})), "abc", "--from", "v1", "--to", "v2", "--limit", "0")
 
 	assert.EqualError(t, result.Err, "--limit must be greater than zero")
 	assert.False(t, loaded)
@@ -82,10 +82,10 @@ func TestChangesCommandRejectsInvalidLimitBeforeLoadingClient(t *testing.T) {
 
 func TestChangesCommandRequiresVersionsBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeCommand(newChangesCommand(func() (*figma.Client, error) {
+	result := executeCommand(newChangesCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}), "abc", "--from", "v1")
+	})), "abc", "--from", "v1")
 
 	assert.EqualError(t, result.Err, "--from and --to are required")
 	assert.False(t, loaded)
