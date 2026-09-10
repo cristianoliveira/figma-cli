@@ -1,12 +1,13 @@
-# Figma CLI
+# Figma CLI and Pixel Perfect
 
-**Give coding agents design data and measurable feedback to implement Figma UIs.**
+**Give coding agents design data and measurable visual feedback.**
 
-Screenshots show appearance, but hide layout rules, component relationships, and
-design tokens. Figma CLI reads those facts from Figma and measures differences
-between a reference image and your rendered UI. A vision model is not required.
+This repository ships two independent CLIs. `figma` reads layout rules, component
+relationships, design tokens, and other design data from Figma. `pixel-perfect`
+compares a reference PNG with a rendered PNG and reports deterministic differences.
+The comparison runs locally; a vision model is not required.
 
-The workflow has three steps:
+The combined workflow has three steps:
 
 1. **[Understand the design](#understand-the-design):** read structure, copy, styles,
    and history instead of guessing from screenshots.
@@ -15,7 +16,7 @@ The workflow has three steps:
 3. **[Check the result](#check-the-result):** measure image differences, locate
    mismatches, and enforce explicit limits instead of relying only on visual judgment.
 
-Two independent tools support this workflow:
+The two CLIs support different parts of the workflow:
 
 | Tool | Responsibility | Requirements |
 | --- | --- | --- |
