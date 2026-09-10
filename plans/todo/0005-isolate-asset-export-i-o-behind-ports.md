@@ -1,7 +1,7 @@
 ---
 id: TASK-0005
 title: Isolate asset export I/O behind ports
-status: todo
+status: doing
 depends_on: [TASK-0002]
 priority: normal
 tags: [architecture, assets]
