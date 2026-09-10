@@ -65,7 +65,7 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 			client = client.WithContext(cmd.Context())
 
 			nodeIDs := figma.ResolveNodeIDs(input, explicitNodeID)
-			tokens, err := collectTokens(client, input.FileID, nodeIDs, options.source, options.mode, options.scanFallback)
+			tokens, err := collectTokens(deps.FetchVariables, client, input.FileID, nodeIDs, options.source, options.mode, options.scanFallback)
 			if err != nil {
 				return err
 			}
@@ -114,16 +114,16 @@ func validateTokensOptions(options tokensOptions) error {
 // collectTokens resolves tokens for a file according to the requested source.
 // "auto" tries Variables, then Styles. The document scan only runs when
 // scanFallback is true (opt-in), so output stays deterministic per source.
-func collectTokens(client *figma.Client, fileID string, nodeIDs []string, source, mode string, scanFallback bool) ([]extract.Token, error) {
+func collectTokens(fetchVariables func(*figma.Client, string) (map[string]any, error), client *figma.Client, fileID string, nodeIDs []string, source, mode string, scanFallback bool) ([]extract.Token, error) {
 	switch source {
 	case "variables":
-		return tokensFromVariables(client, fileID, mode)
+		return tokensFromVariables(fetchVariables, client, fileID, mode)
 	case "styles":
 		return tokensFromStyles(client, fileID)
 	case "scan":
 		return tokensFromScan(client, fileID, nodeIDs)
 	case "", tokenSourceAuto:
-		if tokens, err := tokensFromVariables(client, fileID, mode); err == nil && len(tokens) > 0 {
+		if tokens, err := tokensFromVariables(fetchVariables, client, fileID, mode); err == nil && len(tokens) > 0 {
 			return tokens, nil
 		}
 		if tokens, err := tokensFromStyles(client, fileID); err == nil && len(tokens) > 0 {
@@ -139,8 +139,8 @@ func collectTokens(client *figma.Client, fileID string, nodeIDs []string, source
 	return nil, fmt.Errorf("unknown --source %q (want variables, styles, scan, or auto)", source)
 }
 
-func tokensFromVariables(client *figma.Client, fileID, mode string) ([]extract.Token, error) {
-	meta, err := figma.FetchVariables(client, fileID)
+func tokensFromVariables(fetchVariables func(*figma.Client, string) (map[string]any, error), client *figma.Client, fileID, mode string) ([]extract.Token, error) {
+	meta, err := fetchVariables(client, fileID)
 	if err != nil {
 		return nil, err
 	}

@@ -118,7 +118,7 @@ commands that access Figma. Run figma <command> --help for local options.`,
 		"emit compatibility JSON instead of default TOON (wraps text/file results)")
 	root.SetFlagErrorFunc(cli.NewFlagUsageError)
 	root.AddCommand(
-		newMeCommand(),
+		newMeCommand(deps),
 		newProjectsCommand(deps),
 		newFilesCommand(deps),
 		newVersionsCommand(deps),

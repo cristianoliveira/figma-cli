@@ -16,10 +16,10 @@ type meOutput struct {
 	ImageURL string `json:"imageUrl"`
 }
 
-// newMeCommand constructs the `figma me` command. It takes no dependencies:
-// the command owns its loadClient invocation directly so the factory stays
-// trivially composable.
-func newMeCommand() *cobra.Command {
+// newMeCommand constructs the `figma me` command. It receives the explicit
+// Deps so the loadClient invocation flows through the composition root;
+// tests can inject a fake loader without touching cli.LoadClient.
+func newMeCommand(deps Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:     "me",
 		Short:   "Show the authenticated user (also validates FIGMA_ACCESS_TOKEN)",
@@ -32,7 +32,7 @@ FIGMA_ACCESS_TOKEN is configured and working.
 Requires FIGMA_ACCESS_TOKEN environment variable.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			client, err := cli.LoadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}

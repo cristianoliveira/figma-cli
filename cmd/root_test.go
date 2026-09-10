@@ -93,7 +93,7 @@ func TestPrimaryExplorationCommandsProvideLocalExamples(t *testing.T) {
 }
 
 func TestWorkspaceDiscoveryCommandsProvideLocalExamples(t *testing.T) {
-	commands := []*cobra.Command{newMeCommand(), newProjectsCommand(DepsForLoadClient(nil)), newFilesCommand(DepsForLoadClient(nil)), newVersionsCommand(DepsForLoadClient(nil)), newCommentsCommand(DepsForLoadClient(nil))}
+	commands := []*cobra.Command{newMeCommand(DepsForLoadClient(nil)), newProjectsCommand(DepsForLoadClient(nil)), newFilesCommand(DepsForLoadClient(nil)), newVersionsCommand(DepsForLoadClient(nil)), newCommentsCommand(DepsForLoadClient(nil))}
 
 	for _, command := range commands {
 		t.Run(command.Name(), func(t *testing.T) {
