@@ -1,7 +1,7 @@
 ---
 id: TASK-0007
 title: Enforce package dependency direction
-status: todo
+status: doing
 depends_on: [TASK-0001, TASK-0002]
 priority: high
 tags: [architecture, solid]
