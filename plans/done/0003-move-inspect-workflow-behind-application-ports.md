@@ -1,7 +1,7 @@
 ---
 id: TASK-0003
 title: Move inspect workflow behind application ports
-status: doing
+status: done
 depends_on: [TASK-0001, TASK-0002]
 priority: high
 tags: [architecture, inspect]
