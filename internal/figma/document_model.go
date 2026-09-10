@@ -104,6 +104,9 @@ func requiredStringField(object map[string]any, field, path string) (string, err
 	if !ok {
 		return "", &document.MalformedError{Path: path, Field: field, Reason: fmt.Sprintf("wrong type: %T, expected string", raw)}
 	}
+	if s == "" {
+		return "", &document.MalformedError{Path: path, Field: field, Reason: "empty"}
+	}
 	return s, nil
 }
 

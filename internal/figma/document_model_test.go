@@ -210,3 +210,66 @@ func TestMapDocumentNullRequiredField(t *testing.T) {
 	assert.Equal(t, "id", malformed.Field)
 	assert.Equal(t, "null", malformed.Reason)
 }
+
+func TestMapDocumentEmptyRequiredIDIsMalformed(t *testing.T) {
+	raw := map[string]any{
+		"id": "", "name": "Root", "type": "FRAME",
+	}
+	_, err := MapDocument(raw)
+	require.Error(t, err)
+	malformed, ok := err.(*document.MalformedError)
+	require.True(t, ok)
+	assert.Equal(t, "id", malformed.Field)
+	assert.Equal(t, "empty", malformed.Reason)
+}
+
+func TestMapDocumentEmptyRequiredNameIsMalformed(t *testing.T) {
+	raw := map[string]any{
+		"id": "1:1", "name": "", "type": "FRAME",
+	}
+	_, err := MapDocument(raw)
+	require.Error(t, err)
+	malformed, ok := err.(*document.MalformedError)
+	require.True(t, ok)
+	assert.Equal(t, "name", malformed.Field)
+	assert.Equal(t, "empty", malformed.Reason)
+}
+
+func TestMapDocumentEmptyRequiredTypeIsMalformed(t *testing.T) {
+	raw := map[string]any{
+		"id": "1:1", "name": "Root", "type": "",
+	}
+	_, err := MapDocument(raw)
+	require.Error(t, err)
+	malformed, ok := err.(*document.MalformedError)
+	require.True(t, ok)
+	assert.Equal(t, "type", malformed.Field)
+	assert.Equal(t, "empty", malformed.Reason)
+}
+
+func TestMapDocumentEmptyRequiredIDInDescendantReportsPath(t *testing.T) {
+	raw := map[string]any{
+		"id": "0:0", "name": "Root", "type": "FRAME",
+		"children": []any{
+			map[string]any{"id": "", "name": "Bad", "type": "FRAME"},
+		},
+	}
+	_, err := MapDocument(raw)
+	require.Error(t, err)
+	malformed, ok := err.(*document.MalformedError)
+	require.True(t, ok)
+	assert.Equal(t, "id", malformed.Field)
+	assert.Equal(t, "empty", malformed.Reason)
+	assert.Equal(t, "0", malformed.Path)
+}
+
+func TestMapDocumentOptionalEmptyCharactersForTextNodeStaysEmpty(t *testing.T) {
+	// Optional characters for TEXT nodes can legitimately be empty;
+	// the mapper must NOT report it as malformed.
+	raw := map[string]any{
+		"id": "1:1", "name": "EmptyTitle", "type": "TEXT", "characters": "",
+	}
+	root, err := MapDocument(raw)
+	require.NoError(t, err)
+	assert.Equal(t, "", root.Text)
+}
