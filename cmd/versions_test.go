@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
+	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,26 +19,26 @@ func parseTime(t *testing.T, v string) time.Time {
 func strPtr(s string) *string { return &s }
 
 func TestNewVersionsOutputMapsFields(t *testing.T) {
-	response := api.GetFileVersionsResponse{
-		Versions: []api.Version{
+	response := figma.FileVersions{
+		Versions: []figma.FileVersion{
 			{
-				Id:           "v1",
+				ID:           "v1",
 				CreatedAt:    parseTime(t, "2026-07-10T08:23:53Z"),
 				Label:        strPtr("Launch"),
 				Description:  strPtr("Final pre-launch cut"),
-				User:         api.User{Handle: "Astrid Pahl", Id: "1042800039466656116"},
-				ThumbnailUrl: strPtr("https://example.com/thumb.png"),
+				User:         figma.User{Handle: "Astrid Pahl", ID: "1042800039466656116"},
+				ThumbnailURL: strPtr("https://example.com/thumb.png"),
 			},
 			{
-				Id:        "v2",
+				ID:        "v2",
 				CreatedAt: parseTime(t, "2026-07-08T09:24:23Z"),
 				Label:     nil,
-				User:      api.User{Handle: "Wolfgang", Id: "1028228948377477971"},
+				User:      figma.User{Handle: "Wolfgang", ID: "1028228948377477971"},
 			},
 		},
-		Pagination: api.ResponsePagination{
-			NextPage: strPtr("https://api.figma.com/v1/files/x/versions?after=v2"),
-			PrevPage: strPtr("https://api.figma.com/v1/files/x/versions?before=v1"),
+		Pagination: figma.Pagination{
+			HasNextPage: true,
+			HasPrevPage: true,
 		},
 	}
 
@@ -67,7 +67,7 @@ func TestNewVersionsOutputMapsFields(t *testing.T) {
 }
 
 func TestNewVersionsOutputEmptyVersions(t *testing.T) {
-	got := newVersionsOutput(api.GetFileVersionsResponse{})
+	got := newVersionsOutput(figma.FileVersions{})
 
 	assert.Empty(t, got.Versions)
 	assert.NotNil(t, got.Versions)
@@ -79,8 +79,8 @@ func TestNewVersionsOutputEmptyVersions(t *testing.T) {
 }
 
 func TestNewVersionsOutputOmitsCursorsWhenNoPagination(t *testing.T) {
-	response := api.GetFileVersionsResponse{
-		Versions: []api.Version{{Id: "only", User: api.User{Handle: "Wolfgang"}}},
+	response := figma.FileVersions{
+		Versions: []figma.FileVersion{{ID: "only", User: figma.User{Handle: "Wolfgang"}}},
 	}
 
 	got := newVersionsOutput(response)
@@ -92,12 +92,12 @@ func TestNewVersionsOutputOmitsCursorsWhenNoPagination(t *testing.T) {
 }
 
 func TestFormatVersionsTableRendersHeaderRowsAndPagination(t *testing.T) {
-	out := newVersionsOutput(api.GetFileVersionsResponse{
-		Versions: []api.Version{
-			{Id: "v1", CreatedAt: parseTime(t, "2026-07-10T08:23:53Z"), Label: strPtr("Launch"), User: api.User{Handle: "Astrid Pahl"}},
-			{Id: "v2", CreatedAt: parseTime(t, "2026-07-08T09:24:23Z"), User: api.User{Handle: "Wolfgang"}},
+	out := newVersionsOutput(figma.FileVersions{
+		Versions: []figma.FileVersion{
+			{ID: "v1", CreatedAt: parseTime(t, "2026-07-10T08:23:53Z"), Label: strPtr("Launch"), User: figma.User{Handle: "Astrid Pahl"}},
+			{ID: "v2", CreatedAt: parseTime(t, "2026-07-08T09:24:23Z"), User: figma.User{Handle: "Wolfgang"}},
 		},
-		Pagination: api.ResponsePagination{NextPage: strPtr("https://api.figma.com/v1/files/x/versions?after=v2")},
+		Pagination: figma.Pagination{HasNextPage: true},
 	})
 
 	table := formatVersionsTable(out)

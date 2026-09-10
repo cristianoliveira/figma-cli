@@ -5,7 +5,6 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/figma/api"
 	"github.com/spf13/cobra"
 )
 
@@ -24,14 +23,18 @@ type filesOutput struct {
 	Files     []fileOutput `json:"files"`
 }
 
-func newFilesOutput(response api.GetProjectFilesResponse) filesOutput {
+// newFilesOutput maps the stable figma.ProjectFiles DTO into the
+// command-layer output shape. The mapper is the single place where the
+// adapter's time.Time becomes the JSON-friendly RFC3339 string, so the
+// generated API package does not have to leak this far.
+func newFilesOutput(response figma.ProjectFiles) filesOutput {
 	files := make([]fileOutput, 0, len(response.Files))
 	for _, file := range response.Files {
 		files = append(files, fileOutput{
 			Key:          file.Key,
 			Name:         file.Name,
 			LastModified: file.LastModified.Format(time.RFC3339),
-			ThumbnailURL: file.ThumbnailUrl,
+			ThumbnailURL: file.ThumbnailURL,
 		})
 	}
 	return filesOutput{Project: response.Name, Total: len(files), Files: files}
