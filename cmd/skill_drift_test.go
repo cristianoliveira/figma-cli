@@ -14,7 +14,8 @@ import (
 func TestFigmaSkillExactAXIFactsMatchCobra(t *testing.T) {
 	reference := readSkillFile(t, "..", "skills", "figma-cli", "references", "commands.md")
 	skill := readSkillFile(t, "..", "skills", "figma-cli", "SKILL.md")
-	layout := findCommand(t, rootCmd, "layout")
+	skillRoot := NewRootCommand(DefaultDeps())
+	layout := findCommand(t, skillRoot, "layout")
 
 	depth := layout.Flags().Lookup("depth")
 	require.NotNil(t, depth, "skill drift: figma layout --depth is missing; run: update Cobra or skills/figma-cli/references/commands.md")
@@ -22,7 +23,7 @@ func TestFigmaSkillExactAXIFactsMatchCobra(t *testing.T) {
 	require.NotNil(t, layout.Flags().Lookup("full"), "skill drift: figma layout --full is missing")
 
 	for _, commandName := range []string{"colors", "comments", "components", "find", "frames", "inspect", "texts"} {
-		command := findCommand(t, rootCmd, commandName)
+		command := findCommand(t, skillRoot, commandName)
 		limit := command.Flags().Lookup("limit")
 		require.NotNilf(t, limit, "skill drift: figma %s --limit is missing", commandName)
 		assert.Equalf(t, "100", limit.DefValue, "skill drift: figma %s --limit default changed", commandName)

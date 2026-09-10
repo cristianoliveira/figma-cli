@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var framesCmd = newFramesCommand(cli.LoadClient)
-
-func newFramesCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newFramesCommand constructs `figma frames` using the explicit loadClient
+// dependency.
+func newFramesCommand(deps Deps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "frames [figma-url-or-file-id]",
 		Short: "List screen-level frames in a page or section",
@@ -37,7 +37,7 @@ func newFramesCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 				return cli.NewUsageError(fmt.Errorf("frames requires a page or section node ID from the URL or --id"))
 			}
 
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -54,8 +54,4 @@ func newFramesCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	addNodeIDFlag(command, "page or section node ID; defaults to URL node-id")
 	addResultLimitFlags(command)
 	return command
-}
-
-func init() {
-	rootCmd.AddCommand(framesCmd)
 }

@@ -15,7 +15,7 @@ type layoutCompareOutput struct {
 	extract.LayoutComparison
 }
 
-func newLayoutCompareCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+func newLayoutCompareCommand(deps Deps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "compare [figma-url-or-file-id] (--id/--node frame-id --id/--node frame-id | --name frame --name frame)",
 		Short: "Compare explicitly selected responsive frames",
@@ -55,7 +55,7 @@ func newLayoutCompareCommand(loadClient func() (*figma.Client, error)) *cobra.Co
 					return cli.NewUsageError(err)
 				}
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}

@@ -10,8 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var layoutCmd = newLayoutCommand(cli.LoadClient)
-
 const defaultLayoutDepth = 4
 
 type layoutOutput struct {
@@ -36,7 +34,9 @@ func readLayoutDepth(command *cobra.Command) (int, map[string]any, error) {
 	return depth, map[string]any{"maxDepth": depth}, nil
 }
 
-func newLayoutCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newLayoutCommand constructs `figma layout` and attaches its nested
+// `figma layout compare` subcommand. Both share the loadClient dependency.
+func newLayoutCommand(deps Deps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "layout [figma-url-or-file-id]",
 		Short: "Show an ordered frame tree with layout and copy",
@@ -63,7 +63,7 @@ func newLayoutCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 				return cli.NewUsageError(err)
 			}
 
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -86,10 +86,6 @@ func newLayoutCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	command.Flags().Bool("measure-spacing", false, "measure geometric gaps between adjacent layout children")
 	command.Flags().Int("depth", defaultLayoutDepth, "maximum descendant depth to return")
 	command.Flags().Bool("full", false, "return every layout descendant")
-	command.AddCommand(newLayoutCompareCommand(loadClient))
+	command.AddCommand(newLayoutCompareCommand(deps))
 	return command
-}
-
-func init() {
-	rootCmd.AddCommand(layoutCmd)
 }

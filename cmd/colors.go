@@ -8,9 +8,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var colorsCmd = newColorsCommand(cli.LoadClient)
-
-func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newColorsCommand constructs `figma colors` using the explicit loadClient
+// dependency. No package-level command instance exists.
+func newColorsCommand(deps Deps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "colors [figma-url-or-file-id]",
 		Short: "Extract the color palette from a Figma node",
@@ -34,7 +34,7 @@ func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -55,8 +55,4 @@ func newColorsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 	addNodeIDFlag(command, "node ID to extract colors from; defaults to URL node-id")
 	addResultLimitFlags(command)
 	return command
-}
-
-func init() {
-	rootCmd.AddCommand(colorsCmd)
 }

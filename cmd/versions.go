@@ -120,18 +120,19 @@ func formatVersionsTable(out versionsOutput) string {
 	return b.String()
 }
 
-var (
-	versionsPageSize int
-	versionsBefore   string
-	versionsAfter    string
-)
+// newVersionsCommand constructs `figma versions`. All pagination flag state
+// binds to per-instance locals so two roots never share defaults.
+func newVersionsCommand(deps Deps) *cobra.Command {
+	var pageSize int
+	var before string
+	var after string
 
-var versionsCmd = &cobra.Command{
-	Use:   "versions [file-id-or-url]",
-	Short: "Fetch version history for a Figma file",
-	Example: `  figma versions <file-key>
+	command := &cobra.Command{
+		Use:   "versions [file-id-or-url]",
+		Short: "Fetch version history for a Figma file",
+		Example: `  figma versions <file-key>
   figma versions <url>`,
-	Long: `Fetch version history for a Figma file via the Figma API.
+		Long: `Fetch version history for a Figma file via the Figma API.
 
 Versions are returned newest-first. Auto-save milestones have no label or
 description; named versions surface both. Use the pagination flags to page
@@ -151,37 +152,35 @@ Examples:
   figma versions exampleFileKey123
   figma versions --page-size 50 https://www.figma.com/design/exampleFileKey123/Example-Design?node-id=4-1082
   figma versions --after 2374505616843859677 exampleFileKey123`,
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		input, err := figma.ParseInput(args[0])
-		if err != nil {
-			return cli.NewUsageError(err)
-		}
-		apiURL, err := figma.BuildVersionsURL(input.FileID, figma.VersionsQuery{
-			PageSize: versionsPageSize,
-			Before:   versionsBefore,
-			After:    versionsAfter,
-		})
-		if err != nil {
-			return cli.NewUsageError(err)
-		}
-		client, err := cli.LoadClient()
-		if err != nil {
-			return err
-		}
-		client = client.WithContext(cmd.Context())
-		response, err := figma.FetchVersions(client, apiURL)
-		if err != nil {
-			return err
-		}
-		output := newVersionsOutput(response)
-		return cli.NewPrinter(cmd).Render(output, formatVersionsTable(output))
-	},
-}
-
-func init() {
-	versionsCmd.Flags().IntVar(&versionsPageSize, "page-size", 0, "versions per page (1-50, API default 30)")
-	versionsCmd.Flags().StringVar(&versionsBefore, "before", "", "version ID: fetch versions newer than this one")
-	versionsCmd.Flags().StringVar(&versionsAfter, "after", "", "version ID: fetch versions older than this one")
-	rootCmd.AddCommand(versionsCmd)
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			input, err := figma.ParseInput(args[0])
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			apiURL, err := figma.BuildVersionsURL(input.FileID, figma.VersionsQuery{
+				PageSize: pageSize,
+				Before:   before,
+				After:    after,
+			})
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			client, err := deps.LoadClient()
+			if err != nil {
+				return err
+			}
+			client = client.WithContext(cmd.Context())
+			response, err := figma.FetchVersions(client, apiURL)
+			if err != nil {
+				return err
+			}
+			output := newVersionsOutput(response)
+			return cli.NewPrinter(cmd).Render(output, formatVersionsTable(output))
+		},
+	}
+	command.Flags().IntVar(&pageSize, "page-size", 0, "versions per page (1-50, API default 30)")
+	command.Flags().StringVar(&before, "before", "", "version ID: fetch versions newer than this one")
+	command.Flags().StringVar(&after, "after", "", "version ID: fetch versions older than this one")
+	return command
 }

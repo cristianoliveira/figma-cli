@@ -11,15 +11,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var exportCmd = newExportCommand(cli.LoadClient, nil)
-
 const (
 	exportFormatPNG = "png"
 	exportFormatJPG = "jpg"
 	exportFormatSVG = "svg"
 )
 
-func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *http.Client) *cobra.Command {
+// newExportCommand constructs `figma export`. The downloadClient dependency
+// is optional; nil means the command falls back to client.HTTP, matching the
+// previous default behaviour.
+func newExportCommand(deps Deps) *cobra.Command {
+	return newExportCommandWithClient(deps, nil)
+}
+
+// newExportCommandWithClient exposes the downloadClient injection point for
+// tests; production callers should use newExportCommand.
+func newExportCommandWithClient(deps Deps, downloadClient *http.Client) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "export [figma-url-with-node-id]",
 		Short: "Export a Figma node asset",
@@ -61,7 +68,7 @@ func newExportCommand(loadClient func() (*figma.Client, error), downloadClient *
 			if outputPath == "" {
 				outputPath = assets.DefaultExportOutputPath(input.FileID, resolvedNodeID, format)
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -152,8 +159,4 @@ func exportScaleForWidth(client *figma.Client, fileID, nodeID string, requestedW
 func numberFromAny(value any) float64 {
 	number, _ := value.(float64)
 	return number
-}
-
-func init() {
-	rootCmd.AddCommand(exportCmd)
 }

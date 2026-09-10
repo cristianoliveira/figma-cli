@@ -6,9 +6,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var metaCmd = newMetaCommand(cli.LoadClient)
-
-func newMetaCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newMetaCommand constructs `figma meta` using the explicit loadClient
+// dependency.
+func newMetaCommand(deps Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "meta [file-id-or-url]",
 		Short: "Fetch metadata for a Figma file",
@@ -25,7 +25,7 @@ func newMetaCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -42,8 +42,4 @@ func newMetaCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 			return nil
 		},
 	}
-}
-
-func init() {
-	rootCmd.AddCommand(metaCmd)
 }

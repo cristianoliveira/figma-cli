@@ -80,12 +80,15 @@ func formatBlameDate(rfc3339 string) string {
 	return t.Format("2006-01-02 15:04:05")
 }
 
-var diffBlameCmd = &cobra.Command{
-	Use:   "blame [file-id-or-url] --to version-id",
-	Short: "Find the version that introduced the current text at a node",
-	Example: `  figma diff blame --to <version-id> --id 42:1 <url>
+// newDiffBlameCommand constructs `figma diff blame` using the explicit
+// loadClient dependency.
+func newDiffBlameCommand(deps Deps) *cobra.Command {
+	command := &cobra.Command{
+		Use:   "blame [file-id-or-url] --to version-id",
+		Short: "Find the version that introduced the current text at a node",
+		Example: `  figma diff blame --to <version-id> --id 42:1 <url>
   figma diff blame --to <version-id> "<url>?node-id=42-1"`,
-	Long: `Find the version that introduced the current text at a node.
+		Long: `Find the version that introduced the current text at a node.
 
 Searches the file's version history backward from --to, binary-searching for
 the oldest version whose text matches --to at the given node. Prints the
@@ -101,42 +104,40 @@ machine-readable result.
 Examples:
   figma diff blame https://www.figma.com/design/KEY/File?node-id=4707-15608 --to 2374505616843859677
   figma diff blame <url> --to <version-id> --from <older-version-id>`,
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		toVersion, _ := cmd.Flags().GetString("to")
-		fromVersion, _ := cmd.Flags().GetString("from")
-		explicitNodeID, err := explicitNodeIDFlag(cmd)
-		if err != nil {
-			return cli.NewUsageError(err)
-		}
-		if toVersion == "" {
-			return cli.NewUsageError(fmt.Errorf("--to is required"))
-		}
-		input, err := figma.ParseInput(args[0])
-		if err != nil {
-			return cli.NewUsageError(err)
-		}
-		nodeID, err := figma.ResolveSingleNodeID(input, explicitNodeID, "diff blame")
-		if err != nil {
-			return cli.NewUsageError(err)
-		}
-		client, err := cli.LoadClient()
-		if err != nil {
-			return err
-		}
-		client = client.WithContext(cmd.Context())
-		result, err := diff.FindTextChange(figma.NewTextHistory(client, input.FileID, []string{nodeID}), toVersion, fromVersion)
-		if err != nil {
-			return err
-		}
-		out := newBlameOutput(result)
-		return cli.NewPrinter(cmd).Render(out, formatBlame(out))
-	},
-}
-
-func init() {
-	addNodeIDFlag(diffBlameCmd, "node ID to inspect; defaults to URL node-id")
-	diffBlameCmd.Flags().String("to", "", "target version ID whose text to explain (required)")
-	diffBlameCmd.Flags().String("from", "", "oldest version ID to search back to (default: oldest available)")
-	diffCmd.AddCommand(diffBlameCmd)
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			toVersion, _ := cmd.Flags().GetString("to")
+			fromVersion, _ := cmd.Flags().GetString("from")
+			explicitNodeID, err := explicitNodeIDFlag(cmd)
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			if toVersion == "" {
+				return cli.NewUsageError(fmt.Errorf("--to is required"))
+			}
+			input, err := figma.ParseInput(args[0])
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			nodeID, err := figma.ResolveSingleNodeID(input, explicitNodeID, "diff blame")
+			if err != nil {
+				return cli.NewUsageError(err)
+			}
+			client, err := deps.LoadClient()
+			if err != nil {
+				return err
+			}
+			client = client.WithContext(cmd.Context())
+			result, err := diff.FindTextChange(figma.NewTextHistory(client, input.FileID, []string{nodeID}), toVersion, fromVersion)
+			if err != nil {
+				return err
+			}
+			out := newBlameOutput(result)
+			return cli.NewPrinter(cmd).Render(out, formatBlame(out))
+		},
+	}
+	addNodeIDFlag(command, "node ID to inspect; defaults to URL node-id")
+	command.Flags().String("to", "", "target version ID whose text to explain (required)")
+	command.Flags().String("from", "", "oldest version ID to search back to (default: oldest available)")
+	return command
 }

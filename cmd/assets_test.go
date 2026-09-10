@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -36,6 +38,7 @@ func TestAssetNameFilenameSupportsExplicitPrefixTrimming(t *testing.T) {
 func TestAssetsCommandExportsFilteredAssets(t *testing.T) {
 	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
 		body := "svg"
+		fmt.Fprintf(os.Stderr, "TRANSPORT: %s %s\n", request.Method, request.URL.String())
 		switch request.URL.Path {
 		case "/v1/files/FILE/nodes":
 			body = `{"nodes":{"1:2":{"document":{"id":"1:2","name":"Screen","type":"FRAME","children":[{"id":"2:3","name":"Close","type":"VECTOR"},{"id":"4:5","name":"Photo","fills":[{"type":"IMAGE"}]}]}}}}`
@@ -46,10 +49,14 @@ func TestAssetsCommandExportsFilteredAssets(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})
 	client := &figma.Client{HTTP: &http.Client{Transport: transport}}
+	fmt.Fprintf(os.Stderr, "client HTTP transport: %p (test transport: %p)\n", client.HTTP.Transport, transport)
 	outputDirectory := t.TempDir()
 
 	result := executeDefaultCommand(
-		newAssetsCommand(func() (*figma.Client, error) { return client, nil }, nil),
+		newAssetsCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) {
+			fmt.Fprintf(os.Stderr, "LOADCLIENT called, client.HTTP=%p\n", client.HTTP)
+			return client, nil
+		}), nil),
 		"https://www.figma.com/design/FILE/Screen?node-id=1-2", "--output", outputDirectory, "--kind", "icon", "--name", "close",
 	)
 
@@ -77,7 +84,7 @@ func TestAssetsCommandFailsOnPartialDownloadWithoutAllowPartial(t *testing.T) {
 	client := &figma.Client{HTTP: &http.Client{Transport: transport}}
 
 	result := executeDefaultCommand(
-		newAssetsCommand(func() (*figma.Client, error) { return client, nil }, nil),
+		newAssetsCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) { return client, nil }), nil),
 		"https://www.figma.com/design/FILE/Screen?node-id=1-2", "--output", t.TempDir(),
 	)
 
@@ -90,10 +97,10 @@ func TestAssetsCommandFailsOnPartialDownloadWithoutAllowPartial(t *testing.T) {
 
 func TestAssetsCommandRejectsFilenameModeBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeDefaultCommand(newAssetsCommand(func() (*figma.Client, error) {
+	result := executeDefaultCommand(newAssetsCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}, http.DefaultClient), "abc", "--id", "1:2", "--filename", "random")
+	}), http.DefaultClient), "abc", "--id", "1:2", "--filename", "random")
 
 	assert.EqualError(t, result.Err, `invalid filename mode "random": expected name or name-id`)
 	assert.False(t, loaded)
@@ -101,10 +108,10 @@ func TestAssetsCommandRejectsFilenameModeBeforeLoadingClient(t *testing.T) {
 
 func TestAssetsCommandRejectsFormatBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeDefaultCommand(newAssetsCommand(func() (*figma.Client, error) {
+	result := executeDefaultCommand(newAssetsCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}, http.DefaultClient), "abc", "--id", "1:2", "--format", "gif")
+	}), http.DefaultClient), "abc", "--id", "1:2", "--format", "gif")
 
 	assert.EqualError(t, result.Err, `invalid format "gif": expected png, jpg, svg, or pdf`)
 	assert.False(t, loaded)

@@ -8,9 +8,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cssCmd = newCSSCommand(cli.LoadClient)
-
-func newCSSCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newCSSCommand constructs `figma css` using the explicit loadClient
+// dependency.
+func newCSSCommand(deps Deps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "css [figma-url-or-file-id]",
 		Short: "Generate CSS rules from a Figma element's layout and styles",
@@ -45,7 +45,7 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -78,8 +78,4 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 	command.Flags().String("output", "", "write CSS to a file instead of stdout")
 	command.Flags().Bool("recursive", false, "include CSS rules from all descendant nodes")
 	return command
-}
-
-func init() {
-	rootCmd.AddCommand(cssCmd)
 }

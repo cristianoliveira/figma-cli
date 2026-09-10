@@ -23,7 +23,7 @@ func TestComponentsDiffComparesPublishedFigmaComponentsWithCodebase(t *testing.T
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
 
-	result := executeCommand(newComponentsCommand(func() (*figma.Client, error) { return client, nil }), "abc", "--diff", "--codebase", codebase)
+	result := executeCommand(newComponentsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc", "--diff", "--codebase", codebase)
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{
@@ -38,10 +38,10 @@ func TestComponentsDiffComparesPublishedFigmaComponentsWithCodebase(t *testing.T
 
 func TestComponentsDiffRejectsUnreadableCodebaseBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeCommand(newComponentsCommand(func() (*figma.Client, error) {
+	result := executeCommand(newComponentsCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}), "abc", "--diff", "--codebase", filepath.Join(t.TempDir(), "missing"))
+	})), "abc", "--diff", "--codebase", filepath.Join(t.TempDir(), "missing"))
 
 	assert.ErrorContains(t, result.Err, "reading codebase")
 	assert.False(t, loaded)
@@ -49,10 +49,10 @@ func TestComponentsDiffRejectsUnreadableCodebaseBeforeLoadingClient(t *testing.T
 
 func TestComponentsDiffRejectsNodeScopedURLBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeCommand(newComponentsCommand(func() (*figma.Client, error) {
+	result := executeCommand(newComponentsCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}), "https://www.figma.com/design/abc/Name?node-id=1-1", "--diff", "--codebase", t.TempDir())
+	})), "https://www.figma.com/design/abc/Name?node-id=1-1", "--diff", "--codebase", t.TempDir())
 
 	assert.EqualError(t, result.Err, "--diff compares a whole Figma file; remove node-id from the URL")
 	assert.False(t, loaded)
@@ -60,10 +60,10 @@ func TestComponentsDiffRejectsNodeScopedURLBeforeLoadingClient(t *testing.T) {
 
 func TestComponentsDiffRequiresCodebaseBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeCommand(newComponentsCommand(func() (*figma.Client, error) {
+	result := executeCommand(newComponentsCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}), "abc", "--diff")
+	})), "abc", "--diff")
 
 	assert.EqualError(t, result.Err, "--diff requires --codebase")
 	assert.False(t, loaded)

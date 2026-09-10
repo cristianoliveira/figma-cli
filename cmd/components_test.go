@@ -16,7 +16,7 @@ func TestComponentsCommandEmitsStableScopedResults(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Screen","type":"FRAME","children":[{"id":"42:2","name":"Button","type":"INSTANCE","componentId":"1:1"}]}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	result := executeCommand(newComponentsCommand(func() (*figma.Client, error) { return client, nil }),
+	result := executeCommand(newComponentsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })),
 		"https://www.figma.com/design/abc/Name?node-id=42-1", "--name", "button", "--kind", "instance")
 
 	require.NoError(t, result.Err)
@@ -33,7 +33,7 @@ func TestComponentsCommandGroupsUsageByExactComponentID(t *testing.T) {
 		body := `{"nodes":{"42:1":{"document":{"id":"42:1","name":"Screen","type":"FRAME","children":[{"id":"42:2","name":"Primary","type":"INSTANCE","componentId":"1:1","variantProperties":{"Size":"Large"}},{"id":"42:3","name":"Secondary","type":"INSTANCE","componentId":"1:1"},{"id":"42:4","name":"Primary","type":"INSTANCE","componentId":"2:1"}]}}}}`
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
-	result := executeCommand(newComponentsCommand(func() (*figma.Client, error) { return client, nil }), "https://www.figma.com/design/abc/Name?node-id=42-1", "--usage")
+	result := executeCommand(newComponentsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "https://www.figma.com/design/abc/Name?node-id=42-1", "--usage")
 
 	require.NoError(t, result.Err)
 	assert.JSONEq(t, `{"scope":{"fileKey":"abc","nodeIds":["42:1"]},"query":{"name":"","kind":"","raw":false,"usage":true},"total":2,"results":[{"componentId":"1:1","name":"Primary","count":2,"instances":[{"id":"42:2","name":"Primary","path":["Screen","Primary"],"variantProperties":{"Size":"Large"}},{"id":"42:3","name":"Secondary","path":["Screen","Secondary"]}]},{"componentId":"2:1","name":"Primary","count":1,"instances":[{"id":"42:4","name":"Primary","path":["Screen","Primary"]}]}]}`, result.Stdout)
@@ -41,7 +41,7 @@ func TestComponentsCommandGroupsUsageByExactComponentID(t *testing.T) {
 
 func TestComponentsCommandRejectsUsageWithRawWithoutLoadingClient(t *testing.T) {
 	loaded := false
-	command := newComponentsCommand(func() (*figma.Client, error) { loaded = true; return nil, nil })
+	command := newComponentsCommand(DepsForLoadClient(func() (*figma.Client, error) { loaded = true; return nil, nil }))
 	result := executeCommand(command, "https://www.figma.com/design/abc/Name?node-id=42-1", "--usage", "--raw")
 
 	assert.EqualError(t, result.Err, "--usage and --raw cannot be used together")
@@ -50,10 +50,10 @@ func TestComponentsCommandRejectsUsageWithRawWithoutLoadingClient(t *testing.T) 
 
 func TestComponentsCommandRejectsInvalidKindWithoutLoadingClient(t *testing.T) {
 	loaded := false
-	command := newComponentsCommand(func() (*figma.Client, error) {
+	command := newComponentsCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	})
+	}))
 	command.SilenceErrors = true
 	command.SilenceUsage = true
 	command.SetArgs([]string{"--kind", "frame", "https://www.figma.com/design/abc/Name?node-id=42-1"})
@@ -66,10 +66,10 @@ func TestComponentsCommandRejectsInvalidKindWithoutLoadingClient(t *testing.T) {
 
 func TestComponentsCommandRejectsMissingScopeWithoutLoadingClient(t *testing.T) {
 	loaded := false
-	command := newComponentsCommand(func() (*figma.Client, error) {
+	command := newComponentsCommand(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	})
+	}))
 	command.SilenceErrors = true
 	command.SilenceUsage = true
 	command.SetArgs([]string{"abc"})

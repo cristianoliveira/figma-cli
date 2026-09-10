@@ -26,7 +26,7 @@ func TestExportCommandWritesFileAndJSONContract(t *testing.T) {
 	outputPath := t.TempDir() + "/button.svg"
 
 	result := executeCommand(
-		newExportCommand(func() (*figma.Client, error) { return client, nil }, nil),
+		newExportCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) { return client, nil }), nil),
 		"https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "svg", "--output", outputPath, "--json",
 	)
 
@@ -58,7 +58,7 @@ func TestExportCommandRequestsRasterScale(t *testing.T) {
 	outputPath := t.TempDir() + "/button.png"
 
 	result := executeCommand(
-		newExportCommand(func() (*figma.Client, error) { return client, nil }, nil),
+		newExportCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) { return client, nil }), nil),
 		"https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "png", "--scale", "2", "--output", outputPath, "--json",
 	)
 
@@ -84,7 +84,7 @@ func TestExportCommandDerivesRasterScaleFromWidth(t *testing.T) {
 	outputPath := t.TempDir() + "/button.png"
 
 	result := executeCommand(
-		newExportCommand(func() (*figma.Client, error) { return client, nil }, nil),
+		newExportCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) { return client, nil }), nil),
 		"https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "png", "--width", "780", "--output", outputPath, "--json",
 	)
 
@@ -95,10 +95,10 @@ func TestExportCommandDerivesRasterScaleFromWidth(t *testing.T) {
 
 func TestExportCommandRejectsWidthWithScale(t *testing.T) {
 	loaded := false
-	result := executeCommand(newExportCommand(func() (*figma.Client, error) {
+	result := executeCommand(newExportCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}, nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "png", "--width", "780", "--scale", "2")
+	}), nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "png", "--width", "780", "--scale", "2")
 
 	assert.EqualError(t, result.Err, "--width cannot be combined with --scale")
 	assert.False(t, loaded)
@@ -106,10 +106,10 @@ func TestExportCommandRejectsWidthWithScale(t *testing.T) {
 
 func TestExportCommandRejectsWidthForVectorFormats(t *testing.T) {
 	loaded := false
-	result := executeCommand(newExportCommand(func() (*figma.Client, error) {
+	result := executeCommand(newExportCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}, nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "svg", "--width", "780")
+	}), nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "svg", "--width", "780")
 
 	assert.EqualError(t, result.Err, "--width is only supported for png and jpg exports")
 	assert.False(t, loaded)
@@ -117,10 +117,10 @@ func TestExportCommandRejectsWidthForVectorFormats(t *testing.T) {
 
 func TestExportCommandRejectsScaleForVectorFormats(t *testing.T) {
 	loaded := false
-	result := executeCommand(newExportCommand(func() (*figma.Client, error) {
+	result := executeCommand(newExportCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}, nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "svg", "--scale", "2")
+	}), nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "svg", "--scale", "2")
 
 	assert.EqualError(t, result.Err, "--scale is only supported for png and jpg exports")
 	assert.False(t, loaded)
@@ -128,10 +128,10 @@ func TestExportCommandRejectsScaleForVectorFormats(t *testing.T) {
 
 func TestExportCommandRejectsInvalidScale(t *testing.T) {
 	loaded := false
-	result := executeCommand(newExportCommand(func() (*figma.Client, error) {
+	result := executeCommand(newExportCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}, nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "png", "--scale", "0")
+	}), nil), "https://www.figma.com/design/abc/Name?node-id=42-1", "--format", "png", "--scale", "0")
 
 	assert.EqualError(t, result.Err, "--scale must be a finite number between 0.01 and 4")
 	assert.False(t, loaded)
@@ -139,10 +139,10 @@ func TestExportCommandRejectsInvalidScale(t *testing.T) {
 
 func TestExportCommandRejectsFormatBeforeLoadingClient(t *testing.T) {
 	loaded := false
-	result := executeCommand(newExportCommand(func() (*figma.Client, error) {
+	result := executeCommand(newExportCommandWithClient(DepsForLoadClient(func() (*figma.Client, error) {
 		loaded = true
 		return nil, nil
-	}, http.DefaultClient), "abc", "--id", "1:2", "--format", "gif")
+	}), http.DefaultClient), "abc", "--id", "1:2", "--format", "gif")
 
 	assert.EqualError(t, result.Err, `invalid format "gif": expected png, jpg, svg, or pdf`)
 	assert.False(t, loaded)

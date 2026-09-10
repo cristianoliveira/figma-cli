@@ -19,9 +19,9 @@ type textQuery struct {
 	Results   any            `json:"results"`
 }
 
-var textsCmd = newTextsCommand(cli.LoadClient)
-
-func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
+// newTextsCommand constructs `figma texts` using the explicit loadClient
+// dependency.
+func newTextsCommand(deps Deps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "texts [file-id-or-url]",
 		Short: "Extract ordered text and Figma-provided list semantics",
@@ -54,7 +54,7 @@ func newTextsCommand(loadClient func() (*figma.Client, error)) *cobra.Command {
 				nodeIDs = []string{resolvedNodeID}
 			}
 
-			client, err := loadClient()
+			client, err := deps.LoadClient()
 			if err != nil {
 				return err
 			}
@@ -127,8 +127,4 @@ func textResult(doc any, input *figma.FileInput, layerName string, recursive boo
 		return nil, fmt.Errorf("--layer or a node ID is required")
 	}
 	return extract.FindTextByLayerName(doc, layerName, recursive), nil
-}
-
-func init() {
-	rootCmd.AddCommand(textsCmd)
 }
