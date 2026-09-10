@@ -186,6 +186,89 @@ func TestServiceInvalidDocumentPayloadErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid document")
 }
 
+// TestServiceRecursiveDepthNegativeIsUnbounded is the regression guard
+// for the TASK-0003 compatibility fix: when the consumer does not pass
+// an explicit depth, the service must traverse the whole tree. A tree
+// deeper than 4 must surface every node, regardless of the previous
+// CLI flag default.
+func TestServiceRecursiveDepthNegativeIsUnbounded(t *testing.T) {
+	// Build a chain 6 levels deep so the legacy default of 4 would
+	// truncate the last two nodes.
+	doc := map[string]any{
+		"id":   "1:1",
+		"name": "Root",
+		"type": "FRAME",
+		"children": []any{
+			map[string]any{
+				"id":   "1:2",
+				"name": "L2",
+				"type": "FRAME",
+				"children": []any{
+					map[string]any{
+						"id":   "1:3",
+						"name": "L3",
+						"type": "FRAME",
+						"children": []any{
+							map[string]any{
+								"id":   "1:4",
+								"name": "L4",
+								"type": "FRAME",
+								"children": []any{
+									map[string]any{
+										"id":   "1:5",
+										"name": "L5",
+										"type": "FRAME",
+										"children": []any{
+											map[string]any{
+												"id":   "1:6",
+												"name": "L6",
+												"type": "RECTANGLE",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	nodes := &fakeNodes{details: NodeDetails{Documents: []any{doc}}}
+	svc := New(nodes, &fakeVars{})
+
+	result, err := svc.Inspect(Request{FileID: "f", NodeID: "1:1", Recursive: true, Depth: -1})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, 6, result.Total, "depth=-1 must walk the full tree")
+	assert.Len(t, result.Nodes, 6)
+}
+
+// TestServiceRecursiveDepthHonoured asserts an explicit non-negative
+// depth still bounds the traversal.
+func TestServiceRecursiveDepthHonoured(t *testing.T) {
+	doc := map[string]any{
+		"id":   "1:1",
+		"name": "Root",
+		"type": "FRAME",
+		"children": []any{
+			map[string]any{
+				"id":   "1:2",
+				"name": "L2",
+				"type": "RECTANGLE",
+			},
+		},
+	}
+	nodes := &fakeNodes{details: NodeDetails{Documents: []any{doc}}}
+	svc := New(nodes, &fakeVars{})
+
+	result, err := svc.Inspect(Request{FileID: "f", NodeID: "1:1", Recursive: true, Depth: 0})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, 1, result.Total, "depth=0 keeps only the root")
+	assert.Len(t, result.Nodes, 1)
+}
+
 func TestServiceVectorPathsRequestedOnlyForRecursiveOrExplicitDepth(t *testing.T) {
 	nodes := &fakeNodes{details: NodeDetails{Documents: []any{singleNodeDocument("1:1", "Root", "FRAME")}}}
 	svc := New(nodes, &fakeVars{})

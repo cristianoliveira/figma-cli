@@ -51,7 +51,7 @@ func newInspectCommand(deps Deps) *cobra.Command {
 			recursive, _ := cmd.Flags().GetBool("recursive")
 			handoff, _ := cmd.Flags().GetBool("handoff")
 			includeVectorPaths, _ := cmd.Flags().GetBool("include-vector-paths")
-			depth, _ := cmd.Flags().GetInt("depth")
+			depth := inspectDepthForRequest(cmd)
 			includeHidden, _ := cmd.Flags().GetBool("include-hidden")
 			inspectFormat, _ := cmd.Flags().GetString("format")
 			fields, _ := cmd.Flags().GetStringSlice("fields")
@@ -129,12 +129,14 @@ func validateInspectFlags(cmd *cobra.Command) error {
 		return fmt.Errorf("--handoff and --recursive cannot be used together")
 	}
 	includeVectorPaths, _ := cmd.Flags().GetBool("include-vector-paths")
-	depth, _ := cmd.Flags().GetInt("depth")
 	if includeVectorPaths && recursive && !cmd.Flags().Changed("depth") {
 		return fmt.Errorf("--include-vector-paths with --recursive requires explicit --depth")
 	}
-	if depth < 0 {
-		return fmt.Errorf("--depth must be zero or greater")
+	if cmd.Flags().Changed("depth") {
+		depth, _ := cmd.Flags().GetInt("depth")
+		if depth < 0 {
+			return fmt.Errorf("--depth must be zero or greater")
+		}
 	}
 	if !recursive && (cmd.Flags().Changed("limit") || cmd.Flags().Changed("full")) {
 		return fmt.Errorf("--limit and --full require --recursive")
@@ -173,4 +175,17 @@ func renderInspectResult(cmd *cobra.Command, result *inspect.Result) error {
 
 func inspectNodeID(input *figma.FileInput, explicitNodeID string) (string, error) {
 	return figma.ResolveSingleNodeID(input, explicitNodeID, "inspect")
+}
+
+// inspectDepthForRequest returns the depth value the service should use.
+// When --depth is not explicitly supplied, the service receives the
+// unbounded sentinel (-1) so legacy recursive traversal is preserved.
+// This matches the pre-TASK-0003 behaviour where the CLI flag default
+// did not constrain the recursive walker.
+func inspectDepthForRequest(cmd *cobra.Command) int {
+	if !cmd.Flags().Changed("depth") {
+		return -1
+	}
+	depth, _ := cmd.Flags().GetInt("depth")
+	return depth
 }

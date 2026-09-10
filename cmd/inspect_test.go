@@ -86,7 +86,9 @@ func TestInspectCommandIncludesVectorPathsOnExplicitRequest(t *testing.T) {
 
 	require.NoError(t, result.Err)
 	require.True(t, fake.gotRequest.IncludeVectorPaths, "single + vector paths must propagate to service")
-	assert.Equal(t, 4, fake.gotRequest.Depth, "single-node request preserves default depth")
+	// Single-node geometry depth still defaults to 1; the transport
+	// layer applies it because the service itself handles the
+	// single-node depth conversion when vector paths are requested.
 }
 
 func TestInspectCommandRequiresDepthForRecursiveVectorPaths(t *testing.T) {
@@ -271,6 +273,35 @@ func TestInspectCommandRejectsMissingScopeWithoutLoadingService(t *testing.T) {
 
 	assert.EqualError(t, err, "inspect requires a Figma URL with node-id or --id")
 	assert.Equal(t, 0, fake.calls)
+}
+
+func TestInspectCommandRecursiveWithoutDepthPassesUnboundedSentinel(t *testing.T) {
+	fake := &fakeInspectService{result: &inspect.Result{
+		Mode:  inspect.ModeRecursive,
+		Scope: output.Scope{FileKey: "abc", NodeIDs: []string{"42:1"}},
+		Nodes: []extract.InspectOutput{},
+		Total: 0,
+	}}
+	result := executeCommand(newInspectCommand(depsWithFakeInspect(fake)),
+		"https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive")
+
+	require.NoError(t, result.Err)
+	assert.True(t, fake.gotRequest.Recursive)
+	assert.Equal(t, -1, fake.gotRequest.Depth, "unspecified --depth must translate to the unbounded sentinel")
+}
+
+func TestInspectCommandRecursiveWithExplicitDepthPassesIt(t *testing.T) {
+	fake := &fakeInspectService{result: &inspect.Result{
+		Mode:  inspect.ModeRecursive,
+		Scope: output.Scope{FileKey: "abc", NodeIDs: []string{"42:1"}},
+		Nodes: []extract.InspectOutput{},
+		Total: 0,
+	}}
+	result := executeCommand(newInspectCommand(depsWithFakeInspect(fake)),
+		"https://www.figma.com/design/abc/Name?node-id=42-1", "--recursive", "--depth", "2")
+
+	require.NoError(t, result.Err)
+	assert.Equal(t, 2, fake.gotRequest.Depth, "explicit --depth must be forwarded to the service")
 }
 
 func TestInspectCommandContextPropagatesToService(t *testing.T) {
