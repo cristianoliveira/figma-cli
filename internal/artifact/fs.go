@@ -26,6 +26,8 @@ type FileWriter struct {
 	DirMode  os.FileMode
 }
 
+var _ Writer = FileWriter{}
+
 // NewFileWriter returns a FileWriter using the default modes.
 func NewFileWriter() FileWriter {
 	return FileWriter{FileMode: defaultFileMode, DirMode: defaultDirMode}

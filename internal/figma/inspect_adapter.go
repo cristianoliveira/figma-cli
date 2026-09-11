@@ -12,6 +12,11 @@ type InspectAdapter struct {
 	Client *Client
 }
 
+var (
+	_ inspect.NodeFetcher     = (*InspectAdapter)(nil)
+	_ inspect.VariableFetcher = (*InspectAdapter)(nil)
+)
+
 // NewInspectAdapter returns an InspectAdapter bound to the supplied client.
 func NewInspectAdapter(client *Client) *InspectAdapter {
 	return &InspectAdapter{Client: client}

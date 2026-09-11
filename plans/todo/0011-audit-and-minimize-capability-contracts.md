@@ -16,12 +16,12 @@ After package extraction, public functions and interfaces can remain broader tha
 Run this after the structural migrations. Review exported symbols, consumer-owned interfaces, fan-in, and change impact. Go interfaces should be small and defined by consumers; concrete domain values may remain exported when they are stable contracts.
 
 ## Acceptance criteria
-- [ ] Every application port has identified consumers and only methods those consumers require.
-- [ ] No broad global `Client`, `Repository`, `Service`, or dependency-bag interface crosses capability boundaries.
-- [ ] Unused exports and compatibility shims created during migration are removed.
-- [ ] Compile-time interface assertions exist at adapter boundaries where useful.
-- [ ] A fresh dependency graph has no cycles or reverse imports into commands/infrastructure.
-- [ ] SOLID review records SRP, OCP, LSP, ISP, and DIP evidence, including principles that do not apply materially in this Go design.
+- [x] Every application port has identified consumers and only methods those consumers require.
+- [x] No broad global `Client`, `Repository`, `Service`, or dependency-bag interface crosses capability boundaries.
+- [x] Unused exports and compatibility shims created during migration are removed.
+- [x] Compile-time interface assertions exist at adapter boundaries where useful.
+- [x] A fresh dependency graph has no cycles or reverse imports into commands/infrastructure.
+- [x] SOLID review records SRP, OCP, LSP, ISP, and DIP evidence, including principles that do not apply materially in this Go design.
 
 ## Notes
 Do not manufacture abstractions to satisfy acronyms. LSP work is required only if real substitutability failures appear.

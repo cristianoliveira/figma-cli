@@ -11,6 +11,8 @@ type VariablesSource struct {
 	Fetch VariablesFetcher
 }
 
+var _ Source = VariablesSource{}
+
 func (s VariablesSource) Name() string { return "variables" }
 
 func (s VariablesSource) Resolve(ctx context.Context, req SourceRequest) ([]extract.Token, error) {
@@ -27,6 +29,8 @@ type StylesSource struct {
 	FetchStyles StylesFetcher
 	FetchNodes  NodesFetcher
 }
+
+var _ Source = StylesSource{}
 
 func (s StylesSource) Name() string { return "styles" }
 
@@ -62,6 +66,8 @@ func (s StylesSource) Resolve(ctx context.Context, req SourceRequest) ([]extract
 type ScanSource struct {
 	FetchDocument DocumentFetcher
 }
+
+var _ Source = ScanSource{}
 
 func (s ScanSource) Name() string { return "scan" }
 

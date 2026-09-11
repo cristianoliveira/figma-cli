@@ -1,5 +1,7 @@
 package extract
 
+import "github.com/cristianoliveira/figma-cli/internal/document"
+
 // Asset is an exportable image, component instance, or standalone vector.
 type Asset struct {
 	ID     string `json:"node_id"`
@@ -24,8 +26,8 @@ func walkAssets(value any, insideInstance bool, seen map[string]struct{}, assets
 	if !ok {
 		return
 	}
-	id := StringValue(node["id"])
-	typeName := StringValue(node["type"])
+	id := document.StringValue(node["id"])
+	typeName := document.StringValue(node["type"])
 	isInstance := typeName == componentTypeInstance || typeName == componentTypeComponent
 	asset, exportable := assetForNode(node, insideInstance)
 	if exportable && id != "" {
@@ -42,12 +44,12 @@ func walkAssets(value any, insideInstance bool, seen map[string]struct{}, assets
 }
 
 func assetForNode(node map[string]any, insideInstance bool) (Asset, bool) {
-	id := StringValue(node["id"])
-	name := StringValue(node["name"])
+	id := document.StringValue(node["id"])
+	name := document.StringValue(node["name"])
 	if hasImageFill(node) {
 		return Asset{ID: id, Name: name, Kind: "image", Format: "png"}, true
 	}
-	switch StringValue(node["type"]) {
+	switch document.StringValue(node["type"]) {
 	case "INSTANCE", "COMPONENT":
 		return Asset{ID: id, Name: name, Kind: "instance", Format: "svg"}, true
 	case "VECTOR", "BOOLEAN_OPERATION":
@@ -62,7 +64,7 @@ func hasImageFill(node map[string]any) bool {
 	fills, _ := node["fills"].([]any)
 	for _, fill := range fills {
 		paint, ok := fill.(map[string]any)
-		if ok && StringValue(paint["type"]) == "IMAGE" {
+		if ok && document.StringValue(paint["type"]) == "IMAGE" {
 			return true
 		}
 	}

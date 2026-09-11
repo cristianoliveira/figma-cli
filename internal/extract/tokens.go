@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/cristianoliveira/figma-cli/internal/document"
 )
 
 // Token is a single design token: a name path, the namespace it belongs to
@@ -225,7 +227,7 @@ func ExtractTokensFromDocument(value any) []Token {
 		if fam, _ := style["fontFamily"].(string); fam != "" {
 			famSet[fam] = struct{}{}
 		}
-		if sz := numberValue(style["fontSize"]); sz > 0 {
+		if sz := document.NumberValue(style["fontSize"]); sz > 0 {
 			sizeSet[numStr(sz)] = struct{}{}
 		}
 	})
@@ -314,7 +316,7 @@ func FormatTokens(tokens []Token, format, prefix string) (string, error) {
 // colorString renders a Figma RGBA object (0..1 channels) to CSS: #RRGGBB when
 // fully opaque, rgba(...) when it has transparency.
 func colorString(c map[string]any) string {
-	a := numberValue(c["a"])
+	a := document.NumberValue(c["a"])
 	if a >= 1 {
 		return fmt.Sprintf("#%02X%02X%02X", colorChannel(c["r"]), colorChannel(c["g"]), colorChannel(c["b"]))
 	}
@@ -504,10 +506,10 @@ func shadowsFromEffects(effects any) []string {
 
 func shadowFromEffect(eff map[string]any) string {
 	off, _ := eff["offset"].(map[string]any)
-	x := numberValue(off["x"])
-	y := numberValue(off["y"])
-	radius := numberValue(eff["radius"])
-	spread := numberValue(eff["spread"])
+	x := document.NumberValue(off["x"])
+	y := document.NumberValue(off["y"])
+	radius := document.NumberValue(eff["radius"])
+	spread := document.NumberValue(eff["spread"])
 	col := ""
 	if c, ok := eff["color"].(map[string]any); ok {
 		col = colorString(c)
@@ -534,17 +536,17 @@ func typographyTokens(nameParts []string, styleRaw any) []Token {
 	if fam, _ := style["fontFamily"].(string); fam != "" {
 		add("family", strconv.Quote(fam), catFontFamily)
 	}
-	if sz := numberValue(style["fontSize"]); sz > 0 {
+	if sz := document.NumberValue(style["fontSize"]); sz > 0 {
 		add("size", px(sz), catFontSize)
 	}
-	if w := numberValue(style["fontWeight"]); w > 0 {
+	if w := document.NumberValue(style["fontWeight"]); w > 0 {
 		add("weight", numStr(w), catFontWeight)
 	}
-	if lh := numberValue(style["lineHeightPx"]); lh > 0 {
+	if lh := document.NumberValue(style["lineHeightPx"]); lh > 0 {
 		add("line-height", px(lh), catLineHeight)
 	}
 	if ls := style["letterSpacing"]; ls != nil {
-		add("letter-spacing", px(numberValue(ls)), catLetterSpacing)
+		add("letter-spacing", px(document.NumberValue(ls)), catLetterSpacing)
 	}
 	return tokens
 }

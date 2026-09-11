@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	documentmodel "github.com/cristianoliveira/figma-cli/internal/document"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/output"
@@ -73,7 +74,7 @@ func newLayoutCompareCommand(deps Deps) *cobra.Command {
 				nodeIDs = make([]string, 0, len(documents))
 				for _, document := range documents {
 					node, _ := document.(map[string]any)
-					nodeIDs = append(nodeIDs, extract.StringValue(node["id"]))
+					nodeIDs = append(nodeIDs, documentmodel.StringValue(node["id"]))
 				}
 			} else {
 				documents, err = figma.FetchNodeDocuments(client, input.FileID, nodeIDs)

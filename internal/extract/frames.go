@@ -1,5 +1,7 @@
 package extract
 
+import "github.com/cristianoliveira/figma-cli/internal/document"
+
 // FrameMatch identifies a screen-level frame and its containing page or section.
 type FrameMatch struct {
 	ID         string `json:"id"`
@@ -19,7 +21,7 @@ func DiscoverFrames(value any) []FrameMatch {
 	if isFrameContainer(root) {
 		return discoverFramesInContainer(root)
 	}
-	if StringValue(root["type"]) != "DOCUMENT" {
+	if document.StringValue(root["type"]) != "DOCUMENT" {
 		return nil
 	}
 
@@ -27,7 +29,7 @@ func DiscoverFrames(value any) []FrameMatch {
 	children, _ := root["children"].([]any)
 	for _, childValue := range children {
 		child, ok := childValue.(map[string]any)
-		if !ok || StringValue(child["type"]) != "CANVAS" {
+		if !ok || document.StringValue(child["type"]) != "CANVAS" {
 			continue
 		}
 		frames = append(frames, discoverFramesInContainer(child)...)
@@ -48,13 +50,13 @@ func discoverFramesInContainer(container map[string]any) []FrameMatch {
 			continue
 		}
 
-		switch StringValue(child["type"]) {
+		switch document.StringValue(child["type"]) {
 		case "FRAME":
 			frames = append(frames, FrameMatch{
-				ID:         StringValue(child["id"]),
-				Name:       StringValue(child["name"]),
-				ParentID:   StringValue(container["id"]),
-				ParentName: StringValue(container["name"]),
+				ID:         document.StringValue(child["id"]),
+				Name:       document.StringValue(child["name"]),
+				ParentID:   document.StringValue(container["id"]),
+				ParentName: document.StringValue(container["name"]),
 			})
 		case "SECTION":
 			frames = append(frames, discoverFramesInContainer(child)...)
@@ -64,6 +66,6 @@ func discoverFramesInContainer(container map[string]any) []FrameMatch {
 }
 
 func isFrameContainer(object map[string]any) bool {
-	nodeType := StringValue(object["type"])
+	nodeType := document.StringValue(object["type"])
 	return nodeType == "CANVAS" || nodeType == "SECTION"
 }
