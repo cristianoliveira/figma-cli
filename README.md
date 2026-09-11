@@ -134,14 +134,20 @@ go install ./cmd/figma
 
 ### Nix
 
-From the repository root:
+Run the packaged release directly from Cristian's Nix packages:
+
+```bash
+nix run github:cristianoliveira/nixpkgs#figma-cli -- --help
+nix profile install github:cristianoliveira/nixpkgs#figma-cli
+```
+
+Or use the repository's development flake from a local checkout:
 
 ```bash
 nix run .#figma -- --help
+nix build .#figma
+nix develop
 ```
-
-Use `nix build .#figma` to build the CLI. Use `nix develop` for the development
-shell.
 
 ## Configure Figma access
 
