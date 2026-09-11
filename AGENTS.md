@@ -28,6 +28,16 @@ Figma CLI turns Figma design data into agent-facing structured output, assets, C
 - Information flow: `internal/figma/client.go:Client.FetchJSON` -> `internal/figma/document.go:UnmarshalDocument` via `internal/figma/document.go:FetchDocument`; value: `api.GetFileResponse.Document`.
 - Information flow: `internal/figma/document.go:FetchDocument` -> `internal/extract/inspect.go:InspectTree` via `cmd/root.go:Execute`; value: `document (any)`.
 
+# Dependency direction
+
+These rules are enforced by `internal/architecture` fitness tests (run via `go test ./...`). They state direction, not a rigid layer taxonomy.
+
+- **generated-api-boundary**: `internal/figma/api` (generated OpenAPI types) may be imported only under `internal/figma/**`.
+- **domain-infra**: application/domain packages under `internal/**` must not import Cobra (`github.com/spf13/cobra`), HTTP (`net/http`), filesystem (`os`, `io/fs`), environment (`internal/env`), TOON (`github.com/toon-format/toon-go`), or generated Figma API (`internal/figma/api`). Legitimate edge owners: `internal/cli` (Cobra/env/HTTP/filesystem), `internal/figma` (HTTP transport + generated API), `internal/output` (TOON/filesystem), `internal/assetsedge` (asset HTTP/filesystem adapters), `internal/env` (environment), `internal/components` (legacy codebase filesystem discovery).
+- **internal-cmd**: no package under `internal/**` may import `cmd`; commands depend on internals, never the reverse.
+
+Exemptions: `_test.go` files and generated `internal/figma/api/**` source. `path/filepath` is pure path manipulation (allowed); it is not filesystem access.
+
 # Placement
 
 Add a responsibility to the module that owns its boundary and stable output. Create a new top-level module only when the capability has distinct cohesion, collaborators, and dependency direction; do not split a small adapter or model folder merely because it has a name.
