@@ -1,7 +1,7 @@
 ---
 id: TASK-0006
 title: Reassess and split extract capabilities
-status: todo
+status: doing
 depends_on: [TASK-0003, TASK-0004, TASK-0005]
 priority: normal
 tags: [architecture, cohesion]
