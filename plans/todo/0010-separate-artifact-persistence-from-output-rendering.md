@@ -1,7 +1,7 @@
 ---
 id: TASK-0010
 title: Separate artifact persistence from output rendering
-status: todo
+status: doing
 depends_on: [TASK-0002, TASK-0005]
 priority: normal
 tags: [solid, output]
