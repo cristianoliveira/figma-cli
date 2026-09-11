@@ -1,13 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"os"
 
 	"github.com/cristianoliveira/figma-cli/internal/cli"
-	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/output"
+	"github.com/cristianoliveira/figma-cli/internal/tokens"
 	"github.com/spf13/cobra"
 )
 
@@ -23,9 +22,17 @@ type tokensOptions struct {
 	scanFallback bool
 }
 
-// newTokensCommand constructs `figma tokens` using the explicit loadClient
-// dependency. All flag state binds to per-instance variables so two roots
-// built independently cannot leak defaults.
+// TokenService is the consumer-owned port the `figma tokens` command
+// drives. Production composition wires it against the Figma adapter;
+// tests inject fakes.
+type TokenService interface {
+	Run(ctx context.Context, req tokens.Request) (tokens.Result, error)
+}
+
+// newTokensCommand constructs `figma tokens`. The command only validates
+// flags, maps them into a request, and renders the result; source
+// selection, fallback, diagnostics, formatting, and persistence live in
+// the token application service.
 func newTokensCommand(deps Deps) *cobra.Command {
 	options := tokensOptions{}
 	command := &cobra.Command{
@@ -58,36 +65,27 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 			if err != nil {
 				return cli.NewUsageError(err)
 			}
-			client, err := deps.LoadClient()
-			if err != nil {
-				return err
-			}
-			client = client.WithContext(cmd.Context())
 
-			nodeIDs := figma.ResolveNodeIDs(input, explicitNodeID)
-			tokens, err := collectTokens(deps.FetchVariables, client, input.FileID, nodeIDs, options.source, options.mode, options.scanFallback)
+			service, err := deps.TokenService()
 			if err != nil {
 				return err
 			}
 
-			out, err := extract.FormatTokens(tokens, options.format, options.prefix)
+			result, err := service.Run(cmd.Context(), tokens.Request{
+				FileID:       input.FileID,
+				NodeIDs:      figma.ResolveNodeIDs(input, explicitNodeID),
+				Source:       options.source,
+				Mode:         options.mode,
+				Format:       options.format,
+				Prefix:       options.prefix,
+				ScanFallback: options.scanFallback,
+				OutputPath:   options.output,
+			})
 			if err != nil {
 				return err
 			}
 
-			if options.output != "" {
-				if err := output.WriteFile(options.output, []byte(out), 0o644); err != nil {
-					return err
-				}
-				if err := cli.NewPrinter(cmd).File(options.output, map[string]any{"format": options.format, "bytes": len(out)}); err != nil {
-					return err
-				}
-				return nil
-			}
-			if err := cli.NewPrinter(cmd).Text("tokens", out); err != nil {
-				return err
-			}
-			return nil
+			return renderTokensResult(cmd, result, options.format)
 		},
 	}
 	addNodeIDFlag(command, "node ID to scan; defaults to URL node-id")
@@ -101,6 +99,26 @@ for named tokens only. Pin --source in CI for deterministic output.`,
 	return command
 }
 
+// renderTokensResult renders structured diagnostics to stderr and the
+// formatted output to stdout or the artifact printer.
+func renderTokensResult(cmd *cobra.Command, result tokens.Result, format string) error {
+	for _, diag := range result.Diagnostics {
+		switch diag.Severity {
+		case "warning":
+			cmd.PrintErrf("warning: %s\n", diag.Message)
+		case "note":
+			cmd.PrintErrf("note: %s\n", diag.Message)
+		default:
+			cmd.PrintErrf("%s\n", diag.Message)
+		}
+	}
+
+	if result.OutputPath != "" {
+		return cli.NewPrinter(cmd).File(result.OutputPath, map[string]any{"format": format, "bytes": result.Bytes})
+	}
+	return cli.NewPrinter(cmd).Text("tokens", result.Formatted)
+}
+
 func validateTokensOptions(options tokensOptions) error {
 	if options.format != "css" && options.format != "tailwind" && options.format != "json" {
 		return fmt.Errorf("unknown format %q (want css, tailwind, or json)", options.format)
@@ -109,76 +127,4 @@ func validateTokensOptions(options tokensOptions) error {
 		return fmt.Errorf("unknown --source %q (want variables, styles, scan, or auto)", options.source)
 	}
 	return nil
-}
-
-// collectTokens resolves tokens for a file according to the requested source.
-// "auto" tries Variables, then Styles. The document scan only runs when
-// scanFallback is true (opt-in), so output stays deterministic per source.
-func collectTokens(fetchVariables func(*figma.Client, string) (map[string]any, error), client *figma.Client, fileID string, nodeIDs []string, source, mode string, scanFallback bool) ([]extract.Token, error) {
-	switch source {
-	case "variables":
-		return tokensFromVariables(fetchVariables, client, fileID, mode)
-	case "styles":
-		return tokensFromStyles(client, fileID)
-	case "scan":
-		return tokensFromScan(client, fileID, nodeIDs)
-	case "", tokenSourceAuto:
-		if tokens, err := tokensFromVariables(fetchVariables, client, fileID, mode); err == nil && len(tokens) > 0 {
-			return tokens, nil
-		}
-		if tokens, err := tokensFromStyles(client, fileID); err == nil && len(tokens) > 0 {
-			return tokens, nil
-		}
-		if scanFallback {
-			fmt.Fprintln(os.Stderr, "note: no Styles/Variables found; scanning document nodes (tokens named by value). Use --scan-fallback=false for named-only.")
-			return tokensFromScan(client, fileID, nodeIDs)
-		}
-		fmt.Fprintln(os.Stderr, "note: no Styles/Variables found and scan disabled; drop --scan-fallback=false (or use --source scan) to extract from raw fills")
-		return nil, nil
-	}
-	return nil, fmt.Errorf("unknown --source %q (want variables, styles, scan, or auto)", source)
-}
-
-func tokensFromVariables(fetchVariables func(*figma.Client, string) (map[string]any, error), client *figma.Client, fileID, mode string) ([]extract.Token, error) {
-	meta, err := fetchVariables(client, fileID)
-	if err != nil {
-		return nil, err
-	}
-	return extract.ExtractTokensFromVariablesE(meta, mode)
-}
-
-func tokensFromScan(client *figma.Client, fileID string, nodeIDs []string) ([]extract.Token, error) {
-	doc, err := figma.FetchDocument(client, fileID, nodeIDs, "", "")
-	if err != nil {
-		return nil, err
-	}
-	return extract.ExtractTokensFromDocument(doc), nil
-}
-
-func tokensFromStyles(client *figma.Client, fileID string) ([]extract.Token, error) {
-	styles, err := figma.FetchStyles(client, fileID)
-	if err != nil {
-		return nil, err
-	}
-	seen := map[string]struct{}{}
-	nodeIDs := make([]string, 0, len(styles))
-	for _, s := range styles {
-		id, _ := s["node_id"].(string)
-		if id == "" {
-			continue
-		}
-		if _, ok := seen[id]; ok {
-			continue
-		}
-		seen[id] = struct{}{}
-		nodeIDs = append(nodeIDs, id)
-	}
-	if len(nodeIDs) == 0 {
-		return extract.ExtractTokensFromStyles(styles, nil), nil
-	}
-	nodes, err := figma.FetchNodes(client, fileID, nodeIDs)
-	if err != nil {
-		return nil, err
-	}
-	return extract.ExtractTokensFromStyles(styles, nodes), nil
 }
