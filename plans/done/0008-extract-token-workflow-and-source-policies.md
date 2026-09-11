@@ -1,7 +1,7 @@
 ---
 id: TASK-0008
 title: Extract token workflow and source policies
-status: doing
+status: done
 depends_on: [TASK-0002, TASK-0003, TASK-0004]
 priority: normal
 tags: [solid, tokens]
