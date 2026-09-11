@@ -8,65 +8,83 @@ description: >
 
 # Figma CLI
 
-## Objective
+## Recommendation
 
-Answer one concrete design question with structured, frontend-ready Figma data.
+Start with the CLI's current command index:
 
-## Workflow
+```bash
+figma --help
+```
 
-1. Verify authentication with `figma me` when token state is unknown.
-2. Identify user question and choose smallest command that answers it:
-   - implementation handoff: `figma inspect --handoff --depth <n> <url>`
-   - bounded recursive node details: `figma inspect --recursive --depth <n> <url>`
-   - token-light selected outline: `figma inspect --recursive --depth <n> --format text --fields name,type,relativeBounds,layout.mode,layout.gap,fills <url>`
-   - exact vector contour truth: `figma inspect --include-vector-paths <vector-url>`
-   - structure and spacing: `figma layout --depth 4 <url>`; use `--full` only after traversal metadata proves omitted detail is needed
-   - generated styles: `figma css <url>`
-   - copy: `figma texts <url>`
-   - layer search: `figma find --name <name> <url>`
-   - components: `figma components <url>`
-   - assets: `figma assets --output <dir> <url>`
-   - selected-node raster export: `figma export --format png --output <path> <url-with-node-id>`
-   - raster export at a target width: `figma export --format png --width <pixels> --output <path> <url-with-node-id>`
-   - tokens or colors: `figma tokens <file>` / `figma colors <url>`
-   - comments: `figma comments <url>`
-   - history: `figma versions <url>`, `figma changes`, or `figma diff text`
-3. Prefer node-scoped URLs to reduce output and requests.
-4. Prefer `inspect --format text --fields ...` when selected recursive node properties are enough. Structured output is TOON by default; add global `--json` only for interoperability or `jq` pipelines.
-5. Report command, scope, result, and any missing permissions or ambiguity.
+Choose the smallest command that answers the question, then inspect only its live contract:
 
-Read [command reference](references/commands.md) only when exact flags, output shape, or advanced behavior are needed.
+```bash
+figma <command> --help
+```
 
-## Scope and Output Rules
+Run that command directly. Do not call `figma me` as a routine preflight.
 
-- Accept Figma file key or full URL where command supports both.
-- Infer one node ID from URL. Use `--id` or `--node` for bare keys or explicit override. `figma export` exports that selected node directly; do not export a parent frame and manually calculate a child crop when child node ID is available.
-- Reject unsupported multiple node IDs; never silently choose one.
-- User-facing node IDs use `1-2`; API-facing IDs use `1:2`.
-- Prefer default TOON structured envelopes. Global `--json` preserves compatibility JSON when needed. Collection `total` is pre-limit count, distinct from returned result count; use emitted copyable `hint` only when `truncated: true`, otherwise set `--limit` for a token budget. CSS, tokens, exports, and downloaded assets may produce deterministic text/files.
-- Prefer bounded `layout --depth` and `inspect --depth` before full traversal. Empty queries retain scope and effective filters. Structured stdout errors use category `usage` with exit 2 or `operational` with exit 1; follow single `recovery` step when present.
-- For PNG/JPG exports, use either `--scale` or target `--width`; the latter derives valid Figma scale from node bounds. Do not combine them.
-- Use `inspect --include-vector-paths` when implementation depends on exact vector contour. Preserve returned fill/stroke path commands and winding rules; do not approximate shape from bounds or normalize path data. Recursive vector inspection requires explicit `--depth` because geometry payloads are large.
-- Layer names are not unique; return every match with node ID.
-- Exact comment ID lookup takes precedence over node filtering.
-- Never edit Figma or claim CLI can mutate design files.
+## Why this works
 
-## Routing Checks
+1. **Small commands reduce output.** Ask one design question per call.
+2. **Narrow scope reduces requests.** Prefer a URL containing the target `node-id`.
+3. **Live help prevents drift.** Treat Cobra help as syntax truth; use this skill for routing and cross-command decisions.
 
-Should trigger:
-- “Inspect this Figma frame and give me implementation specs.”
-- “Download SVG icons from this Figma URL.”
-- “What copy changed between these Figma versions?”
-- “List components used by this Figma screen.”
-- “Generate tokens from this Figma file.”
+## Choose by outcome
 
-Should not trigger:
-- “Open this website and click the login button.” → use browser tooling.
-- “How should I structure generic React CSS?”
+| Needed outcome | Start with |
+| --- | --- |
+| Implementation handoff or node properties | `figma inspect` |
+| Ordered structure, spacing, or responsive comparison | `figma layout` |
+| Screen-level frame discovery | `figma frames` |
+| Generated CSS | `figma css` |
+| Copy or list semantics | `figma texts` |
+| Layer search | `figma find` |
+| Components or instance usage | `figma components` |
+| Downloadable assets | `figma assets` |
+| One rendered node | `figma export` |
+| Design tokens or color inventory | `figma tokens` or `figma colors` |
+| Review comments | `figma comments` |
+| Version history or design changes | `figma versions`, `figma changes`, or `figma diff` |
+| File, project, or account discovery | `figma meta`, `figma files`, `figma projects`, or `figma me` |
+
+Read [decision reference](references/commands.md) only when choosing between related commands or handling scope, output, and failure semantics.
+
+## Decision rules
+
+### Minimize scope and output
+
+- Prefer node-scoped Figma URLs.
+- Use bounded depth or result limits before requesting full traversal.
+- Use `inspect --format text --fields ...` when selected recursive properties are enough.
+- Trust `total`, `truncated`, traversal metadata, and emitted hints before requesting more data.
+- Layer names are not unique. Preserve every match and its node ID.
+
+### Preserve Figma identity
+
+- URL node IDs use Figma's `1-2` form. Explicit `--id` and API output may use `1:2`.
+- Never silently choose one node when a command rejects multiple IDs.
+- Use exact vector-path inspection when contour matters. Do not infer paths from bounds.
+- Never edit Figma or claim this CLI can mutate a design file.
+
+### Handle output deliberately
+
+- Structured output is TOON by default.
+- Put global `--json` before the command when JSON tooling is required: `figma --json inspect ...`.
+- Text and file-producing commands may intentionally return artifacts instead of structured stdout.
+- Check command exit status before consuming output. Respect documented grep-style non-zero results.
+
+### Recover only after failure
+
+- Run the selected command first.
+- After an authentication failure, use `figma me` only to isolate token configuration from resource permissions.
+- Follow one structured `recovery` step when present.
+- Report safe error category and missing permission; never expose credentials or raw provider responses.
 
 ## Validation
 
-- Command answers user question without unrelated full-file output.
-- Node scope and ID normalization are explicit.
-- Output or written files exist and are readable.
-- Authentication/API failures are surfaced as redacted structured stdout errors, never omitted. Do not expect raw provider responses or credentials.
+- Result answers the user's question without unrelated full-file output.
+- Scope and normalized node IDs are explicit.
+- Truncation is acknowledged before treating results as complete.
+- Written artifacts exist and are readable.
+- Usage and operational failures are not interpreted as domain results.

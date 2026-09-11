@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -11,36 +12,47 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFigmaSkillExactAXIFactsMatchCobra(t *testing.T) {
+func TestFigmaSkillUsesProgressiveCommandDiscovery(t *testing.T) {
+	skill := readSkillFile(t, "..", "skills", "figma-cli", "SKILL.md")
+
+	assert.Contains(t, skill, "figma --help")
+	assert.Contains(t, skill, "figma <command> --help")
+	assert.NotContains(t, skill, "## Workflow")
+	assert.NotContains(t, skill, "Verify authentication")
+
+	skillRoot := NewRootCommand(DefaultDeps())
+	for _, commandName := range []string{"inspect", "layout", "frames", "texts", "assets", "comments", "versions"} {
+		findCommand(t, skillRoot, commandName)
+		assert.Containsf(t, skill, "`figma "+commandName+"`", "skill routing omits figma %s", commandName)
+	}
+}
+
+func TestFigmaSkillExamplesMatchOutputAndNodeIDConventions(t *testing.T) {
 	reference := readSkillFile(t, "..", "skills", "figma-cli", "references", "commands.md")
 	skill := readSkillFile(t, "..", "skills", "figma-cli", "SKILL.md")
-	skillRoot := NewRootCommand(DefaultDeps())
-	layout := findCommand(t, skillRoot, "layout")
+	guidance := skill + "\n" + reference
 
-	depth := layout.Flags().Lookup("depth")
-	require.NotNil(t, depth, "skill drift: figma layout --depth is missing; run: update Cobra or skills/figma-cli/references/commands.md")
-	assert.Equal(t, "4", depth.DefValue)
-	require.NotNil(t, layout.Flags().Lookup("full"), "skill drift: figma layout --full is missing")
+	assert.Regexp(t, regexp.MustCompile(`figma --json inspect [^\n]+ \| jq`), guidance)
+	assert.Regexp(t, regexp.MustCompile(`figma --json find [^\n]+ \| jq`), guidance)
+	assert.NotRegexp(t, regexp.MustCompile(`node-id=[0-9]+:[0-9]+`), guidance)
+	assert.NotContains(t, reference, "→ JSON")
+}
 
-	for _, commandName := range []string{"colors", "comments", "components", "find", "frames", "inspect", "texts"} {
-		command := findCommand(t, skillRoot, commandName)
-		limit := command.Flags().Lookup("limit")
-		require.NotNilf(t, limit, "skill drift: figma %s --limit is missing", commandName)
-		assert.Equalf(t, "100", limit.DefValue, "skill drift: figma %s --limit default changed", commandName)
-		require.NotNilf(t, command.Flags().Lookup("full"), "skill drift: figma %s --full is missing", commandName)
-	}
+func TestFigmaSkillKeepsAuthenticationCheckOnFailurePath(t *testing.T) {
+	skill := readSkillFile(t, "..", "skills", "figma-cli", "SKILL.md")
 
-	assert.Contains(t, skill, "figma layout --depth 4", "skill drift: update skills/figma-cli/SKILL.md")
-	assert.Contains(t, skill, "--limit", "skill drift: update skills/figma-cli/SKILL.md")
-	assert.Contains(t, reference, "figma layout --depth 4", "skill drift: update skills/figma-cli/references/commands.md")
-	assert.Contains(t, reference, "--full", "skill drift: update skills/figma-cli/references/commands.md")
-	assert.Contains(t, reference, "--limit", "skill drift: update skills/figma-cli/references/commands.md")
+	assert.Contains(t, skill, "authentication failure")
+	assert.Contains(t, skill, "`figma me`")
+}
 
+func TestFigmaSkillHomeExamplesRemainDiscoverable(t *testing.T) {
+	skill := readSkillFile(t, "..", "skills", "figma-cli", "SKILL.md")
 	root := newRootCommandWithExecutable(func() (string, error) { return "~/bin/figma", nil })
 	var home strings.Builder
 	root.SetOut(&home)
 	root.SetArgs(nil)
 	require.NoError(t, root.Execute())
+
 	for _, example := range []string{"figma me", "figma inspect"} {
 		assert.Containsf(t, home.String(), example, "home view missing %q", example)
 		assert.Containsf(t, skill, example, "skill drift: home example %q is missing", example)
