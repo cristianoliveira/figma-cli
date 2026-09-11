@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
@@ -59,6 +61,9 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 			}
 			out := extract.FormatCSSRules(rules)
 			if outputPath != "" {
+				if deps.ArtifactWriter == nil {
+					return fmt.Errorf("css: artifact writer is not configured")
+				}
 				if err := deps.ArtifactWriter.Write(cmd.Context(), outputPath, []byte(out)); err != nil {
 					return err
 				}

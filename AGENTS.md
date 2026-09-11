@@ -33,7 +33,7 @@ Figma CLI turns Figma design data into agent-facing structured output, assets, C
 These rules are enforced by `internal/architecture` fitness tests (run via `go test ./...`). They state direction, not a rigid layer taxonomy.
 
 - **generated-api-boundary**: `internal/figma/api` (generated OpenAPI types) may be imported only under `internal/figma/**`.
-- **domain-infra**: application/domain packages under `internal/**` must not import Cobra (`github.com/spf13/cobra`), HTTP (`net/http`), filesystem (`os`, `io/fs`), environment (`internal/env`), TOON (`github.com/toon-format/toon-go`), or generated Figma API (`internal/figma/api`). Legitimate edge owners: `internal/cli` (Cobra/env/HTTP/filesystem), `internal/figma` (HTTP transport + generated API), `internal/output` (TOON/filesystem), `internal/assetsedge` (asset HTTP/filesystem adapters), `internal/env` (environment), `internal/components` (legacy codebase filesystem discovery).
+- **domain-infra**: application/domain packages under `internal/**` must not import Cobra (`github.com/spf13/cobra`), HTTP (`net/http`), filesystem (`os`, `io/fs`), environment (`internal/env`), TOON (`github.com/toon-format/toon-go`), or generated Figma API (`internal/figma/api`). Legitimate edge owners: `internal/cli` (Cobra/env/HTTP/filesystem), `internal/figma` (HTTP transport + generated API), `internal/output` (TOON rendering only), `internal/artifact` (filesystem artifact persistence), `internal/assetsedge` (asset HTTP/filesystem adapters), `internal/env` (environment), `internal/components` (legacy codebase filesystem discovery).
 - **internal-cmd**: no package under `internal/**` may import `cmd`; commands depend on internals, never the reverse.
 
 Exemptions: `_test.go` files and generated `internal/figma/api/**` source. `path/filepath` is pure path manipulation (allowed); it is not filesystem access.
@@ -42,7 +42,7 @@ Exemptions: `_test.go` files and generated `internal/figma/api/**` source. `path
 
 `internal/operr` is the transport-neutral operational-error contract: a data-focused `Category` plus `ClassifiedError{Category, Message, Recovery, Err}`. Categories are `authentication`, `authorization`, `rate_limit`, `dependency_unavailable`, `invalid_input`, `artifact_access`, and `operational` (generic fallback).
 
-- Adapters translate concrete failures at their boundary and retain the cause: `internal/figma` (status/network/decode), `internal/env` (missing token), `internal/output` (filesystem).
+- Adapters translate concrete failures at their boundary and retain the cause: `internal/figma` (status/network/decode), `internal/env` (missing token), `internal/artifact` (filesystem), `internal/assetsedge` (asset download status).
 - `ClassifiedError` retains the underlying cause via `Unwrap`, so `errors.Is`/`errors.As` still reach the concrete type.
 - Safe `Message`/`Recovery` never contain tokens, response bodies, headers, private paths, or raw OS text. Unknown failures fall back to the generic `operational` category with a safe message.
 - The CLI renderer (`internal/cli/error_output.go`) consumes only `internal/operr`; it does not import Figma, HTTP, environment, or filesystem error types.

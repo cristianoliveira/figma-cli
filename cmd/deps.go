@@ -73,6 +73,7 @@ func newInspectServiceFromAdapter(nodes inspect.NodeFetcher, vars inspect.Variab
 // function stays a flat composition root.
 func NewProductionDeps() Deps {
 	loadClient := cli.LoadClient
+	writer := artifact.NewFileWriter()
 	return Deps{
 		LoadClient:       loadClient,
 		DownloadClient:   nil,
@@ -81,17 +82,18 @@ func NewProductionDeps() Deps {
 		GetEnv:           defaultGetEnv,
 		InspectService:   defaultInspectServiceFactory(loadClient),
 		AssetApplication: defaultAssetApplication,
-		TokenService:     defaultTokenServiceFactory(loadClient),
-		ArtifactWriter:   artifact.NewFileWriter(),
+		TokenService:     defaultTokenServiceFactory(loadClient, writer),
+		ArtifactWriter:   writer,
 		DownloadAsset:    defaultDownloadAsset,
 	}
 }
 
 // defaultTokenServiceFactory builds a token service bound to the Figma
-// client and the standard formatter/artifact sink. It is the wiring for
-// TASK-0008: source policy lives in internal/tokens; the Figma adapter
-// lives in internal/figma.
-func defaultTokenServiceFactory(loadClient func() (*figma.Client, error)) func() (TokenService, error) {
+// client and the supplied artifact sink. It is the wiring for TASK-0008
+// (source policy in internal/tokens) composed with the TASK-0010
+// artifact persistence port; the sink is the same Deps.ArtifactWriter
+// used by other workflows.
+func defaultTokenServiceFactory(loadClient func() (*figma.Client, error), sink tokens.ArtifactSink) func() (TokenService, error) {
 	return func() (TokenService, error) {
 		client, err := loadClient()
 		if err != nil {
@@ -105,7 +107,7 @@ func defaultTokenServiceFactory(loadClient func() (*figma.Client, error)) func()
 				Scan:      tokens.ScanSource{FetchDocument: adapter.DocumentFetcher()},
 			},
 			tokens.FormatterFunc(extract.FormatTokens),
-			artifact.NewFileWriter(),
+			sink,
 		), nil
 	}
 }
@@ -131,14 +133,15 @@ func defaultAssetApplication() AssetApplication {
 // tests can wrap their fake loadClient in this helper without having to
 // construct the full Deps struct themselves.
 func DepsForLoadClient(loadClient func() (*figma.Client, error)) Deps {
+	writer := artifact.NewFileWriter()
 	return Deps{
 		LoadClient:       loadClient,
 		FetchVariables:   figma.FetchVariables,
 		ResolveExec:      defaultResolveExecutable,
 		GetEnv:           defaultGetEnv,
 		AssetApplication: defaultAssetApplication,
-		TokenService:     defaultTokenServiceFactory(loadClient),
-		ArtifactWriter:   artifact.NewFileWriter(),
+		TokenService:     defaultTokenServiceFactory(loadClient, writer),
+		ArtifactWriter:   writer,
 		DownloadAsset:    defaultDownloadAsset,
 	}
 }
