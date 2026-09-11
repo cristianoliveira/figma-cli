@@ -1,7 +1,7 @@
 ---
 id: TASK-0009
 title: Define transport-neutral operational errors
-status: doing
+status: done
 depends_on: [TASK-0003, TASK-0005]
 priority: normal
 tags: [solid, errors]
