@@ -1,7 +1,7 @@
 ---
 id: TASK-0012
 title: Publish release artifacts
-status: doing
+status: done
 depends_on: []
 priority: high
 tags: []
