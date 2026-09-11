@@ -1,13 +1,17 @@
 package cmd
 
 import (
+	"context"
 	"net/http"
 	"os"
 
 	"github.com/cristianoliveira/figma-cli/internal/assets"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
+	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/inspect"
+	"github.com/cristianoliveira/figma-cli/internal/output"
+	"github.com/cristianoliveira/figma-cli/internal/tokens"
 )
 
 // InspectServiceFactory builds an inspect application service. Returning
@@ -29,6 +33,7 @@ type Deps struct {
 	StdoutEnvPrinter func() (string, error)
 	InspectService   InspectServiceFactory
 	AssetApplication func() AssetApplication
+	TokenService     func() (TokenService, error)
 }
 
 // defaultResolveExecutable resolves the current binary path. It is overridable
@@ -73,6 +78,32 @@ func NewProductionDeps() Deps {
 		GetEnv:           defaultGetEnv,
 		InspectService:   defaultInspectServiceFactory(loadClient),
 		AssetApplication: defaultAssetApplication,
+		TokenService:     defaultTokenServiceFactory(loadClient),
+	}
+}
+
+// defaultTokenServiceFactory builds a token service bound to the Figma
+// client and the standard formatter/artifact sink. It is the wiring for
+// TASK-0008: source policy lives in internal/tokens; the Figma adapter
+// lives in internal/figma.
+func defaultTokenServiceFactory(loadClient func() (*figma.Client, error)) func() (TokenService, error) {
+	return func() (TokenService, error) {
+		client, err := loadClient()
+		if err != nil {
+			return nil, err
+		}
+		adapter := figma.NewTokensAdapters(client)
+		return tokens.New(
+			tokens.Policy{
+				Variables: tokens.VariablesSource{Fetch: adapter.VariablesFetcher()},
+				Styles:    tokens.StylesSource{FetchStyles: adapter.StylesFetcher(), FetchNodes: adapter.NodesFetcher()},
+				Scan:      tokens.ScanSource{FetchDocument: adapter.DocumentFetcher()},
+			},
+			tokens.FormatterFunc(extract.FormatTokens),
+			tokens.ArtifactSinkFunc(func(ctx context.Context, path string, data []byte) error {
+				return output.WriteFile(path, data, 0o644)
+			}),
+		), nil
 	}
 }
 
@@ -95,5 +126,6 @@ func DepsForLoadClient(loadClient func() (*figma.Client, error)) Deps {
 		ResolveExec:      defaultResolveExecutable,
 		GetEnv:           defaultGetEnv,
 		AssetApplication: defaultAssetApplication,
+		TokenService:     defaultTokenServiceFactory(loadClient),
 	}
 }
