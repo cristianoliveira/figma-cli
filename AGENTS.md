@@ -38,11 +38,15 @@ These rules are enforced by `internal/architecture` fitness tests (run via `go t
 
 Exemptions: `_test.go` files and generated `internal/figma/api/**` source. `path/filepath` is pure path manipulation (allowed); it is not filesystem access.
 
+# Document model
+
+`internal/document` owns the stable document tree shape (the model from TASK-0004) and the shared document-tree value coercion helpers (`StringValue`, `NumberValue`, `OptionalNumber`, `NumberSlice`, `MapValue`). Capability packages under `internal/extract` and friends depend on it; it is the canonical home for any `any`-tree primitives that cross capability boundaries.
+
 # Operational errors
 
 `internal/operr` is the transport-neutral operational-error contract: a data-focused `Category` plus `ClassifiedError{Category, Message, Recovery, Err}`. Categories are `authentication`, `authorization`, `rate_limit`, `dependency_unavailable`, `invalid_input`, `artifact_access`, and `operational` (generic fallback).
 
-- Adapters translate concrete failures at their boundary and retain the cause: `internal/figma` (status/network/decode), `internal/env` (missing token), `internal/output` (filesystem).
+- Adapters translate concrete failures at their boundary and retain the cause: `internal/figma` (status/network/decode), `internal/env` (missing token), `internal/artifact` (filesystem), `internal/assetsedge` (asset download status).
 - `ClassifiedError` retains the underlying cause via `Unwrap`, so `errors.Is`/`errors.As` still reach the concrete type.
 - Safe `Message`/`Recovery` never contain tokens, response bodies, headers, private paths, or raw OS text. Unknown failures fall back to the generic `operational` category with a safe message.
 - The CLI renderer (`internal/cli/error_output.go`) consumes only `internal/operr`; it does not import Figma, HTTP, environment, or filesystem error types.
