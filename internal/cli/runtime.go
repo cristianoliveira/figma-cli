@@ -9,6 +9,7 @@ import (
 
 	"github.com/cristianoliveira/figma-cli/internal/env"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/operr"
 	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -78,6 +79,10 @@ func ExitCode(err error) int {
 		return 2
 	}
 	if err != nil && strings.HasPrefix(err.Error(), "unknown command ") {
+		return 2
+	}
+	var classified *operr.ClassifiedError
+	if errors.As(err, &classified) && classified.Category == operr.CategoryInvalidInput {
 		return 2
 	}
 	return 1

@@ -3,12 +3,9 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"net/http"
-	"os"
 	"strings"
 
-	"github.com/cristianoliveira/figma-cli/internal/env"
-	"github.com/cristianoliveira/figma-cli/internal/figma"
+	"github.com/cristianoliveira/figma-cli/internal/operr"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +54,7 @@ func ErrorContract(err error) (ErrorOutput, bool) {
 func RenderError(command *cobra.Command, err error) error {
 	var result *ResultError
 	if errors.As(err, &result) {
-		_, writeErr := fmt.Fprintln(command.ErrOrStderr(), result.err.Error())
+		_, writeErr := fmt.Fprintln(command.ErrOrStderr(), safeResultMessage(result.err))
 		return writeErr
 	}
 	contract, render := ErrorContract(err)
@@ -65,6 +62,18 @@ func RenderError(command *cobra.Command, err error) error {
 		return nil
 	}
 	return NewPrinter(command).Structured(contract)
+}
+
+// safeResultMessage returns a safe, user-facing message for a result-
+// bearing failure. Classified errors contribute their safe Message;
+// unknown errors fall back to a generic message so raw provider text
+// (tokens, bodies, headers, private paths) is never emitted.
+func safeResultMessage(err error) string {
+	var classified *operr.ClassifiedError
+	if errors.As(err, &classified) {
+		return classified.Message
+	}
+	return "Command could not complete."
 }
 
 func isAlreadyRepresented(err error) bool {
@@ -86,6 +95,13 @@ func usageErrorContract(err error) ErrorOutput {
 		input = usage.Input()
 		recovery = usage.Recovery()
 	}
+	// A neutral invalid-input classification from an adapter carries its
+	// own safe message and recovery.
+	var classified *operr.ClassifiedError
+	if errors.As(err, &classified) && classified.Category == operr.CategoryInvalidInput {
+		message = classified.Message
+		recovery = classified.Recovery
+	}
 	if strings.HasPrefix(err.Error(), "unknown command ") {
 		recovery = "Run the command with --help to list valid commands."
 	}
@@ -94,30 +110,19 @@ func usageErrorContract(err error) ErrorOutput {
 	return output
 }
 
+// operationalErrorContract classifies a failure using the neutral
+// operational-error contract. It no longer imports Figma, HTTP,
+// environment, or filesystem types; adapters translate those failures
+// into *operr.ClassifiedError at their boundaries.
 func operationalErrorContract(err error) ErrorOutput {
-	var token *env.ErrTokenNotSet
-	if errors.As(err, &token) {
-		return newErrorOutput("operational", "Figma authentication is not configured.", 1, "Set FIGMA_ACCESS_TOKEN and retry.")
+	var classified *operr.ClassifiedError
+	if errors.As(err, &classified) {
+		return newErrorOutput(string(classified.Category), classified.Message, 1, classified.Recovery)
 	}
-
-	var response *figma.ResponseError
-	if errors.As(err, &response) {
-		switch response.StatusCode {
-		case http.StatusUnauthorized, http.StatusForbidden:
-			return newErrorOutput("operational", "Figma rejected authentication or access.", 1, "Check FIGMA_ACCESS_TOKEN and file permissions, then retry.")
-		case http.StatusTooManyRequests:
-			return newErrorOutput("operational", "Figma rate limit reached.", 1, "Wait before retrying the Figma request.")
-		default:
-			return newErrorOutput("operational", "Figma request failed.", 1, "Check Figma availability and retry.")
-		}
-	}
-
-	var path *os.PathError
-	if errors.As(err, &path) {
-		return newErrorOutput("operational", "Could not access a required file.", 1, "Check the file path and permissions, then retry.")
-	}
-
-	return newErrorOutput("operational", "Command could not complete.", 1, "Check inputs and dependencies, then retry.")
+	return newErrorOutput(string(operr.CategoryOperational),
+		"Command could not complete.",
+		1,
+		"Check inputs and dependencies, then retry.")
 }
 
 func newErrorOutput(category, message string, exitCode int, recovery string) ErrorOutput {

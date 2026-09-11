@@ -35,5 +35,6 @@ func TestLoadClient_MissingToken(t *testing.T) {
 	_, err := LoadClient()
 
 	require.Error(t, err)
-	assert.IsType(t, &env.ErrTokenNotSet{}, err)
+	var tokenErr *env.ErrTokenNotSet
+	assert.ErrorAs(t, err, &tokenErr, "underlying ErrTokenNotSet retained as cause")
 }

@@ -69,16 +69,16 @@ func (c *Client) Fetch(url string, target any) error {
 
 	resp, err := c.httpClient().Do(req)
 	if err != nil {
-		return fmt.Errorf("making request: %w", err)
+		return classifyTransportError(fmt.Errorf("making request: %w", err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return &ResponseError{StatusCode: resp.StatusCode}
+		return classifyTransportError(&ResponseError{StatusCode: resp.StatusCode})
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
-		return fmt.Errorf("decoding JSON: %w", err)
+		return classifyTransportError(fmt.Errorf("decoding JSON: %w", err))
 	}
 	return nil
 }

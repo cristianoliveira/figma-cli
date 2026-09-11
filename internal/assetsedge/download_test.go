@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/cristianoliveira/figma-cli/internal/operr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,6 +45,7 @@ func TestDownloadFileCreatesMissingParentDirectories(t *testing.T) {
 func TestDownloadFileErrorStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte("SECRET-BODY"))
 	}))
 	t.Cleanup(server.Close)
 
@@ -51,4 +53,9 @@ func TestDownloadFileErrorStatus(t *testing.T) {
 	err := DownloadFile(server.Client(), outputPath, server.URL)
 
 	require.Error(t, err, "DownloadFile() expected error for 404")
+	assert.NotContains(t, err.Error(), "SECRET-BODY", "response body must not leak")
+
+	var classified *operr.ClassifiedError
+	require.ErrorAs(t, err, &classified)
+	assert.Equal(t, operr.CategoryDependencyUnavailable, classified.Category)
 }
