@@ -38,6 +38,15 @@ These rules are enforced by `internal/architecture` fitness tests (run via `go t
 
 Exemptions: `_test.go` files and generated `internal/figma/api/**` source. `path/filepath` is pure path manipulation (allowed); it is not filesystem access.
 
+# Operational errors
+
+`internal/operr` is the transport-neutral operational-error contract: a data-focused `Category` plus `ClassifiedError{Category, Message, Recovery, Err}`. Categories are `authentication`, `authorization`, `rate_limit`, `dependency_unavailable`, `invalid_input`, `artifact_access`, and `operational` (generic fallback).
+
+- Adapters translate concrete failures at their boundary and retain the cause: `internal/figma` (status/network/decode), `internal/env` (missing token), `internal/output` (filesystem).
+- `ClassifiedError` retains the underlying cause via `Unwrap`, so `errors.Is`/`errors.As` still reach the concrete type.
+- Safe `Message`/`Recovery` never contain tokens, response bodies, headers, private paths, or raw OS text. Unknown failures fall back to the generic `operational` category with a safe message.
+- The CLI renderer (`internal/cli/error_output.go`) consumes only `internal/operr`; it does not import Figma, HTTP, environment, or filesystem error types.
+
 # Placement
 
 Add a responsibility to the module that owns its boundary and stable output. Create a new top-level module only when the capability has distinct cohesion, collaborators, and dependency direction; do not split a small adapter or model folder merely because it has a name.

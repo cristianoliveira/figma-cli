@@ -107,7 +107,7 @@ func TestCommentsCommandReturnsAPIErrors(t *testing.T) {
 	result := executeCommand(newCommentsCommand(DepsForLoadClient(func() (*figma.Client, error) { return client, nil })), "abc")
 
 	require.Error(t, result.Err)
-	assert.ErrorContains(t, result.Err, "status 403")
+	assert.ErrorContains(t, result.Err, "Figma rejected authentication or access.")
 }
 
 func TestTokensCommandEmitsJSONWrappedArtifact(t *testing.T) {

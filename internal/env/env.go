@@ -1,14 +1,22 @@
 // Package env provides environment variable utilities for the Figma CLI.
 package env
 
-import "os"
+import (
+	"os"
+
+	"github.com/cristianoliveira/figma-cli/internal/operr"
+)
 
 // GetFigmaToken returns the FIGMA_ACCESS_TOKEN environment variable.
-// If the variable is not set or is empty, it returns an error.
+// If the variable is not set or is empty, it returns a neutral
+// authentication error wrapping ErrTokenNotSet as the cause.
 func GetFigmaToken() (string, error) {
 	token := os.Getenv("FIGMA_ACCESS_TOKEN")
 	if token == "" {
-		return "", &ErrTokenNotSet{}
+		return "", operr.New(operr.CategoryAuthentication,
+			"Figma authentication is not configured.",
+			"Set FIGMA_ACCESS_TOKEN and retry.",
+			&ErrTokenNotSet{})
 	}
 	return token, nil
 }
