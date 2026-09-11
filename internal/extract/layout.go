@@ -1,6 +1,10 @@
 package extract
 
-import "math"
+import (
+	"math"
+
+	"github.com/cristianoliveira/figma-cli/internal/document"
+)
 
 // LayoutNode is a compact Figma tree for understanding layout and copy order.
 type LayoutNode struct {
@@ -114,15 +118,15 @@ func layoutNodeCount(node LayoutNode) int {
 
 func extractLayoutNode(object map[string]any, option LayoutOptions) LayoutNode {
 	node := LayoutNode{
-		ID:         StringValue(object["id"]),
-		Name:       StringValue(object["name"]),
-		Type:       StringValue(object["type"]),
-		LayoutMode: StringValue(object["layoutMode"]),
-		Gap:        optionalNumber(object["itemSpacing"]),
+		ID:         document.StringValue(object["id"]),
+		Name:       document.StringValue(object["name"]),
+		Type:       document.StringValue(object["type"]),
+		LayoutMode: document.StringValue(object["layoutMode"]),
+		Gap:        document.OptionalNumber(object["itemSpacing"]),
 		Padding:    layoutPadding(object),
 	}
 	if node.Type == textNodeType {
-		node.Text = StringValue(object["characters"])
+		node.Text = document.StringValue(object["characters"])
 	}
 
 	children, ok := object["children"].([]any)
@@ -156,7 +160,7 @@ func measureSiblingSpacing(parent, previous, current map[string]any) *LayoutSpac
 	if previous == nil || previous["visible"] == false || current["visible"] == false {
 		return nil
 	}
-	if StringValue(previous["layoutPositioning"]) == layoutPositioningAbsolute || StringValue(current["layoutPositioning"]) == layoutPositioningAbsolute {
+	if document.StringValue(previous["layoutPositioning"]) == layoutPositioningAbsolute || document.StringValue(current["layoutPositioning"]) == layoutPositioningAbsolute {
 		return nil
 	}
 	previousBounds, previousOK := layoutBoundsFor(previous)
@@ -167,7 +171,7 @@ func measureSiblingSpacing(parent, previous, current map[string]any) *LayoutSpac
 
 	var axis string
 	var measured float64
-	switch StringValue(parent["layoutMode"]) {
+	switch document.StringValue(parent["layoutMode"]) {
 	case layoutModeVertical:
 		axis = "vertical"
 		measured = currentBounds.y - (previousBounds.y + previousBounds.height)
@@ -178,13 +182,13 @@ func measureSiblingSpacing(parent, previous, current map[string]any) *LayoutSpac
 		return nil
 	}
 	measured = normalizeMeasuredSpacing(measured)
-	declared := optionalNumber(parent["itemSpacing"])
+	declared := document.OptionalNumber(parent["itemSpacing"])
 	if declared == nil {
 		defaultGap := 0.0
 		declared = &defaultGap
 	}
 	matches := math.Abs(measured-*declared) < 0.01
-	return &LayoutSpacing{PreviousID: StringValue(previous["id"]), Axis: axis, Measured: measured, Declared: declared, MatchesDeclared: matches}
+	return &LayoutSpacing{PreviousID: document.StringValue(previous["id"]), Axis: axis, Measured: measured, Declared: declared, MatchesDeclared: matches}
 }
 
 func normalizeMeasuredSpacing(value float64) float64 {
@@ -218,10 +222,10 @@ func meaningfulLayoutNode(node LayoutNode) bool {
 }
 
 func layoutPadding(object map[string]any) *LayoutPadding {
-	top := numberValue(object["paddingTop"])
-	right := numberValue(object["paddingRight"])
-	bottom := numberValue(object["paddingBottom"])
-	left := numberValue(object["paddingLeft"])
+	top := document.NumberValue(object["paddingTop"])
+	right := document.NumberValue(object["paddingRight"])
+	bottom := document.NumberValue(object["paddingBottom"])
+	left := document.NumberValue(object["paddingLeft"])
 	if top == 0 && right == 0 && bottom == 0 && left == 0 {
 		return nil
 	}

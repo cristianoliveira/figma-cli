@@ -3,6 +3,8 @@ package extract
 import (
 	"sort"
 	"strings"
+
+	"github.com/cristianoliveira/figma-cli/internal/document"
 )
 
 // CommentOutput is one comment, used by `figma comments`.
@@ -119,10 +121,10 @@ func collectCommentNodePaths(value any, parentPath []string, paths map[string][]
 		return
 	}
 	path := append([]string(nil), parentPath...)
-	if name := StringValue(node["name"]); name != "" {
+	if name := document.StringValue(node["name"]); name != "" {
 		path = append(path, name)
 	}
-	if id := StringValue(node["id"]); id != "" {
+	if id := document.StringValue(node["id"]); id != "" {
 		paths[id] = path
 	}
 	children, _ := node["children"].([]any)
@@ -237,7 +239,7 @@ func findNodePath(value any, targetID string, path *[]string) bool {
 	if !ok {
 		return false
 	}
-	id := StringValue(node["id"])
+	id := document.StringValue(node["id"])
 	if id != "" {
 		*path = append(*path, id)
 	}

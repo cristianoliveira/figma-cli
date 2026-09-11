@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/cristianoliveira/figma-cli/internal/document"
 )
 
 // PropertyChange is one curated design property changed between versions.
@@ -66,7 +68,7 @@ func structuralNodeChange(id string, node indexedDocumentNode, changeType string
 		ID:       id,
 		Path:     node.path,
 		Type:     changeType,
-		NodeType: StringValue(node.object["type"]),
+		NodeType: document.StringValue(node.object["type"]),
 	}
 }
 
@@ -82,10 +84,10 @@ func indexDocumentNode(value any, parentPath []string, nodes map[string]indexedD
 		return
 	}
 	path := append([]string(nil), parentPath...)
-	if name := StringValue(object["name"]); name != "" {
+	if name := document.StringValue(object["name"]); name != "" {
 		path = append(path, name)
 	}
-	if id := StringValue(object["id"]); id != "" {
+	if id := document.StringValue(object["id"]); id != "" {
 		nodes[id] = indexedDocumentNode{object: object, path: strings.Join(path, "/")}
 	}
 	children, _ := object["children"].([]any)
@@ -100,23 +102,23 @@ func changedNodeProperties(from, to map[string]any) []PropertyChange {
 		from any
 		to   any
 	}{
-		{"name", StringValue(from["name"]), StringValue(to["name"])},
-		{"type", StringValue(from["type"]), StringValue(to["type"])},
-		{"componentId", StringValue(from["componentId"]), StringValue(to["componentId"])},
-		{"componentSetId", StringValue(from["componentSetId"]), StringValue(to["componentSetId"])},
-		{"layout.mode", StringValue(from["layoutMode"]), StringValue(to["layoutMode"])},
-		{"layout.gap", numberValue(from["itemSpacing"]), numberValue(to["itemSpacing"])},
-		{"layout.wrap", StringValue(from["layoutWrap"]), StringValue(to["layoutWrap"])},
-		{"layout.paddingTop", numberValue(from["paddingTop"]), numberValue(to["paddingTop"])},
-		{"layout.paddingRight", numberValue(from["paddingRight"]), numberValue(to["paddingRight"])},
-		{"layout.paddingBottom", numberValue(from["paddingBottom"]), numberValue(to["paddingBottom"])},
-		{"layout.paddingLeft", numberValue(from["paddingLeft"]), numberValue(to["paddingLeft"])},
-		{"layout.sizingHorizontal", StringValue(from["layoutSizingHorizontal"]), StringValue(to["layoutSizingHorizontal"])},
-		{"layout.sizingVertical", StringValue(from["layoutSizingVertical"]), StringValue(to["layoutSizingVertical"])},
+		{"name", document.StringValue(from["name"]), document.StringValue(to["name"])},
+		{"type", document.StringValue(from["type"]), document.StringValue(to["type"])},
+		{"componentId", document.StringValue(from["componentId"]), document.StringValue(to["componentId"])},
+		{"componentSetId", document.StringValue(from["componentSetId"]), document.StringValue(to["componentSetId"])},
+		{"layout.mode", document.StringValue(from["layoutMode"]), document.StringValue(to["layoutMode"])},
+		{"layout.gap", document.NumberValue(from["itemSpacing"]), document.NumberValue(to["itemSpacing"])},
+		{"layout.wrap", document.StringValue(from["layoutWrap"]), document.StringValue(to["layoutWrap"])},
+		{"layout.paddingTop", document.NumberValue(from["paddingTop"]), document.NumberValue(to["paddingTop"])},
+		{"layout.paddingRight", document.NumberValue(from["paddingRight"]), document.NumberValue(to["paddingRight"])},
+		{"layout.paddingBottom", document.NumberValue(from["paddingBottom"]), document.NumberValue(to["paddingBottom"])},
+		{"layout.paddingLeft", document.NumberValue(from["paddingLeft"]), document.NumberValue(to["paddingLeft"])},
+		{"layout.sizingHorizontal", document.StringValue(from["layoutSizingHorizontal"]), document.StringValue(to["layoutSizingHorizontal"])},
+		{"layout.sizingVertical", document.StringValue(from["layoutSizingVertical"]), document.StringValue(to["layoutSizingVertical"])},
 		{"fills", colorsFromPaints(from["fills"]), colorsFromPaints(to["fills"])},
 		{"strokes", colorsFromPaints(from["strokes"]), colorsFromPaints(to["strokes"])},
-		{"opacity", numberValue(from["opacity"]), numberValue(to["opacity"])},
-		{"cornerRadius", numberValue(from["cornerRadius"]), numberValue(to["cornerRadius"])},
+		{"opacity", document.NumberValue(from["opacity"]), document.NumberValue(to["opacity"])},
+		{"cornerRadius", document.NumberValue(from["cornerRadius"]), document.NumberValue(to["cornerRadius"])},
 	}
 	changes := make([]PropertyChange, 0)
 	for _, property := range properties {
@@ -151,8 +153,8 @@ func changedStyleProperties(fromValue, toValue any) []PropertyChange {
 	sort.Strings(names)
 	changes := make([]PropertyChange, 0)
 	for _, name := range names {
-		fromID := StringValue(from[name])
-		toID := StringValue(to[name])
+		fromID := document.StringValue(from[name])
+		toID := document.StringValue(to[name])
 		if fromID != toID {
 			changes = append(changes, PropertyChange{Property: "styles." + name, From: fromID, To: toID})
 		}
@@ -165,8 +167,8 @@ func changedBoundsProperties(fromValue, toValue any) []PropertyChange {
 	to, _ := toValue.(map[string]any)
 	changes := make([]PropertyChange, 0)
 	for _, name := range []string{"x", "y", "width", "height"} {
-		fromNumber := numberValue(from[name])
-		toNumber := numberValue(to[name])
+		fromNumber := document.NumberValue(from[name])
+		toNumber := document.NumberValue(to[name])
 		if fromNumber != toNumber {
 			changes = append(changes, PropertyChange{Property: "bounds." + name, From: fromNumber, To: toNumber})
 		}
@@ -179,7 +181,7 @@ func documentChildIDs(object map[string]any) []string {
 	ids := make([]string, 0, len(children))
 	for _, child := range children {
 		childObject, _ := child.(map[string]any)
-		if id := StringValue(childObject["id"]); id != "" {
+		if id := document.StringValue(childObject["id"]); id != "" {
 			ids = append(ids, id)
 		}
 	}

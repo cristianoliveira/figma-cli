@@ -27,11 +27,8 @@ type InspectServiceFactory func() (InspectService, error)
 // composition root in cmd/figma/main.go wires the real collaborators.
 type Deps struct {
 	LoadClient       func() (*figma.Client, error)
-	DownloadClient   *http.Client
-	FetchVariables   func(*figma.Client, string) (map[string]any, error)
 	ResolveExec      func() (string, error)
 	GetEnv           func(string) string
-	StdoutEnvPrinter func() (string, error)
 	InspectService   InspectServiceFactory
 	AssetApplication func() AssetApplication
 	TokenService     func() (TokenService, error)
@@ -75,8 +72,6 @@ func NewProductionDeps() Deps {
 	loadClient := cli.LoadClient
 	return Deps{
 		LoadClient:       loadClient,
-		DownloadClient:   nil,
-		FetchVariables:   figma.FetchVariables,
 		ResolveExec:      defaultResolveExecutable,
 		GetEnv:           defaultGetEnv,
 		InspectService:   defaultInspectServiceFactory(loadClient),
@@ -133,7 +128,6 @@ func defaultAssetApplication() AssetApplication {
 func DepsForLoadClient(loadClient func() (*figma.Client, error)) Deps {
 	return Deps{
 		LoadClient:       loadClient,
-		FetchVariables:   figma.FetchVariables,
 		ResolveExec:      defaultResolveExecutable,
 		GetEnv:           defaultGetEnv,
 		AssetApplication: defaultAssetApplication,

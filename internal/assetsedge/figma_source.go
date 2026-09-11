@@ -7,6 +7,7 @@ package assetsedge
 import (
 	"context"
 
+	"github.com/cristianoliveira/figma-cli/internal/assets"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 )
@@ -18,6 +19,8 @@ type FigmaAssetSource struct {
 	FileID  string
 	NodeIDs []string
 }
+
+var _ assets.AssetSource = (*FigmaAssetSource)(nil)
 
 // NewFigmaAssetSource builds a Figma-backed AssetSource.
 func NewFigmaAssetSource(client *figma.Client, fileID string, nodeIDs []string) *FigmaAssetSource {
