@@ -105,6 +105,15 @@ the manifest before accepting a partial export.
 
 ## Install
 
+### Homebrew
+
+On macOS, install the latest release from the tap:
+
+```bash
+brew tap cristianoliveira/tap
+brew install figma-cli
+```
+
 ### Build from source
 
 Requires Git and Go 1.25.5 or newer:
