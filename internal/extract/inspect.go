@@ -1,5 +1,7 @@
 package extract
 
+import "github.com/cristianoliveira/figma-cli/internal/document"
+
 // StyleBinding identifies a Figma style and includes metadata when available.
 type StyleBinding struct {
 	ID   string `json:"id"`
@@ -138,7 +140,7 @@ func measureInspectSiblingSpacing(parent, previous, current map[string]any) *Lay
 	if spacing == nil {
 		return nil
 	}
-	spacing.ParentID = StringValue(parent["id"])
+	spacing.ParentID = document.StringValue(parent["id"])
 	return spacing
 }
 
@@ -146,7 +148,7 @@ func measurableInspectSibling(object map[string]any) bool {
 	if object == nil || object["visible"] == false {
 		return false
 	}
-	if StringValue(object["layoutPositioning"]) == layoutPositioningAbsolute {
+	if document.StringValue(object["layoutPositioning"]) == layoutPositioningAbsolute {
 		return false
 	}
 	_, ok := layoutBoundsFor(object)
@@ -194,22 +196,22 @@ func NodeToInspectOutput(object map[string]any) InspectOutput {
 		bgColor = colorHexFromPaint(bg)
 	}
 	return InspectOutput{
-		ID:                  StringValue(object["id"]),
-		Name:                StringValue(object["name"]),
-		Type:                StringValue(object["type"]),
-		Text:                StringValue(object["characters"]),
-		ComponentID:         StringValue(object["componentId"]),
-		ComponentSetID:      StringValue(object["componentSetId"]),
-		VariantProperties:   mapValue(object["variantProperties"]),
-		ComponentProperties: mapValue(object["componentProperties"]),
-		PropertyDefinitions: mapValue(object["componentPropertyDefinitions"]),
+		ID:                  document.StringValue(object["id"]),
+		Name:                document.StringValue(object["name"]),
+		Type:                document.StringValue(object["type"]),
+		Text:                document.StringValue(object["characters"]),
+		ComponentID:         document.StringValue(object["componentId"]),
+		ComponentSetID:      document.StringValue(object["componentSetId"]),
+		VariantProperties:   document.MapValue(object["variantProperties"]),
+		ComponentProperties: document.MapValue(object["componentProperties"]),
+		PropertyDefinitions: document.MapValue(object["componentPropertyDefinitions"]),
 		Fills:               colorsFromPaints(object["fills"]),
 		Strokes:             colorsFromPaints(object["strokes"]),
 		Paints:              optionalPaintsFromObject(object),
-		StrokeWeight:        numberValue(object["strokeWeight"]),
-		StrokeAlign:         StringValue(object["strokeAlign"]),
-		Opacity:             optionalNumber(object["opacity"]),
-		CornerRadius:        optionalNumber(object["cornerRadius"]),
+		StrokeWeight:        document.NumberValue(object["strokeWeight"]),
+		StrokeAlign:         document.StringValue(object["strokeAlign"]),
+		Opacity:             document.OptionalNumber(object["opacity"]),
+		CornerRadius:        document.OptionalNumber(object["cornerRadius"]),
 		Bounds:              boundsFromValue(object["absoluteBoundingBox"]),
 		Layout:              layoutFromObject(object),
 		Typography:          typographyFromValue(object["style"]),
@@ -222,8 +224,8 @@ func NodeToInspectOutput(object map[string]any) InspectOutput {
 		FillGeometry:        vectorPaths(object["fillGeometry"]),
 		StrokeGeometry:      vectorPaths(object["strokeGeometry"]),
 		RelativeTransform:   object["relativeTransform"],
-		VectorSize:          mapValue(object["size"]),
-		FillOverrideTable:   mapValue(object["fillOverrideTable"]),
+		VectorSize:          document.MapValue(object["size"]),
+		FillOverrideTable:   document.MapValue(object["fillOverrideTable"]),
 	}
 }
 
@@ -235,7 +237,7 @@ func vectorPaths(value any) []VectorPath {
 		if !ok {
 			continue
 		}
-		path := VectorPath{Path: StringValue(object["path"]), WindingRule: StringValue(object["windingRule"])}
+		path := VectorPath{Path: document.StringValue(object["path"]), WindingRule: document.StringValue(object["windingRule"])}
 		if overrideID, ok := object["overrideID"].(float64); ok {
 			path.OverrideID = &overrideID
 		}
@@ -254,8 +256,8 @@ func ResolveInspectStyleBindings(output *InspectOutput, styles map[string]map[st
 		metadata := styles[id]
 		output.ResolvedStyles[property] = StyleBinding{
 			ID:   id,
-			Name: StringValue(metadata["name"]),
-			Type: StringValue(metadata["styleType"]),
+			Name: document.StringValue(metadata["name"]),
+			Type: document.StringValue(metadata["styleType"]),
 		}
 	}
 }
@@ -272,14 +274,14 @@ func ResolveInspectVariableBindings(output *InspectOutput, meta map[string]any) 
 		resolved := make([]VariableBinding, 0, len(ids))
 		for _, id := range ids {
 			variable, _ := variables[id].(map[string]any)
-			collectionID := StringValue(variable["variableCollectionId"])
+			collectionID := document.StringValue(variable["variableCollectionId"])
 			collection, _ := collections[collectionID].(map[string]any)
 			resolved = append(resolved, VariableBinding{
 				ID:             id,
-				Name:           StringValue(variable["name"]),
-				Type:           StringValue(variable["resolvedType"]),
+				Name:           document.StringValue(variable["name"]),
+				Type:           document.StringValue(variable["resolvedType"]),
 				CollectionID:   collectionID,
-				CollectionName: StringValue(collection["name"]),
+				CollectionName: document.StringValue(collection["name"]),
 			})
 		}
 		output.ResolvedVariables[property] = resolved

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/cristianoliveira/figma-cli/internal/artifact"
+	"github.com/cristianoliveira/figma-cli/internal/assets"
 )
 
 // HTTPAssetSink implements assets.AssetSink against an *http.Client and
@@ -18,6 +19,8 @@ import (
 type HTTPAssetSink struct {
 	Client *http.Client
 }
+
+var _ assets.AssetSink = (*HTTPAssetSink)(nil)
 
 // NewHTTPAssetSink builds an HTTP/filesystem AssetSink.
 func NewHTTPAssetSink(client *http.Client) *HTTPAssetSink {

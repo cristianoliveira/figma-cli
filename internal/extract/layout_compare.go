@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/cristianoliveira/figma-cli/internal/document"
 )
 
 // LayoutComparison contains variants in caller order and adjacent transitions.
@@ -75,7 +77,7 @@ func findLayoutVariantsByName(value any, name string, matches *[]any) {
 	if !ok {
 		return
 	}
-	if strings.EqualFold(StringValue(object["name"]), name) {
+	if strings.EqualFold(document.StringValue(object["name"]), name) {
 		*matches = append(*matches, object)
 	}
 	children, _ := object["children"].([]any)
@@ -107,19 +109,19 @@ func layoutVariantFromValue(value any) LayoutVariant {
 	object, _ := value.(map[string]any)
 	bounds, _ := object["absoluteBoundingBox"].(map[string]any)
 	variant := LayoutVariant{
-		ID:                 StringValue(object["id"]),
-		Name:               StringValue(object["name"]),
-		Width:              numberValue(bounds["width"]),
-		Height:             numberValue(bounds["height"]),
-		Mode:               StringValue(object["layoutMode"]),
-		Wrap:               StringValue(object["layoutWrap"]),
-		Gap:                numberValue(object["itemSpacing"]),
-		CounterAxisSpacing: numberValue(object["counterAxisSpacing"]),
-		PrimaryAxisAlign:   StringValue(object["primaryAxisAlignItems"]),
-		CounterAxisAlign:   StringValue(object["counterAxisAlignItems"]),
+		ID:                 document.StringValue(object["id"]),
+		Name:               document.StringValue(object["name"]),
+		Width:              document.NumberValue(bounds["width"]),
+		Height:             document.NumberValue(bounds["height"]),
+		Mode:               document.StringValue(object["layoutMode"]),
+		Wrap:               document.StringValue(object["layoutWrap"]),
+		Gap:                document.NumberValue(object["itemSpacing"]),
+		CounterAxisSpacing: document.NumberValue(object["counterAxisSpacing"]),
+		PrimaryAxisAlign:   document.StringValue(object["primaryAxisAlignItems"]),
+		CounterAxisAlign:   document.StringValue(object["counterAxisAlignItems"]),
 		Padding: LayoutPadding{
-			Top: numberValue(object["paddingTop"]), Right: numberValue(object["paddingRight"]),
-			Bottom: numberValue(object["paddingBottom"]), Left: numberValue(object["paddingLeft"]),
+			Top: document.NumberValue(object["paddingTop"]), Right: document.NumberValue(object["paddingRight"]),
+			Bottom: document.NumberValue(object["paddingBottom"]), Left: document.NumberValue(object["paddingLeft"]),
 		},
 	}
 	variant.CSS = layoutCSS(variant)

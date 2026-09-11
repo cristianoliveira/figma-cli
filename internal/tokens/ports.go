@@ -47,6 +47,8 @@ type Formatter interface {
 // FormatterFunc adapts a function to the Formatter interface.
 type FormatterFunc func([]extract.Token, string, string) (string, error)
 
+var _ Formatter = FormatterFunc(nil)
+
 func (f FormatterFunc) Format(tokens []extract.Token, format, prefix string) (string, error) {
 	return f(tokens, format, prefix)
 }
@@ -58,6 +60,8 @@ type ArtifactSink interface {
 
 // ArtifactSinkFunc adapts a function to the ArtifactSink interface.
 type ArtifactSinkFunc func(ctx context.Context, path string, data []byte) error
+
+var _ ArtifactSink = ArtifactSinkFunc(nil)
 
 func (f ArtifactSinkFunc) Write(ctx context.Context, path string, data []byte) error {
 	return f(ctx, path, data)

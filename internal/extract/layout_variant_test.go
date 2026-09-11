@@ -3,6 +3,7 @@ package extract
 import (
 	"testing"
 
+	documentmodel "github.com/cristianoliveira/figma-cli/internal/document"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +17,7 @@ func TestFindLayoutVariantsByNamePreservesRequestedOrder(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"mobile", "desktop"}, []string{
-		StringValue(variants[0].(map[string]any)["id"]), StringValue(variants[1].(map[string]any)["id"]),
+		documentmodel.StringValue(variants[0].(map[string]any)["id"]), documentmodel.StringValue(variants[1].(map[string]any)["id"]),
 	})
 }
 

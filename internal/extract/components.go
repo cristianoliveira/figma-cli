@@ -2,6 +2,8 @@ package extract
 
 import (
 	"strings"
+
+	"github.com/cristianoliveira/figma-cli/internal/document"
 )
 
 const (
@@ -81,32 +83,32 @@ func extractComponents(value any, parentPath []string) []ComponentOutput {
 	if !ok {
 		return nil
 	}
-	name := StringValue(object["name"])
+	name := document.StringValue(object["name"])
 	path := append([]string(nil), parentPath...)
 	if name != "" {
 		path = append(path, name)
 	}
 	component := ComponentOutput{
-		ID:                  StringValue(object["id"]),
+		ID:                  document.StringValue(object["id"]),
 		Name:                name,
-		Type:                StringValue(object["type"]),
-		Text:                StringValue(object["characters"]),
-		ComponentID:         StringValue(object["componentId"]),
-		ComponentSetID:      StringValue(object["componentSetId"]),
-		VariantProperties:   mapValue(object["variantProperties"]),
-		ComponentProperties: mapValue(object["componentProperties"]),
-		PropertyDefinitions: mapValue(object["componentPropertyDefinitions"]),
+		Type:                document.StringValue(object["type"]),
+		Text:                document.StringValue(object["characters"]),
+		ComponentID:         document.StringValue(object["componentId"]),
+		ComponentSetID:      document.StringValue(object["componentSetId"]),
+		VariantProperties:   document.MapValue(object["variantProperties"]),
+		ComponentProperties: document.MapValue(object["componentProperties"]),
+		PropertyDefinitions: document.MapValue(object["componentPropertyDefinitions"]),
 		Path:                path,
 		Fills:               colorsFromPaints(object["fills"]),
 		Strokes:             colorsFromPaints(object["strokes"]),
 		Paints:              paintsFromObject(object),
-		StrokeWeight:        numberValue(object["strokeWeight"]),
-		StrokeAlign:         StringValue(object["strokeAlign"]),
-		StrokeDashes:        numberSlice(object["strokeDashes"]),
+		StrokeWeight:        document.NumberValue(object["strokeWeight"]),
+		StrokeAlign:         document.StringValue(object["strokeAlign"]),
+		StrokeDashes:        document.NumberSlice(object["strokeDashes"]),
 		Effects:             effectsFromValue(object["effects"]),
-		Opacity:             optionalNumber(object["opacity"]),
+		Opacity:             document.OptionalNumber(object["opacity"]),
 		Bounds:              boundsFromValue(object["absoluteBoundingBox"]),
-		CornerRadius:        optionalNumber(object["cornerRadius"]),
+		CornerRadius:        document.OptionalNumber(object["cornerRadius"]),
 		Layout:              layoutFromObject(object),
 		Typography:          typographyFromValue(object["style"]),
 	}
@@ -182,7 +184,7 @@ func FilterRawComponentsByKind(nodes []map[string]any, kind string) []map[string
 	wantedType := map[string]string{"component": componentTypeComponent, "set": componentTypeComponentSet, "instance": componentTypeInstance}[kind]
 	filtered := make([]map[string]any, 0)
 	for _, node := range nodes {
-		if StringValue(node["type"]) == wantedType {
+		if document.StringValue(node["type"]) == wantedType {
 			filtered = append(filtered, node)
 		}
 	}
@@ -248,12 +250,12 @@ func paintOutputsFromValue(value any) []paintOutput {
 			continue
 		}
 		outputs = append(outputs, paintOutput{
-			Type:          StringValue(paintObject["type"]),
+			Type:          document.StringValue(paintObject["type"]),
 			Color:         colorHexFromPaint(paintObject),
-			Opacity:       numberValue(paintObject["opacity"]),
+			Opacity:       document.NumberValue(paintObject["opacity"]),
 			Visible:       paintObject["visible"] != false,
-			ImageRef:      StringValue(paintObject["imageRef"]),
-			ScaleMode:     StringValue(paintObject["scaleMode"]),
+			ImageRef:      document.StringValue(paintObject["imageRef"]),
+			ScaleMode:     document.StringValue(paintObject["scaleMode"]),
 			GradientStops: gradientStopsFromValue(paintObject["gradientStops"]),
 		})
 	}
@@ -274,10 +276,10 @@ func gradientStopsFromValue(value any) []gradientStopOutput {
 		}
 		opacity := 1.0
 		if alpha, exists := color["a"]; exists {
-			opacity = numberValue(alpha)
+			opacity = document.NumberValue(alpha)
 		}
 		outputs = append(outputs, gradientStopOutput{
-			Position: numberValue(stopObject["position"]),
+			Position: document.NumberValue(stopObject["position"]),
 			Color:    colorHexFromPaint(stopObject),
 			Opacity:  opacity,
 		})
@@ -298,13 +300,13 @@ func effectsFromValue(value any) []effectOutput {
 		}
 		offset, _ := effectObject["offset"].(map[string]any)
 		outputs = append(outputs, effectOutput{
-			Type:      StringValue(effectObject["type"]),
+			Type:      document.StringValue(effectObject["type"]),
 			Color:     colorHexFromPaint(effectObject),
-			Radius:    numberValue(effectObject["radius"]),
-			Spread:    numberValue(effectObject["spread"]),
-			OffsetX:   numberValue(offset["x"]),
-			OffsetY:   numberValue(offset["y"]),
-			BlendMode: StringValue(effectObject["blendMode"]),
+			Radius:    document.NumberValue(effectObject["radius"]),
+			Spread:    document.NumberValue(effectObject["spread"]),
+			OffsetX:   document.NumberValue(offset["x"]),
+			OffsetY:   document.NumberValue(offset["y"]),
+			BlendMode: document.StringValue(effectObject["blendMode"]),
 			Visible:   effectObject["visible"] != false,
 		})
 	}
@@ -316,40 +318,40 @@ func boundsFromValue(value any) boundsOutput {
 	if !ok {
 		return boundsOutput{}
 	}
-	return boundsOutput{X: numberValue(object["x"]), Y: numberValue(object["y"]), Width: numberValue(object["width"]), Height: numberValue(object["height"])}
+	return boundsOutput{X: document.NumberValue(object["x"]), Y: document.NumberValue(object["y"]), Width: document.NumberValue(object["width"]), Height: document.NumberValue(object["height"])}
 }
 
 func layoutFromObject(object map[string]any) layoutOutput {
 	return layoutOutput{
-		Mode:                   StringValue(object["layoutMode"]),
-		Gap:                    numberValue(object["itemSpacing"]),
-		PaddingTop:             numberValue(object["paddingTop"]),
-		PaddingRight:           numberValue(object["paddingRight"]),
-		PaddingBottom:          numberValue(object["paddingBottom"]),
-		PaddingLeft:            numberValue(object["paddingLeft"]),
-		LayoutAlign:            StringValue(object["layoutAlign"]),
-		LayoutGrow:             numberValue(object["layoutGrow"]),
-		LayoutSizingHorizontal: StringValue(object["layoutSizingHorizontal"]),
-		LayoutSizingVertical:   StringValue(object["layoutSizingVertical"]),
-		PrimaryAxisSizingMode:  StringValue(object["primaryAxisSizingMode"]),
-		CounterAxisSizingMode:  StringValue(object["counterAxisSizingMode"]),
-		PrimaryAxisAlignItems:  StringValue(object["primaryAxisAlignItems"]),
-		CounterAxisAlignItems:  StringValue(object["counterAxisAlignItems"]),
-		Wrap:                   StringValue(object["layoutWrap"]),
-		CounterAxisSpacing:     numberValue(object["counterAxisSpacing"]),
-		Positioning:            StringValue(object["layoutPositioning"]),
-		MinWidth:               numberValue(object["minWidth"]),
-		MaxWidth:               numberValue(object["maxWidth"]),
-		MinHeight:              numberValue(object["minHeight"]),
-		MaxHeight:              numberValue(object["maxHeight"]),
+		Mode:                   document.StringValue(object["layoutMode"]),
+		Gap:                    document.NumberValue(object["itemSpacing"]),
+		PaddingTop:             document.NumberValue(object["paddingTop"]),
+		PaddingRight:           document.NumberValue(object["paddingRight"]),
+		PaddingBottom:          document.NumberValue(object["paddingBottom"]),
+		PaddingLeft:            document.NumberValue(object["paddingLeft"]),
+		LayoutAlign:            document.StringValue(object["layoutAlign"]),
+		LayoutGrow:             document.NumberValue(object["layoutGrow"]),
+		LayoutSizingHorizontal: document.StringValue(object["layoutSizingHorizontal"]),
+		LayoutSizingVertical:   document.StringValue(object["layoutSizingVertical"]),
+		PrimaryAxisSizingMode:  document.StringValue(object["primaryAxisSizingMode"]),
+		CounterAxisSizingMode:  document.StringValue(object["counterAxisSizingMode"]),
+		PrimaryAxisAlignItems:  document.StringValue(object["primaryAxisAlignItems"]),
+		CounterAxisAlignItems:  document.StringValue(object["counterAxisAlignItems"]),
+		Wrap:                   document.StringValue(object["layoutWrap"]),
+		CounterAxisSpacing:     document.NumberValue(object["counterAxisSpacing"]),
+		Positioning:            document.StringValue(object["layoutPositioning"]),
+		MinWidth:               document.NumberValue(object["minWidth"]),
+		MaxWidth:               document.NumberValue(object["maxWidth"]),
+		MinHeight:              document.NumberValue(object["minHeight"]),
+		MaxHeight:              document.NumberValue(object["maxHeight"]),
 		Constraints:            constraintsFromValue(object["constraints"]),
 	}
 }
 
 func constraintsFromValue(value any) *constraintsOutput {
 	constraints, _ := value.(map[string]any)
-	horizontal := StringValue(constraints["horizontal"])
-	vertical := StringValue(constraints["vertical"])
+	horizontal := document.StringValue(constraints["horizontal"])
+	vertical := document.StringValue(constraints["vertical"])
 	if horizontal == "" && vertical == "" {
 		return nil
 	}
@@ -362,15 +364,15 @@ func typographyFromValue(value any) typographyOutput {
 		return typographyOutput{}
 	}
 	return typographyOutput{
-		FontFamily:          StringValue(style["fontFamily"]),
-		FontSize:            numberValue(style["fontSize"]),
-		FontWeight:          numberValue(style["fontWeight"]),
-		LineHeight:          numberValue(style["lineHeightPx"]),
-		LetterSpacing:       numberValue(style["letterSpacing"]),
-		ParagraphSpacing:    numberValue(style["paragraphSpacing"]),
-		TextCase:            StringValue(style["textCase"]),
-		TextDecoration:      StringValue(style["textDecoration"]),
-		TextAlignHorizontal: StringValue(style["textAlignHorizontal"]),
-		TextAlignVertical:   StringValue(style["textAlignVertical"]),
+		FontFamily:          document.StringValue(style["fontFamily"]),
+		FontSize:            document.NumberValue(style["fontSize"]),
+		FontWeight:          document.NumberValue(style["fontWeight"]),
+		LineHeight:          document.NumberValue(style["lineHeightPx"]),
+		LetterSpacing:       document.NumberValue(style["letterSpacing"]),
+		ParagraphSpacing:    document.NumberValue(style["paragraphSpacing"]),
+		TextCase:            document.StringValue(style["textCase"]),
+		TextDecoration:      document.StringValue(style["textDecoration"]),
+		TextAlignHorizontal: document.StringValue(style["textAlignHorizontal"]),
+		TextAlignVertical:   document.StringValue(style["textAlignVertical"]),
 	}
 }

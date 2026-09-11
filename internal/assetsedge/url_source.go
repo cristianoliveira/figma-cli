@@ -3,6 +3,7 @@ package assetsedge
 import (
 	"context"
 
+	"github.com/cristianoliveira/figma-cli/internal/assets"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 )
 
@@ -13,6 +14,8 @@ type FigmaExportURLSource struct {
 	Client *figma.Client
 	FileID string
 }
+
+var _ assets.ExportURLSource = (*FigmaExportURLSource)(nil)
 
 // NewFigmaExportURLSource builds a Figma-backed ExportURLSource.
 func NewFigmaExportURLSource(client *figma.Client, fileID string) *FigmaExportURLSource {

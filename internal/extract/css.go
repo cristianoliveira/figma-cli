@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/cristianoliveira/figma-cli/internal/document"
 )
 
 // CSSRule is one CSS selector and its declared properties.
@@ -40,14 +42,14 @@ func walkCSS(value any, recursive bool, seen map[string]int, rules *[]CSSRule) {
 	// Skip boolean operations and vector primitives — these are icon internals,
 	// not standalone CSS-worthy elements. Skipping them also prevents their
 	// children (VECTOR, ELLIPSE, RECTANGLE inside icons) from leaking as CSS.
-	nodeType := StringValue(node["type"])
+	nodeType := document.StringValue(node["type"])
 	if isVectorPrimitive(nodeType) {
 		return
 	}
 
 	props := cssPropsFor(node)
 	if len(props) > 0 {
-		name := StringValue(node["name"])
+		name := document.StringValue(node["name"])
 		*rules = append(*rules, CSSRule{
 			Selector: "." + cssClassName(name, seen),
 			Props:    sortCSSProps(props),
@@ -96,7 +98,7 @@ func cssPropsFor(node map[string]any) []CSSProp {
 	props = append(props, opacityProp(node)...)
 	props = append(props, clippingProp(node)...)
 	props = append(props, effectProps(node)...)
-	if StringValue(node["type"]) == "TEXT" {
+	if document.StringValue(node["type"]) == "TEXT" {
 		props = append(props, textProps(node)...)
 	}
 	return props
@@ -104,22 +106,22 @@ func cssPropsFor(node map[string]any) []CSSProp {
 
 func layoutProps(node map[string]any) []CSSProp {
 	var props []CSSProp
-	switch StringValue(node["layoutMode"]) {
+	switch document.StringValue(node["layoutMode"]) {
 	case layoutModeVertical:
 		props = append(props, CSSProp{"display", "flex"}, CSSProp{"flex-direction", "column"})
 	case layoutModeHorizontal:
 		props = append(props, CSSProp{"display", "flex"})
 	}
-	if gap := numberValue(node["itemSpacing"]); gap > 0 {
+	if gap := document.NumberValue(node["itemSpacing"]); gap > 0 {
 		props = append(props, CSSProp{"gap", px(gap)})
 	}
 	if p := paddingProp(node); p != nil {
 		props = append(props, *p)
 	}
-	if v := alignValue(StringValue(node["counterAxisAlignItems"])); v != "" {
+	if v := alignValue(document.StringValue(node["counterAxisAlignItems"])); v != "" {
 		props = append(props, CSSProp{"align-items", v})
 	}
-	if v := alignValue(StringValue(node["primaryAxisAlignItems"])); v != "" {
+	if v := alignValue(document.StringValue(node["primaryAxisAlignItems"])); v != "" {
 		props = append(props, CSSProp{"justify-content", v})
 	}
 	if w := sizingProp(node, "layoutSizingHorizontal", "width"); w != nil {
@@ -128,7 +130,7 @@ func layoutProps(node map[string]any) []CSSProp {
 	if h := sizingProp(node, "layoutSizingVertical", "height"); h != nil {
 		props = append(props, *h)
 	}
-	if numberValue(node["layoutGrow"]) == 1 {
+	if document.NumberValue(node["layoutGrow"]) == 1 {
 		props = append(props, CSSProp{"flex-grow", "1"})
 	}
 	return props
@@ -136,10 +138,10 @@ func layoutProps(node map[string]any) []CSSProp {
 
 // paddingProp collapses four paddings into the shortest valid CSS shorthand.
 func paddingProp(node map[string]any) *CSSProp {
-	top := numberValue(node["paddingTop"])
-	right := numberValue(node["paddingRight"])
-	bottom := numberValue(node["paddingBottom"])
-	left := numberValue(node["paddingLeft"])
+	top := document.NumberValue(node["paddingTop"])
+	right := document.NumberValue(node["paddingRight"])
+	bottom := document.NumberValue(node["paddingBottom"])
+	left := document.NumberValue(node["paddingLeft"])
 	if top == 0 && right == 0 && bottom == 0 && left == 0 {
 		return nil
 	}
@@ -155,15 +157,15 @@ func paddingProp(node map[string]any) *CSSProp {
 
 // sizingProp maps a Figma sizing mode to a width/height declaration.
 func sizingProp(node map[string]any, modeKey, cssKey string) *CSSProp {
-	switch StringValue(node[modeKey]) {
+	switch document.StringValue(node[modeKey]) {
 	case "FIXED":
-		box := mapValue(node["absoluteBoundingBox"])
+		box := document.MapValue(node["absoluteBoundingBox"])
 		if cssKey == "width" {
-			if w := numberValue(box["width"]); w > 0 {
+			if w := document.NumberValue(box["width"]); w > 0 {
 				return &CSSProp{cssKey, px(w)}
 			}
 		} else {
-			if h := numberValue(box["height"]); h > 0 {
+			if h := document.NumberValue(box["height"]); h > 0 {
 				return &CSSProp{cssKey, px(h)}
 			}
 		}
@@ -180,7 +182,7 @@ func backgroundProp(node map[string]any) []CSSProp {
 		if paint == nil || paint["visible"] == false {
 			continue
 		}
-		switch StringValue(paint["type"]) {
+		switch document.StringValue(paint["type"]) {
 		case paintTypeSolid:
 			if color, ok := paint["color"].(map[string]any); ok {
 				return []CSSProp{{"background", cssPaintColor(color, paintOpacity(paint))}}
@@ -206,7 +208,7 @@ func linearGradient(paint map[string]any) string {
 		if color == nil {
 			continue
 		}
-		position := numStr(roundTo(numberValue(stop["position"])*100, 2)) + "%"
+		position := numStr(roundTo(document.NumberValue(stop["position"])*100, 2)) + "%"
 		formattedStops = append(formattedStops, cssPaintColor(color, paintOpacity(paint))+" "+position)
 	}
 	if len(formattedStops) == 0 {
@@ -222,8 +224,8 @@ func gradientAngle(value any) string {
 	}
 	start, _ := handles[0].(map[string]any)
 	end, _ := handles[1].(map[string]any)
-	dx := numberValue(end["x"]) - numberValue(start["x"])
-	dy := numberValue(end["y"]) - numberValue(start["y"])
+	dx := document.NumberValue(end["x"]) - document.NumberValue(start["x"])
+	dy := document.NumberValue(end["y"]) - document.NumberValue(start["y"])
 	angle := math.Atan2(dx, -dy) * 180 / math.Pi
 	if angle < 0 {
 		angle += 360
@@ -234,7 +236,7 @@ func gradientAngle(value any) string {
 func cssPaintColor(color map[string]any, paintAlpha float64) string {
 	colorAlpha := 1.0
 	if alpha, exists := color["a"]; exists {
-		colorAlpha = numberValue(alpha)
+		colorAlpha = document.NumberValue(alpha)
 	}
 	alpha := roundTo(colorAlpha*paintAlpha, 4)
 	if alpha >= 1 {
@@ -245,7 +247,7 @@ func cssPaintColor(color map[string]any, paintAlpha float64) string {
 
 func paintOpacity(paint map[string]any) float64 {
 	if opacity, exists := paint["opacity"]; exists {
-		return numberValue(opacity)
+		return document.NumberValue(opacity)
 	}
 	return 1
 }
@@ -254,7 +256,7 @@ func firstCSSSolidColor(value any) string {
 	paints, _ := value.([]any)
 	for _, value := range paints {
 		paint, _ := value.(map[string]any)
-		if paint == nil || paint["visible"] == false || StringValue(paint["type"]) != paintTypeSolid {
+		if paint == nil || paint["visible"] == false || document.StringValue(paint["type"]) != paintTypeSolid {
 			continue
 		}
 		if color, ok := paint["color"].(map[string]any); ok {
@@ -269,7 +271,7 @@ func borderProps(node map[string]any) []CSSProp {
 	if c == "" {
 		return nil
 	}
-	weight := numberValue(node["strokeWeight"])
+	weight := document.NumberValue(node["strokeWeight"])
 	if weight == 0 {
 		weight = 1
 	}
@@ -277,10 +279,10 @@ func borderProps(node map[string]any) []CSSProp {
 }
 
 func radiusProp(node map[string]any) []CSSProp {
-	if r := numberValue(node["cornerRadius"]); r > 0 {
+	if r := document.NumberValue(node["cornerRadius"]); r > 0 {
 		return []CSSProp{{"border-radius", px(r)}}
 	}
-	if radii := numberSlice(node["rectangleCornerRadii"]); len(radii) == 4 {
+	if radii := document.NumberSlice(node["rectangleCornerRadii"]); len(radii) == 4 {
 		return []CSSProp{{"border-radius", px(radii[0]) + " " + px(radii[1]) + " " + px(radii[2]) + " " + px(radii[3])}}
 	}
 	return nil
@@ -296,7 +298,7 @@ func effectProps(node map[string]any) []CSSProp {
 		if effect == nil || effect["visible"] == false {
 			continue
 		}
-		switch StringValue(effect["type"]) {
+		switch document.StringValue(effect["type"]) {
 		case "DROP_SHADOW":
 			if shadow := cssShadow(effect, false); shadow != "" {
 				shadows = append(shadows, shadow)
@@ -306,11 +308,11 @@ func effectProps(node map[string]any) []CSSProp {
 				shadows = append(shadows, shadow)
 			}
 		case "LAYER_BLUR":
-			if radius := numberValue(effect["radius"]); radius > 0 && layerBlur == "" {
+			if radius := document.NumberValue(effect["radius"]); radius > 0 && layerBlur == "" {
 				layerBlur = "blur(" + px(radius) + ")"
 			}
 		case "BACKGROUND_BLUR":
-			if radius := numberValue(effect["radius"]); radius > 0 && backgroundBlur == "" {
+			if radius := document.NumberValue(effect["radius"]); radius > 0 && backgroundBlur == "" {
 				backgroundBlur = "blur(" + px(radius) + ")"
 			}
 		}
@@ -335,10 +337,10 @@ func cssShadow(effect map[string]any, inset bool) string {
 	}
 	offset, _ := effect["offset"].(map[string]any)
 	parts := []string{
-		px(numberValue(offset["x"])),
-		px(numberValue(offset["y"])),
-		px(numberValue(effect["radius"])),
-		px(numberValue(effect["spread"])),
+		px(document.NumberValue(offset["x"])),
+		px(document.NumberValue(offset["y"])),
+		px(document.NumberValue(effect["radius"])),
+		px(document.NumberValue(effect["spread"])),
 		cssPaintColor(color, 1),
 	}
 	shadow := strings.Join(parts, " ")
@@ -349,7 +351,7 @@ func cssShadow(effect map[string]any, inset bool) string {
 }
 
 func opacityProp(node map[string]any) []CSSProp {
-	opacity := optionalNumber(node["opacity"])
+	opacity := document.OptionalNumber(node["opacity"])
 	if opacity == nil || *opacity == 1 {
 		return nil
 	}
@@ -364,37 +366,37 @@ func clippingProp(node map[string]any) []CSSProp {
 }
 
 func textProps(node map[string]any) []CSSProp {
-	style := mapValue(node["style"])
+	style := document.MapValue(node["style"])
 	var props []CSSProp
-	if fam := StringValue(style["fontFamily"]); fam != "" {
+	if fam := document.StringValue(style["fontFamily"]); fam != "" {
 		props = append(props, CSSProp{"font-family", strconv.Quote(fam)})
 	}
-	if sz := numberValue(style["fontSize"]); sz > 0 {
+	if sz := document.NumberValue(style["fontSize"]); sz > 0 {
 		props = append(props, CSSProp{"font-size", px(sz)})
 	}
-	if w := numberValue(style["fontWeight"]); w > 0 {
+	if w := document.NumberValue(style["fontWeight"]); w > 0 {
 		props = append(props, CSSProp{"font-weight", strconv.FormatFloat(w, 'f', -1, 64)})
 	}
-	if lh := numberValue(style["lineHeightPx"]); lh > 0 {
+	if lh := document.NumberValue(style["lineHeightPx"]); lh > 0 {
 		props = append(props, CSSProp{"line-height", px(lh)})
 	}
-	if ls := numberValue(style["letterSpacing"]); ls != 0 {
+	if ls := document.NumberValue(style["letterSpacing"]); ls != 0 {
 		props = append(props, CSSProp{"letter-spacing", px(ls)})
 	}
 	if c := firstCSSSolidColor(node["fills"]); c != "" {
 		props = append(props, CSSProp{"color", c})
 	}
-	if v := textAlign(StringValue(node["textAlignHorizontal"])); v != "" {
+	if v := textAlign(document.StringValue(node["textAlignHorizontal"])); v != "" {
 		props = append(props, CSSProp{"text-align", v})
 	}
-	textCase := StringValue(style["textCase"])
+	textCase := document.StringValue(style["textCase"])
 	if textCase == "" {
-		textCase = StringValue(node["textCase"])
+		textCase = document.StringValue(node["textCase"])
 	}
 	if v := textTransform(textCase); v != "" {
 		props = append(props, CSSProp{"text-transform", v})
 	}
-	if v := textDecoration(StringValue(style["textDecoration"])); v != "" {
+	if v := textDecoration(document.StringValue(style["textDecoration"])); v != "" {
 		props = append(props, CSSProp{"text-decoration", v})
 	}
 	return props

@@ -3,6 +3,8 @@ package extract
 import (
 	"sort"
 	"strings"
+
+	"github.com/cristianoliveira/figma-cli/internal/document"
 )
 
 const textNodeType = "TEXT"
@@ -99,9 +101,9 @@ func OrderedTextForFrame(value any) []OrderedTextOutput {
 func walkOrderedText(object map[string]any, depth int, parentName string, outputs *[]OrderedTextOutput) {
 	if object["type"] == textNodeType {
 		*outputs = append(*outputs, OrderedTextOutput{
-			ID:               StringValue(object["id"]),
-			Name:             StringValue(object["name"]),
-			Text:             StringValue(object["characters"]),
+			ID:               document.StringValue(object["id"]),
+			Name:             document.StringValue(object["name"]),
+			Text:             document.StringValue(object["characters"]),
 			NodeKind:         "textBlock",
 			Depth:            depth,
 			Order:            len(*outputs),
@@ -121,7 +123,7 @@ func walkOrderedText(object map[string]any, depth int, parentName string, output
 		if !ok {
 			continue
 		}
-		walkOrderedText(childObject, depth+1, StringValue(object["name"]), outputs)
+		walkOrderedText(childObject, depth+1, document.StringValue(object["name"]), outputs)
 	}
 }
 
@@ -133,14 +135,14 @@ func textLinesFromObject(object map[string]any) []TextLineOutput {
 	}
 	hasListIntent := false
 	for _, lineType := range lineTypes {
-		if value := StringValue(lineType); value != "" && value != "NONE" {
+		if value := document.StringValue(lineType); value != "" && value != "NONE" {
 			hasListIntent = true
 			break
 		}
 	}
 	if !hasListIntent {
 		for _, indentation := range indentations {
-			if numberValue(indentation) != 0 {
+			if document.NumberValue(indentation) != 0 {
 				hasListIntent = true
 				break
 			}
@@ -149,18 +151,18 @@ func textLinesFromObject(object map[string]any) []TextLineOutput {
 	if !hasListIntent {
 		return nil
 	}
-	texts := strings.Split(StringValue(object["characters"]), "\n")
+	texts := strings.Split(document.StringValue(object["characters"]), "\n")
 	lines := make([]TextLineOutput, 0, len(texts))
 	for index, text := range texts {
 		line := TextLineOutput{Index: index, Text: text}
 		if index < len(lineTypes) {
-			line.ListType = StringValue(lineTypes[index])
+			line.ListType = document.StringValue(lineTypes[index])
 			if line.ListType == "NONE" {
 				line.ListType = ""
 			}
 		}
 		if index < len(indentations) {
-			line.Indentation = numberValue(indentations[index])
+			line.Indentation = document.NumberValue(indentations[index])
 		}
 		lines = append(lines, line)
 	}
@@ -187,7 +189,7 @@ func styleOverrideIDs(value any) []int {
 	seen := make(map[int]struct{})
 	ids := make([]int, 0)
 	for _, value := range values {
-		id := int(numberValue(value))
+		id := int(document.NumberValue(value))
 		if id == 0 {
 			continue
 		}
@@ -249,7 +251,7 @@ func walkTextNodes(value any, parentPath []string, nodes *[]TextNode) {
 		return
 	}
 
-	name := StringValue(object["name"])
+	name := document.StringValue(object["name"])
 	if object["type"] == textNodeType {
 		id, _ := object["id"].(string)
 		text, _ := object["characters"].(string)
@@ -279,9 +281,9 @@ func walkLayers(value any, layerName string, recursive bool, matches *[]LayerTex
 
 	if object["name"] == layerName {
 		*matches = append(*matches, LayerTextOutput{
-			ID:    StringValue(object["id"]),
-			Name:  StringValue(object["name"]),
-			Type:  StringValue(object["type"]),
+			ID:    document.StringValue(object["id"]),
+			Name:  document.StringValue(object["name"]),
+			Type:  document.StringValue(object["type"]),
 			Texts: textOutputsForLayer(object, recursive),
 		})
 	}
@@ -297,7 +299,7 @@ func walkLayers(value any, layerName string, recursive bool, matches *[]LayerTex
 
 func textOutputsForLayer(object map[string]any, recursive bool) []TextNodeOutput {
 	if object["type"] == textNodeType {
-		return []TextNodeOutput{{ID: StringValue(object["id"]), Name: StringValue(object["name"]), Text: StringValue(object["characters"])}}
+		return []TextNodeOutput{{ID: document.StringValue(object["id"]), Name: document.StringValue(object["name"]), Text: document.StringValue(object["characters"])}}
 	}
 	if recursive {
 		return textNodeOutputs(ExtractTextNodes(object))
@@ -313,7 +315,7 @@ func textOutputsForLayer(object map[string]any, recursive bool) []TextNodeOutput
 		if !ok || childObject["type"] != textNodeType {
 			continue
 		}
-		nodes = append(nodes, TextNode{ID: StringValue(childObject["id"]), Name: StringValue(childObject["name"]), Text: StringValue(childObject["characters"])})
+		nodes = append(nodes, TextNode{ID: document.StringValue(childObject["id"]), Name: document.StringValue(childObject["name"]), Text: document.StringValue(childObject["characters"])})
 	}
 	return textNodeOutputs(nodes)
 }
