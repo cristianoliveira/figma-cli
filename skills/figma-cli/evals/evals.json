@@ -1,0 +1,41 @@
+{
+  "skill_name": "figma-cli",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have https://www.figma.com/design/abc/Product?node-id=1-2 and need to list its screen-level frames before inspecting one. Do not execute Figma or network commands. Write the concise command sequence and rationale to recommendation.md.",
+      "expected_output": "A progressive-discovery sequence that selects frames instead of starting with a deep inspection.",
+      "files": [],
+      "expectations": [
+        "The recommendation starts discovery with `figma --help`.",
+        "The recommendation selects `figma frames` as the first domain command.",
+        "The recommendation uses `figma frames --help` to discover exact syntax before the domain call.",
+        "The recommendation does not require `figma me` before frame discovery."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need one shell pipeline that reads fills from node https://www.figma.com/design/abc/Product?node-id=42-1 with jq. Do not execute Figma or network commands. Write the command and one-sentence rationale to recommendation.md.",
+      "expected_output": "A jq-compatible JSON pipeline with canonical Figma URL node syntax.",
+      "files": [],
+      "expectations": [
+        "The pipeline places global `--json` before `inspect`.",
+        "The pipeline sends the Figma command output to `jq`.",
+        "The URL preserves dash-form `node-id=42-1` and does not replace it with colon form.",
+        "The recommendation does not add an unrelated authentication preflight."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I want implementation properties for https://www.figma.com/design/abc/Product?node-id=42-1, but this is a fresh agent session and token state is unknown. Do not execute Figma or network commands. Write the recommended command order, including what to do only if authentication fails, to recommendation.md.",
+      "expected_output": "Direct inspection first, with `figma me` reserved for authentication diagnosis after failure.",
+      "files": [],
+      "expectations": [
+        "The recommendation runs inspect before `figma me`.",
+        "The recommendation uses `figma me` only after an authentication failure.",
+        "The recommendation explains that `figma me` does not prove access to the requested resource.",
+        "The recommendation preserves the dash-form node ID in the Figma URL."
+      ]
+    }
+  ]
+}
