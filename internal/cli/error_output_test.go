@@ -124,13 +124,44 @@ func TestErrorContractPreservesSilentAndResultBearingErrors(t *testing.T) {
 	}
 }
 
-func TestResultErrorRendersUnderlyingButDoesNotEmitEnvelope(t *testing.T) {
+func TestResultErrorRendersSafeMessageWithoutEnvelope(t *testing.T) {
 	// A result-bearing error already emitted a result; RenderError prints
-	// its error to stderr but must not emit a structured envelope.
+	// a safe message to stderr but must not emit a structured envelope or
+	// the raw error text.
 	command := &cobra.Command{Use: "tool"}
 	var stderr bytes.Buffer
 	command.SetErr(&stderr)
 
 	require.NoError(t, RenderError(command, NewResultError(errors.New("gate failed"))))
-	assert.Contains(t, stderr.String(), "gate failed")
+	assert.Equal(t, "Command could not complete.\n", stderr.String())
+	assert.NotContains(t, stderr.String(), "gate failed")
+}
+
+func TestResultErrorRedactsSensitiveCauses(t *testing.T) {
+	command := &cobra.Command{Use: "tool"}
+	var stderr bytes.Buffer
+	command.SetErr(&stderr)
+
+	err := NewResultError(errors.New("response-body token=SECRET123 Authorization: Bearer SECRET123 /Users/private/secret.png"))
+	require.NoError(t, RenderError(command, err))
+
+	for _, secret := range []string{"SECRET123", "Bearer", "/Users/private"} {
+		assert.NotContains(t, stderr.String(), secret)
+	}
+	assert.Contains(t, stderr.String(), "Command could not complete.")
+}
+
+func TestResultErrorUsesClassifiedMessage(t *testing.T) {
+	command := &cobra.Command{Use: "tool"}
+	var stderr bytes.Buffer
+	command.SetErr(&stderr)
+
+	err := NewResultError(operr.New(operr.CategoryDependencyUnavailable,
+		"Figma request failed.",
+		"Check Figma availability and retry.",
+		errors.New("token=SECRET123")))
+	require.NoError(t, RenderError(command, err))
+
+	assert.Equal(t, "Figma request failed.\n", stderr.String())
+	assert.NotContains(t, stderr.String(), "SECRET123")
 }

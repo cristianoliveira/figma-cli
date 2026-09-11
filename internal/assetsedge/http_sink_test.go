@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/cristianoliveira/figma-cli/internal/operr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,11 +48,11 @@ func TestHTTPAssetSinkCreatesParentDirectory(t *testing.T) {
 }
 
 // TestHTTPAssetSinkNon200ReturnsError confirms a non-200 response maps
-// to an error carrying the status and body.
+// to a classified error carrying the safe status code and never the body.
 func TestHTTPAssetSinkNon200ReturnsError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte("nope"))
+		_, _ = w.Write([]byte("SECRET-RESPONSE-BODY"))
 	}))
 	t.Cleanup(server.Close)
 
@@ -59,6 +60,11 @@ func TestHTTPAssetSinkNon200ReturnsError(t *testing.T) {
 	err := sink.Write(context.Background(), filepath.Join(t.TempDir(), "asset.svg"), server.URL)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "status 404")
+	assert.NotContains(t, err.Error(), "SECRET-RESPONSE-BODY", "response body must not leak")
+
+	var classified *operr.ClassifiedError
+	require.ErrorAs(t, err, &classified)
+	assert.Equal(t, operr.CategoryDependencyUnavailable, classified.Category)
 }
 
 // TestHTTPAssetSinkNilClientErrors confirms a nil client is reported as

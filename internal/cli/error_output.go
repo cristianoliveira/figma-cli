@@ -54,7 +54,7 @@ func ErrorContract(err error) (ErrorOutput, bool) {
 func RenderError(command *cobra.Command, err error) error {
 	var result *ResultError
 	if errors.As(err, &result) {
-		_, writeErr := fmt.Fprintln(command.ErrOrStderr(), result.err.Error())
+		_, writeErr := fmt.Fprintln(command.ErrOrStderr(), safeResultMessage(result.err))
 		return writeErr
 	}
 	contract, render := ErrorContract(err)
@@ -62,6 +62,18 @@ func RenderError(command *cobra.Command, err error) error {
 		return nil
 	}
 	return NewPrinter(command).Structured(contract)
+}
+
+// safeResultMessage returns a safe, user-facing message for a result-
+// bearing failure. Classified errors contribute their safe Message;
+// unknown errors fall back to a generic message so raw provider text
+// (tokens, bodies, headers, private paths) is never emitted.
+func safeResultMessage(err error) string {
+	var classified *operr.ClassifiedError
+	if errors.As(err, &classified) {
+		return classified.Message
+	}
+	return "Command could not complete."
 }
 
 func isAlreadyRepresented(err error) bool {

@@ -42,8 +42,7 @@ func (s *HTTPAssetSink) Write(ctx context.Context, path, url string) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("download returned status %d: %s", resp.StatusCode, body)
+		return classifyDownloadStatus(resp.StatusCode)
 	}
 
 	file, err := output.CreateFile(path)
