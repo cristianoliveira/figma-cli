@@ -1,7 +1,7 @@
 ---
 id: TASK-0011
 title: Audit and minimize capability contracts
-status: todo
+status: doing
 depends_on: [TASK-0006, TASK-0007, TASK-0008, TASK-0009, TASK-0010]
 priority: low
 tags: [solid, api]
