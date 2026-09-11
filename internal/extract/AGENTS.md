@@ -9,6 +9,7 @@ This package is pure transformation logic. It may consume mapped document values
 # Connections
 
 - [Figma boundary](internal/figma/AGENTS.md): maps generated API responses into document trees before extraction; extraction does not call the API.
+- [Document model](internal/document/AGENTS.md): owns the stable tree shape and shared document-tree value coercion helpers (StringValue, NumberValue, OptionalNumber, NumberSlice, MapValue). Extract delegates to these via thin re-exports while the canonical home lives in the document package.
 - [Internal cross-cutting types](internal/AGENTS.md): annotations and component helpers share bounded data contracts with extraction.
 - [Diff capability](internal/diff/AGENTS.md): consumes extracted text values for history analysis.
 - [Output](internal/output/AGENTS.md): commands pass extracted values to stable rendering; extraction does not render them.

@@ -1,47 +1,34 @@
+// Package extract owns the Figma document-to-output transforms. The
+// generic document-tree value coercion helpers (StringValue, number
+// helpers, slice/map coercers) moved to internal/document (TASK-0006);
+// the thin re-exports below keep the extract API stable while call sites
+// migrate.
 package extract
 
 import (
 	"fmt"
 	"math"
+
+	"github.com/cristianoliveira/figma-cli/internal/document"
 )
 
-const paintTypeSolid = "SOLID"
+// StringValue extracts a string from an any value, or returns "".
+func StringValue(value any) string { return document.StringValue(value) }
 
-// numberValue coerces a Figma numeric field to float64, defaulting to 0.
-func numberValue(value any) float64 {
-	number, ok := value.(float64)
-	if !ok {
-		return 0
-	}
-	return number
-}
+// numberValue coerces a numeric field to float64, defaulting to 0.
+func numberValue(value any) float64 { return document.NumberValue(value) }
 
 // optionalNumber returns a pointer to a numeric field, or nil if absent.
-func optionalNumber(value any) *float64 {
-	number, ok := value.(float64)
-	if !ok {
-		return nil
-	}
-	return &number
-}
+func optionalNumber(value any) *float64 { return document.OptionalNumber(value) }
 
-func numberSlice(value any) []float64 {
-	items, ok := value.([]any)
-	if !ok {
-		return nil
-	}
-	numbers := make([]float64, 0, len(items))
-	for _, item := range items {
-		numbers = append(numbers, numberValue(item))
-	}
-	return numbers
-}
+// numberSlice returns the numeric contents of an any-array, or nil.
+func numberSlice(value any) []float64 { return document.NumberSlice(value) }
 
-func mapValue(value any) map[string]any {
-	object, _ := value.(map[string]any)
-	return object
-}
+// mapValue returns the underlying map or nil.
+func mapValue(value any) map[string]any { return document.MapValue(value) }
 
+// colorChannel / colorHexFromPaint / colorsFromPaints are Figma-paint
+// helpers that remain in extract; they describe Figma-specific shapes.
 func colorChannel(value any) int {
 	return int(math.Round(numberValue(value) * 255))
 }
@@ -75,8 +62,7 @@ func colorsFromPaints(value any) []string {
 	return colors
 }
 
-// StringValue extracts a string from an any value, or returns "".
-func StringValue(value any) string {
-	text, _ := value.(string)
-	return text
-}
+// paintTypeSolid is a Figma-paint constant retained by the extract
+// package; paint classification belongs here, not in the generic
+// document tree.
+const paintTypeSolid = "SOLID"
