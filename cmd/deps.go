@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/cristianoliveira/figma-cli/internal/artifact"
 	"github.com/cristianoliveira/figma-cli/internal/assets"
+	"github.com/cristianoliveira/figma-cli/internal/assetsedge"
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
 	"github.com/cristianoliveira/figma-cli/internal/inspect"
-	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/cristianoliveira/figma-cli/internal/tokens"
 )
 
@@ -34,6 +35,8 @@ type Deps struct {
 	InspectService   InspectServiceFactory
 	AssetApplication func() AssetApplication
 	TokenService     func() (TokenService, error)
+	ArtifactWriter   artifact.Writer
+	DownloadAsset    func(ctx context.Context, httpClient *http.Client, path, url string) error
 }
 
 // defaultResolveExecutable resolves the current binary path. It is overridable
@@ -79,6 +82,8 @@ func NewProductionDeps() Deps {
 		InspectService:   defaultInspectServiceFactory(loadClient),
 		AssetApplication: defaultAssetApplication,
 		TokenService:     defaultTokenServiceFactory(loadClient),
+		ArtifactWriter:   artifact.NewFileWriter(),
+		DownloadAsset:    defaultDownloadAsset,
 	}
 }
 
@@ -100,11 +105,17 @@ func defaultTokenServiceFactory(loadClient func() (*figma.Client, error)) func()
 				Scan:      tokens.ScanSource{FetchDocument: adapter.DocumentFetcher()},
 			},
 			tokens.FormatterFunc(extract.FormatTokens),
-			tokens.ArtifactSinkFunc(func(ctx context.Context, path string, data []byte) error {
-				return output.WriteFile(path, data, 0o644)
-			}),
+			artifact.NewFileWriter(),
 		), nil
 	}
+}
+
+// defaultDownloadAsset is the URL-aware asset download used by the
+// export command. It wraps assetsedge.DownloadFile so the command never
+// calls the concrete HTTP/filesystem helper directly.
+func defaultDownloadAsset(ctx context.Context, httpClient *http.Client, path, url string) error {
+	_ = ctx
+	return assetsedge.DownloadFile(httpClient, path, url)
 }
 
 // defaultAssetApplication returns the production asset application
@@ -127,5 +138,7 @@ func DepsForLoadClient(loadClient func() (*figma.Client, error)) Deps {
 		GetEnv:           defaultGetEnv,
 		AssetApplication: defaultAssetApplication,
 		TokenService:     defaultTokenServiceFactory(loadClient),
+		ArtifactWriter:   artifact.NewFileWriter(),
+		DownloadAsset:    defaultDownloadAsset,
 	}
 }

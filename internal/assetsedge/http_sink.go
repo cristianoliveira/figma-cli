@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 
-	"github.com/cristianoliveira/figma-cli/internal/output"
+	"github.com/cristianoliveira/figma-cli/internal/artifact"
 )
 
 // HTTPAssetSink implements assets.AssetSink against an *http.Client and
-// the filesystem (via output.CreateFile, which also creates parent
-// directories). It is the edge adapter; the asset application knows
+// the filesystem. It is the edge adapter; the asset application knows
 // nothing about HTTP or filesystem mechanics.
 type HTTPAssetSink struct {
 	Client *http.Client
@@ -45,13 +46,27 @@ func (s *HTTPAssetSink) Write(ctx context.Context, path, url string) error {
 		return classifyDownloadStatus(resp.StatusCode)
 	}
 
-	file, err := output.CreateFile(path)
+	file, err := createFile(path)
 	if err != nil {
-		return fmt.Errorf("creating output file: %w", err)
+		return err
 	}
 	defer func() { _ = file.Close() }()
 	if _, err := io.Copy(file, resp.Body); err != nil {
 		return fmt.Errorf("writing output file: %w", err)
 	}
 	return nil
+}
+
+// createFile creates the destination file, creating parent directories
+// as needed. Filesystem failures are translated to a neutral
+// artifact-access error.
+func createFile(path string) (*os.File, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, artifact.ClassifyFileError(err)
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return nil, artifact.ClassifyFileError(err)
+	}
+	return file, nil
 }

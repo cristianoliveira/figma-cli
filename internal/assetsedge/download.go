@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/cristianoliveira/figma-cli/internal/output"
 )
 
 // DownloadFile downloads fileURL via httpClient and writes the bytes to
@@ -22,9 +20,9 @@ func DownloadFile(httpClient *http.Client, outputPath string, fileURL string) er
 		return classifyDownloadStatus(resp.StatusCode)
 	}
 
-	file, err := output.CreateFile(outputPath)
+	file, err := createFile(outputPath)
 	if err != nil {
-		return fmt.Errorf("creating output file: %w", err)
+		return err
 	}
 	defer func() { _ = file.Close() }()
 	if _, err := io.Copy(file, resp.Body); err != nil {

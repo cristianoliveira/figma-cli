@@ -65,6 +65,7 @@ func Rules() []Rule {
 				"internal/figma",      // Figma transport + generated API adapter
 				"internal/output",     // TOON rendering + filesystem artifacts
 				"internal/assetsedge", // asset export HTTP/filesystem adapters
+				"internal/artifact",   // artifact filesystem persistence adapter
 				"internal/env",        // environment access owner
 				"internal/components", // legacy codebase filesystem discovery
 			},
