@@ -4,7 +4,6 @@ import (
 	"github.com/cristianoliveira/figma-cli/internal/cli"
 	"github.com/cristianoliveira/figma-cli/internal/extract"
 	"github.com/cristianoliveira/figma-cli/internal/figma"
-	"github.com/cristianoliveira/figma-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -60,7 +59,7 @@ via Variables (Enterprise); use 'figma tokens' for the color palette.
 			}
 			out := extract.FormatCSSRules(rules)
 			if outputPath != "" {
-				if err := output.WriteFile(outputPath, []byte(out), 0o644); err != nil {
+				if err := deps.ArtifactWriter.Write(cmd.Context(), outputPath, []byte(out)); err != nil {
 					return err
 				}
 				if err := cli.NewPrinter(cmd).File(outputPath, map[string]any{"format": "css", "bytes": len(out)}); err != nil {
